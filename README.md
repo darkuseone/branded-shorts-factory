@@ -78,7 +78,8 @@ PYTHONPATH=src python -m shorts_factory doctor
 | `brand/brandbook.json` | брендбук | появится позже |
 | `assets/catalogs/mixkit.json` | ручной каталог Mixkit | по мере находок |
 
-Медиа не коммитится в git (см. `.gitignore`) — только README и индексы.
+**Файлы нужно коммитить в репозиторий.** GitHub Actions собирает ролик из
+свежего клона: то, что лежит только на вашем диске, до сборки не доедет.
 
 ---
 

@@ -4,20 +4,10 @@ build/
 *.webm
 *.mov
 
-# User media libraries: too big for git, and licensing lives with you.
-assets/music/*
-!assets/music/README.md
-!assets/music/index.json
-assets/memes/*
-!assets/memes/README.md
-!assets/memes/index.json
-assets/sfx/*
-!assets/sfx/README.md
-!assets/sfx/index.json
-
-# The real brandbook and logo are private; only the example is tracked.
-brand/*
-!brand/brandbook.example.json
+# NOTE: assets/music, assets/sfx, assets/memes and brand/ are deliberately NOT
+# ignored. GitHub Actions builds from a fresh clone, so anything the render
+# needs — tracks, sounds, memes, logo, brandbook — has to be committed or the
+# build silently comes out without it.
 
 # Python
 __pycache__/

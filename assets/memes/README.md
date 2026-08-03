@@ -24,4 +24,5 @@ Matching uses tags, falling back to words in the filename, so
 Keep meme slots short (`memes.max_duration`, default 1.5s) — they are punctuation,
 not content.
 
-Files are **not** committed to git — see `.gitignore`.
+Файлы **нужно коммитить**: GitHub Actions собирает ролик из свежего клона
+репозитория, и незакоммиченный мем для сборки просто не существует.

@@ -27,4 +27,5 @@ Add tags and titles if you want them in reports:
 Ducking is applied at mix time with a real sidechain compressor, so pick tracks
 with headroom rather than pre-ducked stems.
 
-Tracks are **not** committed to git — see `.gitignore`.
+Треки **нужно коммитить**: GitHub Actions собирает ролик из свежего клона
+репозитория, и незакоммиченный файл для сборки просто не существует.
