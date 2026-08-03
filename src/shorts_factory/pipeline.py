@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from .assets.brand import Brandbook, apply_brandbook
-from .assets.library import MemeLibrary, MusicLibrary
+from .assets.library import MemeLibrary, MusicLibrary, SfxLibrary
 from .config import Settings
 from .errors import RenderError
 from .generative.budget import TokenBudget
@@ -28,7 +28,7 @@ from .render.hyperframes import HyperFramesRunner, RenderResult
 from .render.timeline import Timeline, build_timeline, use_mixed_audio
 from .resolver import ResolvedVisual, VisualResolver
 from .spec import Spec, SpecIssue
-from .voice.audio_design import suggest_audio_fx
+from .voice.audio_design import resolve_from_library, suggest_audio_fx
 from .voice.captions import CaptionCue, build_cues
 from .voice.elevenlabs import ElevenLabsClient, SfxClip, VoiceClip
 from .voice.heygen import AvatarClip, HeyGenClient
@@ -106,6 +106,7 @@ class Pipeline:
         self.avatar_client = HeyGenClient(settings)
         self.runner = runner or HyperFramesRunner(settings)
         self.music_library = MusicLibrary(settings.paths.music_library)
+        self.sfx_library = SfxLibrary(settings.paths.sfx_library)
         self.meme_library = MemeLibrary(settings.paths.meme_library)
 
     # -- entry points -------------------------------------------------------
@@ -207,18 +208,36 @@ class Pipeline:
             result.warnings.append("no brandbook found; using per-video brand_elements")
 
     def _synthesize_voice(self, spec: Spec, result: RunResult) -> None:
-        if not self.voice_client.is_available:
+        if self.voice_client.is_available:
+            result.voice_clips = self.voice_client.synthesize_script(spec.all_segments, spec.voice)
+            if len(result.voice_clips) < len(spec.all_segments):
+                result.warnings.append(
+                    f"only {len(result.voice_clips)}/{len(spec.all_segments)} narration segments "
+                    "were rendered"
+                )
+        else:
             result.warnings.append(f"narration skipped: {self.voice_client.unavailable_reason()}")
+
+        self._resolve_sound_design(spec, result)
+
+    def _resolve_sound_design(self, spec: Spec, result: RunResult) -> None:
+        """Your own sounds first; generate only what the bank cannot cover."""
+        effects = spec.audio_fx or suggest_audio_fx(spec)
+        if not effects:
             return
 
-        result.voice_clips = self.voice_client.synthesize_script(spec.all_segments, spec.voice)
-        if len(result.voice_clips) < len(spec.all_segments):
-            result.warnings.append(
-                f"only {len(result.voice_clips)}/{len(spec.all_segments)} narration segments were rendered"
-            )
+        from_library, missing = resolve_from_library(effects, self.sfx_library)
+        generated: list[SfxClip] = []
+        if missing:
+            if self.voice_client.is_available:
+                generated = self.voice_client.generate_all_fx(missing)
+            elif self.sfx_library.items:
+                result.warnings.append(
+                    f"{len(missing)} effect(s) have no match in {self.settings.paths.sfx_library} "
+                    f"and could not be generated: {self.voice_client.unavailable_reason()}"
+                )
 
-        effects = spec.audio_fx or suggest_audio_fx(spec)
-        result.sfx_clips = self.voice_client.generate_all_fx(effects)
+        result.sfx_clips = sorted(from_library + generated, key=lambda clip: clip.start)
 
     def _generate_avatar(self, spec: Spec, result: RunResult) -> None:
         """Render the presenter over the window it is supposed to speak in.

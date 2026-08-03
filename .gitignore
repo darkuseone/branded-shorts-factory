@@ -11,6 +11,9 @@ assets/music/*
 assets/memes/*
 !assets/memes/README.md
 !assets/memes/index.json
+assets/sfx/*
+!assets/sfx/README.md
+!assets/sfx/index.json
 
 # The real brandbook and logo are private; only the example is tracked.
 brand/*

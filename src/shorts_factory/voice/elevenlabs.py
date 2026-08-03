@@ -66,6 +66,8 @@ class SfxClip:
     start: float
     duration: float
     volume: float
+    #: "library" for a sound you supplied, "elevenlabs" for a generated one.
+    source: str = "elevenlabs"
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -74,6 +76,7 @@ class SfxClip:
             "start": round(self.start, 3),
             "duration": round(self.duration, 3),
             "volume": round(self.volume, 3),
+            "source": self.source,
         }
 
 

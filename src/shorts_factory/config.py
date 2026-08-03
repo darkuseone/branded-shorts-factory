@@ -150,6 +150,10 @@ class Paths:
         return self.root / "assets" / "music"
 
     @property
+    def sfx_library(self) -> Path:
+        return self.root / "assets" / "sfx"
+
+    @property
     def meme_library(self) -> Path:
         return self.root / "assets" / "memes"
 

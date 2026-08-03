@@ -1,8 +1,9 @@
-"""User-supplied libraries: music tracks and the meme bank.
+"""User-supplied libraries: music tracks, the sound-effect bank and memes.
 
-Both are just folders the user fills by hand. An optional `index.json` next to
-the files adds tags; without it, tags are derived from filenames, so dropping
-`shock-pikachu.gif` into `assets/memes/` already makes it findable by "shock".
+All three are just folders the user fills by hand. An optional `index.json`
+next to the files adds tags; without it, tags are derived from filenames, so
+dropping `shock-pikachu.gif` into `assets/memes/` already makes it findable by
+"shock", and `whoosh-fast-01.wav` into `assets/sfx/` findable by "whoosh".
 """
 
 from __future__ import annotations
@@ -117,6 +118,60 @@ class MusicLibrary(_FolderLibrary):
         if requested:
             log.warning("music track %r not found in %s", requested, self.directory)
         return self.items[0] if self.items else None
+
+
+#: Words that mean the same thing as an `audio_fx.type`. Sound packs name
+#: files however they like, so a "boom" should still answer a request for an
+#: "impact".
+SFX_SYNONYMS: dict[str, tuple[str, ...]] = {
+    "whoosh": ("whoosh", "swoosh", "swish", "woosh", "transition", "sweep"),
+    "swoosh": ("swoosh", "whoosh", "swish", "sweep"),
+    "impact": ("impact", "hit", "boom", "punch", "slam", "braam"),
+    "riser": ("riser", "rise", "buildup", "build", "uplifter", "tension"),
+    "sub_drop": ("sub", "subdrop", "drop", "bass", "808", "boom"),
+    "pop": ("pop", "bubble", "blip", "plop", "bounce"),
+    "click": ("click", "tick", "tap", "snap"),
+    "glitch": ("glitch", "stutter", "digital", "error", "static"),
+    "transition": ("transition", "whoosh", "swoosh", "sweep", "cut"),
+    "ui": ("ui", "blip", "beep", "notify", "notification", "confirm"),
+}
+
+
+class SfxLibrary(_FolderLibrary):
+    """Your own sound design, matched to `audio_fx` entries by type.
+
+    Preferred over generation: it costs nothing, it is instant, and using the
+    same handful of sounds across videos is what makes a channel sound like
+    itself. Generation only fills in what the folder cannot answer.
+    """
+
+    suffixes = AUDIO_SUFFIXES
+    label = "sfx"
+
+    def __init__(self, directory: Path):
+        super().__init__(directory)
+        self._used: dict[str, int] = {}
+
+    def pick(self, fx_type: str, extra_tags: list[str] | None = None) -> LibraryItem | None:
+        """Best sound for one effect, rotating between equally good matches.
+
+        Rotation matters: six identical whooshes in one Short is exactly the
+        cheap-edit sound this project exists to avoid.
+        """
+        wanted = list(SFX_SYNONYMS.get(fx_type, (fx_type,)))
+        if extra_tags:
+            wanted += [tag.lower() for tag in extra_tags]
+
+        scored = [(item.matches(wanted), item) for item in self.items]
+        hits = [(score, item) for score, item in scored if score > 0]
+        if not hits:
+            return None
+
+        best = max(score for score, _ in hits)
+        pool = sorted((item for score, item in hits if score == best), key=lambda item: item.name)
+        index = self._used.get(fx_type, 0)
+        self._used[fx_type] = index + 1
+        return pool[index % len(pool)]
 
 
 class MemeLibrary(_FolderLibrary):
