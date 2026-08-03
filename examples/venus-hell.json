@@ -1,0 +1,243 @@
+{
+  "id": "venus-hell",
+  "title": "Венера: планета, которая убивает за секунды",
+  "topic": "Venus atmosphere pressure and heat",
+  "language": "ru",
+  "duration_target": 42,
+
+  "hook": {
+    "id": "hook",
+    "text": "Венера убивает зонд за две минуты. Вот почему.",
+    "start": 0,
+    "duration": 3.2,
+    "emphasis": "high",
+    "on_camera": true
+  },
+
+  "script": [
+    {
+      "id": "s1",
+      "text": "Сверху всё выглядит спокойно. Плотные облака, мягкий свет.",
+      "start": 3.2,
+      "duration": 5.0
+    },
+    {
+      "id": "s2",
+      "text": "Но эти облака — из серной кислоты. И они прячут настоящий ад.",
+      "start": 8.2,
+      "duration": 5.5,
+      "emphasis": "high"
+    },
+    {
+      "id": "s3",
+      "text": "Давление у поверхности — девяносто земных атмосфер. Как километр под водой.",
+      "start": 13.7,
+      "duration": 6.0
+    },
+    {
+      "id": "s4",
+      "text": "Температура — четыреста семьдесят градусов. Свинец там течёт как вода.",
+      "start": 19.7,
+      "duration": 6.3,
+      "emphasis": "high"
+    },
+    {
+      "id": "s5",
+      "text": "Причина — углекислый газ. Он держит тепло и не отпускает его наружу.",
+      "start": 26.0,
+      "duration": 6.0
+    },
+    {
+      "id": "s6",
+      "text": "Венера была похожа на Землю. Парниковый эффект сделал остальное.",
+      "start": 32.0,
+      "duration": 5.5,
+      "emphasis": "high",
+      "on_camera": true
+    }
+  ],
+
+  "voice_settings": {
+    "provider": "elevenlabs",
+    "model": "eleven_v3",
+    "voice_id": "REPLACE_WITH_YOUR_VOICE_ID",
+    "stability": 47,
+    "similarity_boost": 0.82,
+    "style": 0.38,
+    "speed": 1.04,
+    "language": "ru"
+  },
+
+  "avatar": {
+    "enabled": true,
+    "provider": "heygen",
+    "avatar_id": "REPLACE_WITH_YOUR_AVATAR_ID",
+    "version": "avatar_5",
+    "position": "bottom_right",
+    "scale": 0.32,
+    "background": "transparent",
+    "segments": ["hook", "s6"]
+  },
+
+  "visuals": [
+    {
+      "id": "v1",
+      "type": "footage",
+      "query": "venus planet",
+      "keywords": ["venus surface", "planet venus space", "solar system planet"],
+      "start": 0,
+      "duration": 3.2,
+      "position": "fullscreen",
+      "motion": "zoom_in",
+      "priority": "critical",
+      "segment_ref": "hook",
+      "must_avoid": ["cartoon", "logo"]
+    },
+    {
+      "id": "v2",
+      "type": "footage",
+      "query": "thick clouds from orbit",
+      "keywords": ["planet clouds atmosphere", "cloud layer from space", "swirling clouds"],
+      "start": 3.2,
+      "duration": 5.0,
+      "position": "fullscreen",
+      "motion": "kenburns",
+      "segment_ref": "s1"
+    },
+    {
+      "id": "v3",
+      "type": "motion_graphics",
+      "query": "sulfuric acid cloud layers cross section",
+      "keywords": ["atmosphere layers animation", "chemical cloud diagram"],
+      "start": 8.2,
+      "duration": 5.5,
+      "position": "fullscreen",
+      "motion": "parallax",
+      "priority": "high",
+      "segment_ref": "s2"
+    },
+    {
+      "id": "v4",
+      "type": "footage",
+      "query": "deep ocean pressure submarine",
+      "keywords": ["underwater deep sea", "submersible descending", "crushing depth"],
+      "start": 13.7,
+      "duration": 6.0,
+      "position": "fullscreen",
+      "motion": "zoom_out",
+      "segment_ref": "s3"
+    },
+    {
+      "id": "v5",
+      "type": "infographic",
+      "query": "temperature comparison chart planets",
+      "keywords": ["thermometer data visualization", "heat scale animation"],
+      "start": 19.7,
+      "duration": 6.3,
+      "position": "fullscreen",
+      "motion": "none",
+      "priority": "high",
+      "segment_ref": "s4",
+      "must_include": ["temperature"]
+    },
+    {
+      "id": "v6",
+      "type": "footage",
+      "query": "carbon dioxide greenhouse gas",
+      "keywords": ["industrial smoke atmosphere", "heat haze", "co2 emissions"],
+      "start": 26.0,
+      "duration": 6.0,
+      "position": "fullscreen",
+      "motion": "kenburns",
+      "segment_ref": "s5"
+    },
+    {
+      "id": "v7",
+      "type": "footage",
+      "query": "earth from space",
+      "keywords": ["blue planet earth orbit", "earth horizon sunrise"],
+      "start": 32.0,
+      "duration": 5.5,
+      "position": "fullscreen",
+      "motion": "zoom_in",
+      "priority": "high",
+      "segment_ref": "s6"
+    },
+    {
+      "id": "v8",
+      "type": "motion_graphics",
+      "query": "abstract particles loop dark blue",
+      "keywords": ["minimal motion background", "particle field loop"],
+      "start": 37.5,
+      "duration": 4.5,
+      "position": "fullscreen",
+      "motion": "parallax",
+      "allow_magnific": false
+    }
+  ],
+
+  "music": {
+    "track": "tension_01",
+    "volume": 0.16,
+    "ducking": true,
+    "duck_to": 0.05,
+    "fade_in": 0.6,
+    "fade_out": 1.2
+  },
+
+  "audio_fx": [
+    { "type": "impact", "at": 0.1, "intensity": 0.75, "duration": 1.0 },
+    { "type": "whoosh", "at": 8.1, "intensity": 0.55, "duration": 0.7 },
+    { "type": "riser", "at": 18.9, "intensity": 0.6, "duration": 0.9 },
+    { "type": "sub_drop", "at": 19.7, "intensity": 0.7, "duration": 0.8 },
+    { "type": "pop", "at": 37.5, "intensity": 0.5, "duration": 0.6 }
+  ],
+
+  "captions": {
+    "enabled": true,
+    "style": "karaoke",
+    "font": "Inter",
+    "size": 74,
+    "position": "center_bottom",
+    "max_chars_per_line": 22,
+    "highlight_color": "#FFD400",
+    "text_color": "#FFFFFF",
+    "stroke": true,
+    "uppercase": false
+  },
+
+  "brand_elements": {
+    "logo": "brand/logo.png",
+    "logo_position": "top_left",
+    "lower_third": false,
+    "color_primary": "#0F62FE",
+    "color_accent": "#FFD400",
+    "color_background": "#050608",
+    "font_family": "Inter",
+    "outro_card": true,
+    "safe_area": true,
+    "watermark_opacity": 0.8
+  },
+
+  "cta": {
+    "text": "Подпишись — дальше про Марс",
+    "start": 37.5,
+    "duration": 4.0,
+    "style": "badge"
+  },
+
+  "memes": {
+    "enabled": false,
+    "tags": [],
+    "max_count": 1,
+    "max_duration": 1.2
+  },
+
+  "constraints": {
+    "magnific_token_budget": 12,
+    "allow_generative": true,
+    "require_vision_qa": true,
+    "min_visual_score": 0.62,
+    "manual_review_ok": true
+  }
+}

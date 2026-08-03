@@ -1,0 +1,622 @@
+"""Write the HyperFrames composition: a self-contained 1080×1920 HTML project.
+
+Design decisions worth knowing:
+
+* **Absolute-time keyframes.** Every element gets one CSS animation that spans
+  the whole composition, with keyframe stops expressed as percentages of the
+  total duration. That makes the result deterministic under a seeking renderer —
+  no animation depends on when an element happened to be inserted.
+* **Media stays `.clip`.** Video, image and audio elements keep
+  `data-start` / `data-duration` / `data-track-index` so HyperFrames drives
+  playback and the audio mux itself.
+* **Everything is local.** Assets are copied into `media/` and referenced with
+  relative paths, so `--docker` renders see the same files the preview does.
+"""
+
+from __future__ import annotations
+
+import html
+import json
+import shutil
+from collections.abc import Iterable
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from ..logging_utils import get_logger
+from ..spec import Spec
+from .timeline import (
+    BOTTOM_UI_RESERVE,
+    SAFE_MARGIN,
+    TRACK_AUDIO_MUSIC,
+    Element,
+    Timeline,
+)
+
+log = get_logger("composition")
+
+FONT_STACK = '"{family}", "Inter", "Helvetica Neue", Arial, system-ui, sans-serif'
+
+_CAPTION_ANCHORS = {
+    "center": {"top": "45%", "translate": "-50%"},
+    "center_bottom": {"top": "62%", "translate": "-50%"},
+    "bottom": {"top": "72%", "translate": "-50%"},
+    "lower_third": {"top": "68%", "translate": "-50%"},
+    "upper_third": {"top": "26%", "translate": "-50%"},
+    "top": {"top": "16%", "translate": "-50%"},
+}
+
+_MOTION_KEYFRAMES = {
+    "kenburns": ("scale(1.04) translate(0, 0)", "scale(1.16) translate(-1.5%, -1.5%)"),
+    "zoom_in": ("scale(1.0)", "scale(1.18)"),
+    "zoom_out": ("scale(1.18)", "scale(1.0)"),
+    "pan_left": ("scale(1.12) translateX(3%)", "scale(1.12) translateX(-3%)"),
+    "pan_right": ("scale(1.12) translateX(-3%)", "scale(1.12) translateX(3%)"),
+    "parallax": ("scale(1.08) translateY(2%)", "scale(1.14) translateY(-2%)"),
+    "none": ("scale(1.02)", "scale(1.02)"),
+}
+
+
+@dataclass
+class CompositionResult:
+    directory: Path
+    index_html: Path
+    manifest: Path
+    media_files: int
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "directory": str(self.directory),
+            "index_html": str(self.index_html),
+            "manifest": str(self.manifest),
+            "media_files": self.media_files,
+        }
+
+
+class CompositionWriter:
+    """Turns a `Timeline` into an on-disk HyperFrames project."""
+
+    def __init__(self, spec: Spec, timeline: Timeline, directory: Path):
+        self.spec = spec
+        self.timeline = timeline
+        self.directory = directory
+        self.media_dir = directory / "media"
+        self._copied: dict[Path, str] = {}
+
+    # -- entry point --------------------------------------------------------
+
+    def write(self) -> CompositionResult:
+        self.directory.mkdir(parents=True, exist_ok=True)
+        self.media_dir.mkdir(parents=True, exist_ok=True)
+
+        body = self._body()
+        styles = self._styles()
+        document = _PAGE.format(
+            title=html.escape(self.spec.title),
+            styles=styles,
+            body=body,
+            script=_SCRIPT.format(composition_id=self.timeline.composition_id),
+        )
+
+        index_html = self.directory / "index.html"
+        index_html.write_text(document, encoding="utf-8")
+
+        manifest = self.directory / "manifest.json"
+        manifest.write_text(
+            json.dumps(
+                {
+                    "spec_id": self.spec.id,
+                    "title": self.spec.title,
+                    "timeline": self.timeline.to_dict(),
+                    "credits": self._credits(),
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        self._write_design_tokens()
+
+        log.info(
+            "composition written to %s (%d media files)",
+            self.directory,
+            len(self._copied),
+            extra={"stage": "compose"},
+        )
+        return CompositionResult(self.directory, index_html, manifest, len(self._copied))
+
+    # -- media --------------------------------------------------------------
+
+    def _media_src(self, path: Path | None) -> str | None:
+        """Copy an asset into the project and return its relative URL."""
+        if path is None:
+            return None
+        source = Path(path)
+        if not source.exists():
+            log.warning("missing asset, skipping: %s", source, extra={"stage": "compose"})
+            return None
+        if source in self._copied:
+            return self._copied[source]
+
+        target = self.media_dir / source.name
+        counter = 1
+        while target.exists() and not _same_file(target, source):
+            target = self.media_dir / f"{source.stem}_{counter}{source.suffix}"
+            counter += 1
+        if not target.exists():
+            shutil.copy2(source, target)
+
+        relative = f"media/{target.name}"
+        self._copied[source] = relative
+        return relative
+
+    # -- markup -------------------------------------------------------------
+
+    def _body(self) -> str:
+        rows: list[str] = [
+            f'<div id="stage" data-composition-id="{self.timeline.composition_id}" '
+            f'data-start="0" data-duration="{self.timeline.duration:.3f}" '
+            f'data-width="{self.timeline.width}" data-height="{self.timeline.height}" '
+            f'data-fps="{self.timeline.fps}">'
+        ]
+        for element in self.timeline.visual_elements:
+            markup = self._element_markup(element)
+            if markup:
+                rows.append("  " + markup)
+        for element in self.timeline.audio_elements:
+            markup = self._audio_markup(element)
+            if markup:
+                rows.append("  " + markup)
+        if self.spec.brand.safe_area:
+            rows.append('  <div class="safe-area" aria-hidden="true"></div>')
+        rows.append("</div>")
+        return "\n".join(rows)
+
+    def _element_markup(self, element: Element) -> str:
+        attrs = (
+            f'id="el_{element.id}" class="clip {element.kind}" '
+            f'data-start="{element.start:.3f}" data-duration="{element.duration:.3f}" '
+            f'data-track-index="{element.track}"'
+        )
+
+        if element.kind in {"video", "avatar"}:
+            src = self._media_src(element.src)
+            if not src:
+                return ""
+            loop = " loop" if element.props.get("loop") else ""
+            return f'<video {attrs} src="{src}" muted playsinline preload="auto"{loop}></video>'
+
+        if element.kind == "image":
+            src = self._media_src(element.src)
+            if not src:
+                return ""
+            return f'<img {attrs} src="{src}" alt="">'
+
+        if element.kind == "logo":
+            src = self._media_src(element.src)
+            if not src:
+                return ""
+            return f'<img {attrs} src="{src}" alt="">'
+
+        if element.kind == "caption":
+            return f"<div {attrs}>{self._caption_inner(element)}</div>"
+
+        if element.kind == "text":
+            role = element.props.get("role", "text")
+            inner = f'<span class="text-inner">{html.escape(element.text)}</span>'
+            if role == "cta":
+                inner = f'<span class="cta-inner">{html.escape(element.text)}</span>'
+            return f'<div {attrs} data-role="{role}">{inner}</div>'
+
+        if element.kind == "shape":
+            return f'<div {attrs} data-role="{element.props.get("role", "shape")}"></div>'
+
+        return ""
+
+    def _caption_inner(self, element: Element) -> str:
+        words: Iterable[dict[str, Any]] = element.props.get("words") or []
+        if not words:
+            return f'<span class="w">{html.escape(element.text)}</span>'
+        spans = [
+            f'<span class="w" id="w_{element.id}_{index}">{html.escape(str(word.get("text", "")))}</span>'
+            for index, word in enumerate(words)
+        ]
+        return " ".join(spans)
+
+    def _audio_markup(self, element: Element) -> str:
+        src = self._media_src(element.src)
+        if not src:
+            return ""
+        volume = float(element.props.get("volume", 1.0))
+        loop = " loop" if element.props.get("loop") and element.track == TRACK_AUDIO_MUSIC else ""
+        return (
+            f'<audio id="el_{element.id}" class="clip" data-start="{element.start:.3f}" '
+            f'data-duration="{element.duration:.3f}" data-track-index="{element.track}" '
+            f'data-volume="{volume:.3f}" src="{src}" preload="auto"{loop}></audio>'
+        )
+
+    # -- styles -------------------------------------------------------------
+
+    def _styles(self) -> str:
+        brand = self.spec.brand
+        captions = self.spec.captions
+        anchor = _CAPTION_ANCHORS.get(captions.position, _CAPTION_ANCHORS["center_bottom"])
+
+        blocks: list[str] = [
+            _BASE_CSS.format(
+                width=self.timeline.width,
+                height=self.timeline.height,
+                background=brand.color_background,
+                primary=brand.color_primary,
+                accent=brand.color_accent,
+                font=FONT_STACK.format(family=brand.font_family),
+                safe_margin=SAFE_MARGIN,
+                bottom_reserve=BOTTOM_UI_RESERVE,
+                caption_size=captions.size,
+                caption_color=captions.text_color,
+                caption_highlight=captions.highlight_color,
+                caption_top=anchor["top"],
+                caption_stroke=(
+                    "-webkit-text-stroke: 3px rgba(0,0,0,.85); paint-order: stroke fill;"
+                    if captions.stroke
+                    else ""
+                ),
+            )
+        ]
+
+        for element in self.timeline.visual_elements:
+            blocks.append(self._element_css(element))
+        return "\n".join(block for block in blocks if block)
+
+    def _element_css(self, element: Element) -> str:
+        duration = max(self.timeline.duration, 0.001)
+        selector = f"#el_{element.id}"
+        rules: list[str] = []
+        keyframes: list[str] = []
+        name = f"anim_{element.id}"
+
+        # Position and box.
+        if element.kind in {"video", "image"} and "layout" in element.props:
+            layout = element.props["layout"]
+            radius = layout.get("radius", 0)
+            rules.append(
+                f"position:absolute;top:{layout['top']}px;left:{layout['left']}px;"
+                f"width:{layout['width']}px;height:{layout['height']}px;"
+                f"object-fit:{layout.get('fit', 'cover')};"
+                + (f"border-radius:{radius}px;overflow:hidden;" if radius else "")
+            )
+        elif element.kind == "avatar":
+            rules.append(self._avatar_css(element))
+        elif element.kind == "caption":
+            rules.append("")  # positioning comes from the shared .caption class
+        elif element.kind == "logo":
+            rules.append(self._logo_css(element))
+        elif element.kind == "shape" and element.props.get("role") == "backdrop":
+            rules.append(
+                "position:absolute;inset:0;"
+                "background:radial-gradient(120% 90% at 50% 12%, "
+                f"{element.props.get('accent', '#0F62FE')}22 0%, "
+                f"{element.props.get('color', '#050608')} 62%);"
+            )
+
+        # Timing: a single full-length animation with percentage stops.
+        fade_in = min(0.35, element.duration * 0.3)
+        fade_out = min(0.35, element.duration * 0.3)
+        p0 = _pct(element.start, duration)
+        p1 = _pct(element.start + fade_in, duration)
+        p2 = _pct(element.end - fade_out, duration)
+        p3 = _pct(element.end, duration)
+
+        if element.kind in {"video", "image"}:
+            motion_from, motion_to = _MOTION_KEYFRAMES.get(
+                element.props.get("motion", "none"), _MOTION_KEYFRAMES["none"]
+            )
+            # The move itself runs between p1 and p2; CSS interpolates linearly
+            # between those stops, so the fades never eat into the motion.
+            keyframes.append(
+                _keyframes(
+                    name,
+                    [
+                        (0.0, f"opacity:0;transform:{motion_from};"),
+                        (p0, f"opacity:0;transform:{motion_from};"),
+                        (p1, f"opacity:1;transform:{motion_from};"),
+                        (p2, f"opacity:1;transform:{motion_to};"),
+                        (p3, f"opacity:0;transform:{motion_to};"),
+                        (100.0, f"opacity:0;transform:{motion_to};"),
+                    ],
+                )
+            )
+        elif element.kind == "avatar":
+            keyframes.append(
+                _keyframes(
+                    name,
+                    [
+                        (0.0, "opacity:0;transform:translateY(40px);"),
+                        (p0, "opacity:0;transform:translateY(40px);"),
+                        (p1, "opacity:1;transform:translateY(0);"),
+                        (p2, "opacity:1;transform:translateY(0);"),
+                        (p3, "opacity:0;transform:translateY(20px);"),
+                        (100.0, "opacity:0;"),
+                    ],
+                )
+            )
+        else:
+            enter, exit_ = _entrance_for(element)
+            keyframes.append(
+                _keyframes(
+                    name,
+                    [
+                        (0.0, f"opacity:0;transform:{enter};"),
+                        (p0, f"opacity:0;transform:{enter};"),
+                        (p1, "opacity:1;transform:none;"),
+                        (p2, "opacity:1;transform:none;"),
+                        (p3, f"opacity:0;transform:{exit_};"),
+                        (100.0, "opacity:0;"),
+                    ],
+                )
+            )
+
+        rules.append(f"animation:{name} {duration:.3f}s linear 0s 1 normal both;")
+        css = [f"{selector}{{{''.join(rule for rule in rules if rule)}}}"]
+        css.extend(keyframes)
+
+        if element.kind == "caption" and self.spec.captions.style in {"karaoke", "word_pop"}:
+            css.append(self._karaoke_css(element, duration))
+        return "\n".join(css)
+
+    def _karaoke_css(self, element: Element, duration: float) -> str:
+        words = element.props.get("words") or []
+        blocks: list[str] = []
+        for index, word in enumerate(words):
+            start = float(word.get("start", element.start))
+            end = float(word.get("end", start + 0.2))
+            name = f"kw_{element.id}_{index}"
+            pre = _pct(start, duration)
+            hit = _pct(min(start + 0.08, end), duration)
+            blocks.append(
+                _keyframes(
+                    name,
+                    [
+                        (0.0, "color:var(--caption-color);transform:scale(1);"),
+                        (max(pre - 0.0001, 0.0), "color:var(--caption-color);transform:scale(1);"),
+                        (hit, "color:var(--caption-highlight);transform:scale(1.06);"),
+                        (100.0, "color:var(--caption-highlight);transform:scale(1);"),
+                    ],
+                )
+            )
+            blocks.append(
+                f"#w_{element.id}_{index}{{animation:{name} {duration:.3f}s linear 0s 1 normal both;}}"
+            )
+        return "\n".join(blocks)
+
+    def _avatar_css(self, element: Element) -> str:
+        layout = element.props.get("layout", {})
+        scale = float(layout.get("scale", 0.34))
+        width = int(self.timeline.width * scale)
+        anchor = layout.get("anchor", "bottom-right")
+        base = f"position:absolute;width:{width}px;height:auto;object-fit:contain;"
+        if anchor == "fullscreen":
+            return "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"
+        if anchor == "center":
+            return base + "left:50%;top:50%;transform:translate(-50%,-50%);"
+        vertical = (
+            f"bottom:{layout.get('bottom', BOTTOM_UI_RESERVE)}px;"
+            if "bottom" in anchor
+            else f"top:{layout.get('top', 200)}px;"
+        )
+        if "center" in anchor:
+            return base + vertical + "left:50%;transform:translateX(-50%);"
+        horizontal = (
+            f"right:{layout.get('right', SAFE_MARGIN)}px;"
+            if "right" in anchor
+            else f"left:{layout.get('left', SAFE_MARGIN)}px;"
+        )
+        return base + vertical + horizontal
+
+    def _logo_css(self, element: Element) -> str:
+        position = element.props.get("position", "top_left")
+        opacity = float(element.props.get("opacity", 0.85))
+        vertical = f"top:{SAFE_MARGIN}px;" if position.startswith("top") else f"bottom:{BOTTOM_UI_RESERVE}px;"
+        horizontal = f"left:{SAFE_MARGIN}px;" if position.endswith("left") else f"right:{SAFE_MARGIN}px;"
+        return f"position:absolute;{vertical}{horizontal}width:160px;height:auto;opacity:{opacity};"
+
+    # -- extras -------------------------------------------------------------
+
+    def _credits(self) -> list[dict[str, str]]:
+        seen: set[str] = set()
+        credits: list[dict[str, str]] = []
+        for element in self.timeline.visual_elements:
+            source = str(element.props.get("source", ""))
+            if not source or source in seen:
+                continue
+            seen.add(source)
+            credits.append(
+                {
+                    "source": source,
+                    "license": str(element.props.get("license", "")),
+                    "credit": str(element.props.get("credit", "")),
+                }
+            )
+        return credits
+
+    def _write_design_tokens(self) -> None:
+        """`DESIGN.md` is what HyperFrames' own skills read for house style."""
+        brand = self.spec.brand
+        content = f"""# Design tokens — {self.spec.title}
+
+| Token | Value |
+| --- | --- |
+| Canvas | {self.timeline.width}×{self.timeline.height} @ {self.timeline.fps}fps |
+| Primary | `{brand.color_primary}` |
+| Accent | `{brand.color_accent}` |
+| Background | `{brand.color_background}` |
+| Font | {brand.font_family} |
+| Safe margin | {SAFE_MARGIN}px |
+| Bottom UI reserve | {BOTTOM_UI_RESERVE}px (YouTube overlays this area) |
+
+Captions sit at `{self.spec.captions.position}`, {self.spec.captions.size}px,
+highlight `{self.spec.captions.highlight_color}`.
+Generated by branded-shorts-factory — edit the scenario JSON, not this file.
+"""
+        (self.directory / "DESIGN.md").write_text(content, encoding="utf-8")
+
+
+# --------------------------------------------------------------------------- #
+# Helpers and templates
+# --------------------------------------------------------------------------- #
+
+
+def _pct(time: float, duration: float) -> float:
+    return max(0.0, min(100.0, (time / duration) * 100.0 if duration else 0.0))
+
+
+def _keyframes(name: str, stops: list[tuple[float, str]]) -> str:
+    seen: set[str] = set()
+    parts: list[str] = []
+    for percent, body in sorted(stops, key=lambda stop: stop[0]):
+        key = f"{percent:.4f}"
+        if key in seen:
+            continue
+        seen.add(key)
+        parts.append(f"{key}%{{{body}}}")
+    return f"@keyframes {name}{{{''.join(parts)}}}"
+
+
+def _entrance_for(element: Element) -> tuple[str, str]:
+    role = element.props.get("role", "")
+    if role == "cta":
+        return "translateY(60px) scale(.92)", "translateY(-20px) scale(.98)"
+    if role == "outro":
+        return "scale(.94)", "scale(1.02)"
+    if element.kind == "caption":
+        return "translateY(18px) scale(.98)", "translateY(-10px)"
+    return "translateY(24px)", "translateY(-12px)"
+
+
+def _same_file(a: Path, b: Path) -> bool:
+    try:
+        return a.stat().st_size == b.stat().st_size and a.name == b.name
+    except OSError:
+        return False
+
+
+_BASE_CSS = """\
+:root {{
+  --primary: {primary};
+  --accent: {accent};
+  --caption-color: {caption_color};
+  --caption-highlight: {caption_highlight};
+}}
+* {{ margin: 0; padding: 0; box-sizing: border-box; }}
+html, body {{ background: #000; width: {width}px; height: {height}px; overflow: hidden; }}
+#stage {{
+  position: relative;
+  width: {width}px;
+  height: {height}px;
+  background: {background};
+  font-family: {font};
+  overflow: hidden;
+}}
+#stage > * {{ position: absolute; }}
+.safe-area {{
+  inset: {safe_margin}px {safe_margin}px {bottom_reserve}px {safe_margin}px;
+  border: 0;
+  pointer-events: none;
+}}
+.caption {{
+  left: 50%;
+  top: {caption_top};
+  transform: translateX(-50%);
+  width: {width}px;
+  padding: 0 {safe_margin}px;
+  text-align: center;
+  font-size: {caption_size}px;
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  color: var(--caption-color);
+  text-shadow: 0 6px 28px rgba(0,0,0,.55);
+  {caption_stroke}
+}}
+.caption .w {{ display: inline-block; }}
+.text {{
+  left: 50%;
+  transform: translateX(-50%);
+  width: {width}px;
+  padding: 0 {safe_margin}px;
+  text-align: center;
+}}
+.text[data-role="cta"] {{ bottom: {bottom_reserve}px; }}
+.text[data-role="lower_third"] {{ bottom: calc({bottom_reserve}px + 220px); text-align: left; }}
+.text[data-role="outro"] {{ top: 46%; }}
+.text-inner {{
+  display: inline-block;
+  font-size: 54px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 4px 20px rgba(0,0,0,.5);
+}}
+.text[data-role="outro"] .text-inner {{ font-size: 76px; letter-spacing: -0.02em; }}
+.cta-inner {{
+  display: inline-block;
+  padding: 26px 52px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #08090c;
+  font-size: 52px;
+  font-weight: 800;
+  box-shadow: 0 18px 60px rgba(0,0,0,.45);
+}}
+"""
+
+_SCRIPT = """\
+// HyperFrames reads the DOM for timing; this only exposes a seek hook so the
+// preview and the renderer agree on the clock when driving CSS animations.
+(function () {{
+  const stage = document.getElementById('stage');
+  if (!stage) return;
+  const duration = parseFloat(stage.dataset.duration || '0');
+  const animated = () => Array.from(document.getAnimations ? document.getAnimations() : []);
+
+  function seek(seconds) {{
+    const t = Math.max(0, Math.min(seconds, duration)) * 1000;
+    animated().forEach((animation) => {{
+      animation.pause();
+      try {{ animation.currentTime = t; }} catch (err) {{ /* not seekable */ }}
+    }});
+    stage.querySelectorAll('video, audio').forEach((media) => {{
+      const start = parseFloat(media.dataset.start || '0');
+      const local = seconds - start;
+      const length = parseFloat(media.dataset.duration || '0');
+      if (local < 0 || local > length) {{ media.pause(); return; }}
+      if (media.readyState > 0) {{
+        const target = media.loop && media.duration ? local % media.duration : local;
+        if (Math.abs(media.currentTime - target) > 0.05) media.currentTime = target;
+      }}
+    }});
+  }}
+
+  window.__timelines = window.__timelines || {{}};
+  window.__timelines['{composition_id}'] = {{ duration: duration, seek: seek }};
+  window.__hyperframesSeek = seek;
+}})();
+"""
+
+_PAGE = """\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{title}</title>
+<style>
+{styles}
+</style>
+</head>
+<body>
+{body}
+<script>
+{script}
+</script>
+</body>
+</html>
+"""

@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dev dependencies
+        run: python -m pip install --upgrade pip pytest ruff
+
+      - name: Lint
+        run: ruff check src tests
+
+      - name: Format check
+        run: ruff format --check src tests
+
+      - name: Tests
+        run: python -m pytest
+
+      # The example scenario is the contract for every hand-authored JSON;
+      # if it stops validating cleanly, the docs are lying.
+      - name: Validate the example scenario
+        env:
+          PYTHONPATH: src
+        run: python -m shorts_factory validate examples/venus-hell.json

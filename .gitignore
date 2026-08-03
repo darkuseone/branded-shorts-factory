@@ -1,0 +1,36 @@
+# Build output — everything here is reproducible from a scenario JSON.
+build/
+*.mp4
+*.webm
+*.mov
+
+# User media libraries: too big for git, and licensing lives with you.
+assets/music/*
+!assets/music/README.md
+!assets/music/index.json
+assets/memes/*
+!assets/memes/README.md
+!assets/memes/index.json
+
+# The real brandbook and logo are private; only the example is tracked.
+brand/*
+!brand/brandbook.example.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+
+# Node / HyperFrames
+node_modules/
+.skills/
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,12 @@
+{
+  "_comment": "Mixkit has no public search API, so this is a hand-curated catalogue the team extends. Add an entry after you find a clip worth reusing: paste the direct download URL from the Mixkit page. Matching is keyword-based against title + tags, and works offline.",
+  "_fields": {
+    "id": "stable identifier, usually the Mixkit slug",
+    "media_type": "video | image",
+    "url": "direct download URL",
+    "page_url": "the Mixkit page, for attribution",
+    "tags": "lowercase keywords used for matching",
+    "width/height/duration": "used by the ranker for 9:16 fit"
+  },
+  "items": []
+}
