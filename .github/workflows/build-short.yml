@@ -1,0 +1,139 @@
+name: Build Short
+
+# Two ways in:
+#   1. push a scenario JSON into jobs/ — it builds automatically
+#   2. run the workflow by hand and point it at any JSON in the repo
+on:
+  push:
+    paths:
+      - "jobs/**.json"
+  workflow_dispatch:
+    inputs:
+      spec:
+        description: "Path to the scenario JSON"
+        required: true
+        default: "examples/venus-hell.json"
+      dry_run:
+        description: "Stop before rendering (search + QA + composition only)"
+        type: boolean
+        default: false
+      docker:
+        description: "Render inside Docker (recommended on runners)"
+        type: boolean
+        default: true
+
+concurrency:
+  group: build-short-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    env:
+      HEYGEN_API_KEY: ${{ secrets.HEYGEN_API_KEY }}
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      MAGNIFIC_API_KEY: ${{ secrets.MAGNIFIC_API_KEY }}
+      GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
+      PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+      PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+      POND5_API_KEY: ${{ secrets.POND5_API_KEY }}
+      MAGNIFIC_TOKEN_BUDGET: ${{ vars.MAGNIFIC_TOKEN_BUDGET || '40' }}
+      MAGNIFIC_TOKEN_RESERVE: ${{ vars.MAGNIFIC_TOKEN_RESERVE || '10' }}
+      HYPERFRAMES_DOCKER: ${{ inputs.docker == false && '0' || '1' }}
+      PYTHONPATH: src
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pick the scenario
+        id: pick
+        run: |
+          if [ -n "${{ inputs.spec }}" ]; then
+            SPEC="${{ inputs.spec }}"
+          else
+            # Newest JSON touched by this push.
+            SPEC=$(git diff --name-only --diff-filter=d '${{ github.event.before }}' '${{ github.sha }}' \
+                   -- 'jobs/*.json' | tail -n 1)
+          fi
+          if [ -z "$SPEC" ] || [ ! -f "$SPEC" ]; then
+            echo "::error::No scenario JSON found (looked for '$SPEC')"
+            exit 1
+          fi
+          echo "spec=$SPEC" >> "$GITHUB_OUTPUT"
+          echo "id=$(python3 -c "import json,sys;print(json.load(open('$SPEC'))['id'])")" >> "$GITHUB_OUTPUT"
+          echo "Building $SPEC"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg
+
+      - name: Install HyperFrames skills
+        run: npx --yes skills add heygen-com/hyperframes
+
+      - name: Environment check
+        run: python -m shorts_factory doctor
+
+      - name: Validate the scenario
+        run: python -m shorts_factory validate "${{ steps.pick.outputs.spec }}"
+
+      - name: Build
+        id: build
+        run: |
+          ARGS=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="--dry-run"; fi
+          python -m shorts_factory $ARGS build "${{ steps.pick.outputs.spec }}"
+
+      - name: Summary
+        if: always()
+        run: |
+          REPORT="build/reports/${{ steps.pick.outputs.id }}.json"
+          {
+            echo "## ${{ steps.pick.outputs.id }}"
+            if [ -f "$REPORT" ]; then
+              python3 - "$REPORT" <<'PY'
+          import json, sys
+          report = json.load(open(sys.argv[1]))
+          qa = report["qa"]["counts"]
+          print(f"- QA: **{qa['accepted']} accepted**, {qa['manual_review']} to review, "
+                f"{qa['rejected']} unfilled ({qa['vision_checked']} vision-checked)")
+          budget = report.get("budget") or {}
+          print(f"- Magnific tokens: **{budget.get('spent', 0)}/{budget.get('total', 0)}**")
+          print(f"- Output: `{report.get('output') or 'not produced'}`")
+          for warning in report.get("warnings", [])[:15]:
+              print(f"  - ⚠️ {warning}")
+          PY
+            else
+              echo "No report was produced — check the build step log."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the video
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: short-${{ steps.pick.outputs.id }}
+          path: |
+            build/output/*.mp4
+            build/reports/*.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload the composition for debugging
+        if: failure() || inputs.dry_run == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: composition-${{ steps.pick.outputs.id }}
+          path: build/composition/**
+          if-no-files-found: ignore
+          retention-days: 7

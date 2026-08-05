@@ -1,0 +1,19 @@
+{
+  "_comment": "Rename to brandbook.json once the real brandbook lands. Per-video brand_elements always win over these values; anything the video leaves at the built-in default is filled from here.",
+  "name": "Studio name",
+  "colors": {
+    "primary": "#0F62FE",
+    "accent": "#FFD400",
+    "background": "#050608",
+    "caption_highlight": "#FFD400"
+  },
+  "typography": {
+    "family": "Inter"
+  },
+  "logo": "brand/logo.png",
+  "logo_position": "top_left",
+  "watermark_opacity": 0.8,
+  "lower_third": false,
+  "outro_card": true,
+  "safe_area_margin": 96
+}

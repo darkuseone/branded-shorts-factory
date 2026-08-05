@@ -1,0 +1,29 @@
+# Build output — everything here is reproducible from a scenario JSON.
+build/
+*.mp4
+*.webm
+*.mov
+
+# NOTE: assets/music, assets/sfx, assets/memes and brand/ are deliberately NOT
+# ignored. GitHub Actions builds from a fresh clone, so anything the render
+# needs — tracks, sounds, memes, logo, brandbook — has to be committed or the
+# build silently comes out without it.
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+
+# Node / HyperFrames
+node_modules/
+.skills/
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/

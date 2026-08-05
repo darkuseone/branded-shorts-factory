@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "branded-shorts-factory"
+version = "0.1.0"
+description = "One scenario JSON in, one finished branded 9:16 YouTube Short out."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+# Runtime is standard library only on purpose: the same code has to run on a
+# laptop and on a bare GitHub Actions runner with no install step.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[project.scripts]
+shorts-factory = "shorts_factory.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["B008"]
