@@ -78,13 +78,14 @@
     "tone": "meta_irony"
   },
   "avatar": {
-    "look_id": "54172d7a5b2946ed8a592dee955fb0c7",
+    "look_id": "bbcc4667fbb14ec69a73b34f455cda54",
+    "look_id_prev_studio": "54172d7a5b2946ed8a592dee955fb0c7",
     "look_id_edit": "48f0bd5e217548ed8bbdfb67e5c1efc9",
     "look_id_edit_studio": "eca97e9fe55f40799b25943fdc1a1599",
-    "_comment_looks": "look_id = current test twin (studio mic photo). look_id_edit = digital twin source for regenerations. look_id_edit_studio = prompt regen of edit twin into neon desk/mic studio.",
+    "_comment_looks": "look_id = current candidate Neon Desk Host. look_id_edit = digital twin for regenerations. look_id_edit_studio = older prompt regen. look_id_prev_studio = earlier studio mic photo.",
     "group_id": "d0573be250724c23bed61037f1c7490d",
     "engine": "avatar_v",
-    "motion_prompt": "Calm sci-pop host speaking to camera. Soft natural blinks, tiny head nods only when emphasising a word, shoulders almost still, hands mostly out of frame or very subtle. Grounded posture, realistic timing, no exaggerated gestures, keep the existing studio framing and microphone stable."
+    "motion_prompt": "Lively sci-pop host talking to camera with energy. Natural eyebrow raises on the question, slight forward lean on the punchline, small expressive head tilts, soft smiles when saying something ironic, hands occasionally gesture near the desk. Keep the neon studio and microphone stable. Feel curious and sharp, not stiff."
   },
   "voice": {
     "voice_id": "14NozJq5eoBmDc1FXFDq",
@@ -92,12 +93,12 @@
     "heygen_voice_id": "84c8bb1e9b8744e2a2ce5a04ed0fb459",
     "heygen_voice_name": "NIKITA2",
     "model": "eleven_v3",
-    "stability": 47,
-    "similarity_boost": 0.82,
-    "style": 0.38,
-    "speed": 1.04,
+    "stability": 0.5,
+    "similarity_boost": 0.8,
+    "style": 0.65,
+    "speed": 1.08,
     "language": "ru",
-    "_comment": "Always use NIKITA2 on HeyGen avatar tests. Pipeline primary: ElevenLabs TTS + word timings, then HeyGen lipsync via audioAssetId."
+    "_comment": "Always NIKITA2 on HeyGen. Prefer lively delivery: stability 0.5 + higher style. Pipeline primary still ElevenLabs TTS + lipsync."
   },
   "magnific_prompt_skeleton": "[SUBJECT], cinematic sci-fi realism, dark graphite background (#0A0C10), subtle red rim light accent (#FF2A3C), cool cyan ambient glow (#37E4FF), volumetric fog, high detail, shallow depth of field, 8k, photorealistic, tech-documentary lighting, no text, no watermark"
 }
