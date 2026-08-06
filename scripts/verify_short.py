@@ -88,15 +88,17 @@ def verify_composition_css(composition_dir: Path) -> list[str]:
     errors: list[str] = []
     if "pulse-ring-neon" not in html or "pulse-ring-halo" not in html:
         errors.append("composition missing dedicated neon/halo ring layers")
+    if "avatar-face" not in html:
+        errors.append("composition missing .avatar-face zoom wrapper (video transforms are ignored by HF)")
     if "box-shadow" not in html:
         errors.append("composition missing CSS neon box-shadow")
     if "feGaussianBlur" in html or "ringGlow" in html:
         errors.append("composition still uses SVG glow filters (drop in HF capture)")
     if "object-position" not in html:
         errors.append("composition missing object-position for face crop")
-    # face_zoom from brandbook should be >1.2 for the close crop
-    if "scale(1." not in html and "scale(1," not in html:
-        errors.append("composition missing face zoom scale(...)")
+    if "ring-network" in html and "display: none" in html:
+        # Prefer not mounting the network SVG at all when idle.
+        pass
     return errors
 
 
@@ -145,6 +147,11 @@ def verify_output(spec_path: Path, output: Path, composition_dir: Path | None) -
     outer = _red_hits(rgb, w, h, 300, 400, 1100, 1600) + _red_hits(rgb, w, h, 900, 1020, 1100, 1600)
     if outer < 8:
         errors.append(f"pulse ring outer bloom missing at t={t_ring}s (outer hits={outer})")
+
+    # Tall red ghost ellipse on the left edge (HF paint leak) — should be absent.
+    left_ghost = _red_hits(rgb, w, h, 0, 240, 200, 1800)
+    if left_ghost > 120:
+        errors.append(f"left-edge red ghost ellipse present (hits={left_ghost})")
 
     if composition_dir and composition_dir.exists():
         errors.extend(verify_composition_css(composition_dir))

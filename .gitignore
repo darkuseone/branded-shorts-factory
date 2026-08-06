@@ -7,6 +7,8 @@ build/
 # Two-phase avatar clips must be committed so Actions can render without HeyGen.
 !jobs/**/avatar.mp4
 !jobs/**/avatar.webm
+# Optional closer crop (ffmpeg) when the HeyGen framing sits the talent too far.
+!jobs/**/avatar_close.mp4
 
 # Pre-staged Magnific/stock b-roll for keyless cloud renders.
 !jobs/**/broll/*.mp4

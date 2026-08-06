@@ -229,7 +229,11 @@ class CompositionWriter:
         cfg = self.ring.config
         box = layout_box(cfg, anchor=cfg.default_anchor)
         size = box["size"]
-        network = network_overlay_svg(cfg, size)
+        network = ""
+        if any(event.state == "transition" for event in self.ring.events):
+            # Only mount the network SVG when a transition fires — a permanent
+            # display:none SVG still painted a tall red ghost arc in HF capture.
+            network = network_overlay_svg(cfg, size)
         return (
             f'<div id="pulse_ring" class="pulse-ring-wrap" '
             f'style="left:{box["left"]}px;top:{box["top"]}px;width:{size}px;height:{size}px;">'
@@ -239,8 +243,9 @@ class CompositionWriter:
             f"{ring_svg(cfg, size)}"
             f"{network}"
             f'<div class="avatar-clip">'
+            f'<div class="avatar-face">'
             f'<video {attrs} src="{src}" muted playsinline preload="auto"{loop}></video>'
-            f"</div></div></div>"
+            f"</div></div></div></div>"
         )
 
     def _caption_inner(self, element: Element) -> str:
@@ -692,6 +697,8 @@ _RING_BASE_CSS = """\
   z-index: 30;
   pointer-events: none;
   overflow: visible;
+  isolation: isolate;
+  contain: layout style;
 }}
 .pulse-ring-breath {{
   position: relative;
@@ -702,16 +709,15 @@ _RING_BASE_CSS = """\
 /* Soft outer bloom — radial paint survives HF capture better than SVG blur. */
 .pulse-ring-halo {{
   position: absolute;
-  inset: -18%;
+  inset: -14%;
   z-index: 0;
   border-radius: 50%;
   background: radial-gradient(
-    circle,
-    transparent 42%,
-    rgba(255, 42, 60, 0.7) 54%,
-    rgba(255, 90, 110, 0.45) 62%,
-    rgba(255, 42, 60, 0.2) 72%,
-    transparent 82%
+    circle closest-side,
+    transparent 62%,
+    rgba(255, 42, 60, 0.75) 78%,
+    rgba(255, 90, 110, 0.4) 88%,
+    transparent 100%
   );
   pointer-events: none;
 }}
@@ -728,11 +734,9 @@ _RING_BASE_CSS = """\
     0 0 10px 3px #FF8A96,
     0 0 20px 7px {stroke},
     0 0 40px 16px {glow},
-    0 0 70px 28px rgba(255, 42, 60, 0.65),
-    0 0 110px 44px rgba(255, 42, 60, 0.35),
+    0 0 64px 24px rgba(255, 42, 60, 0.55),
     inset 0 0 8px 2px rgba(255, 255, 255, 0.75),
-    inset 0 0 18px 4px rgba(255, 140, 150, 0.7),
-    inset 0 0 28px 6px rgba(255, 42, 60, 0.4);
+    inset 0 0 18px 4px rgba(255, 140, 150, 0.7);
   pointer-events: none;
 }}
 .pulse-ring-svg {{
@@ -741,7 +745,8 @@ _RING_BASE_CSS = """\
   z-index: 3;
   pointer-events: none;
   opacity: 0.95;
-  filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 8px {glow}) drop-shadow(0 0 16px {stroke}) drop-shadow(0 0 28px {stroke});
+  /* Keep drop-shadow tight — large stacked blurs painted a tall ghost arc in HF. */
+  filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 6px {glow}) drop-shadow(0 0 12px {stroke});
 }}
 .avatar-clip {{
   position: absolute;
@@ -751,13 +756,20 @@ _RING_BASE_CSS = """\
   z-index: 1;
   background: #0A0C10;
 }}
+/* Zoom the face on a WRAPPER — CSS transform on <video> is ignored by HF capture. */
+.avatar-face {{
+  width: 100%;
+  height: 100%;
+  transform: scale({face_zoom});
+  transform-origin: center 36%;
+}}
+.avatar-face video,
 .avatar-clip video {{
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: {face_position};
-  transform: scale({face_zoom});
-  transform-origin: center 36%;
+  /* no transform here — HF composites <video> without element transforms */
 }}
 .ring-network {{
   position: absolute;
