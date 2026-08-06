@@ -298,12 +298,26 @@ class CompositionWriter:
 
         if self.ring.visible:
             blocks.append(ring_css(self.ring, duration=self.timeline.duration))
-            blocks.append(_RING_BASE_CSS)
+            blocks.append(self._ring_base_css())
             self._copy_brand_fonts()
         elif any(el.props.get("role") == "data_chip" for el in self.timeline.elements):
             self._copy_brand_fonts()
 
         return "\n".join(block for block in blocks if block)
+
+    def _ring_base_css(self) -> str:
+        """Neon bloom + face crop — CSS only (SVG filters die in HF capture)."""
+        cfg = self.ring.config
+        stroke = cfg.stroke
+        glow = cfg.glow
+        zoom = max(1.0, float(cfg.face_zoom))
+        position = cfg.face_position or "center 30%"
+        return _RING_BASE_CSS.format(
+            stroke=stroke,
+            glow=glow,
+            face_zoom=f"{zoom:.3f}",
+            face_position=position,
+        )
 
     def _element_css(self, element: Element) -> str:
         duration = max(self.timeline.duration, 0.001)
@@ -671,55 +685,69 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
 """
 
 _RING_BASE_CSS = """\
-.pulse-ring-wrap {
+.pulse-ring-wrap {{
   position: absolute;
   z-index: 30;
   pointer-events: none;
-}
-.pulse-ring-breath {
+  overflow: visible;
+}}
+.pulse-ring-breath {{
   position: relative;
   width: 100%;
   height: 100%;
-}
-.pulse-ring-svg {
+}}
+.pulse-ring-svg {{
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
-}
-.avatar-clip {
+  filter: drop-shadow(0 0 6px {glow}) drop-shadow(0 0 14px {stroke});
+}}
+.avatar-clip {{
   position: absolute;
   inset: 6%;
   border-radius: 50%;
   overflow: hidden;
   z-index: 1;
   background: #0A0C10;
-}
-.avatar-clip video {
+  border: 3px solid {stroke};
+  box-shadow:
+    0 0 8px 2px {stroke},
+    0 0 22px 8px {glow},
+    0 0 42px 16px rgba(255, 42, 60, 0.55),
+    0 0 72px 28px rgba(255, 42, 60, 0.28),
+    inset 0 0 18px rgba(255, 42, 60, 0.35);
+}}
+.avatar-clip video {{
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-.ring-network {
+  object-position: {face_position};
+  transform: scale({face_zoom});
+  transform-origin: center 32%;
+}}
+.ring-network {{
   position: absolute;
   left: 0;
   top: 0;
   z-index: 3;
   pointer-events: none;
+  display: none;
   opacity: 0;
-}
+}}
 .pulse-ring-wrap[data-state="transition"] .ring-network,
-.pulse-ring-wrap.is-transition .ring-network {
+.pulse-ring-wrap.is-transition .ring-network {{
+  display: block;
   opacity: 1;
-}
-.net-line {
+}}
+.net-line {{
   stroke-dasharray: 240;
   stroke-dashoffset: 240;
   animation: net_draw 0.55s ease-out forwards;
-}
-@keyframes net_draw {
-  to { stroke-dashoffset: 0; }
-}
+}}
+@keyframes net_draw {{
+  to {{ stroke-dashoffset: 0; }}
+}}
 """
 
 _SCRIPT = """\

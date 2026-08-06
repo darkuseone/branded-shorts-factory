@@ -115,6 +115,9 @@ def test_svg_contains_signal_red_stroke():
     svg = ring_svg(RingConfig(stroke="#FF2A3C"), size=200)
     assert "#FF2A3C" in svg
     assert "pulse-ring-stroke" in svg
+    # Neon bloom is CSS box-shadow — SVG filters drop out in HF capture.
+    assert "feGaussianBlur" not in svg
+    assert "ringGlow" not in svg
 
 
 def test_css_keyframes_span_the_composition():
@@ -132,7 +135,15 @@ def test_disabled_avatar_yields_no_ring():
 
 def test_brandbook_config_overrides_defaults():
     cfg = RingConfig.from_brandbook(
-        {"diameter_ratio": 0.32, "stroke": "#FF2A3C", "states": {"idle": {"cycle_s": 2.2}}}
+        {
+            "diameter_ratio": 0.32,
+            "stroke": "#FF2A3C",
+            "face_zoom": 1.25,
+            "face_position": "center 28%",
+            "states": {"idle": {"cycle_s": 2.2}},
+        }
     )
     assert cfg.diameter_ratio == 0.32
+    assert cfg.face_zoom == 1.25
+    assert cfg.face_position == "center 28%"
     assert cfg.idle_cycle_s == 2.2
