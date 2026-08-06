@@ -1,0 +1,85 @@
+{
+  "_comment": "REDSHIFT brand book — single source of truth for colour, type, ring and sound. Per-video brand_elements always win over these values.",
+  "name": "REDSHIFT",
+  "slogan": "Сигнал из будущего.",
+  "language": "ru",
+  "colors": {
+    "primary": "#FF2A3C",
+    "accent": "#37E4FF",
+    "background": "#0A0C10",
+    "panel": "#14171C",
+    "deep_red": "#B4001E",
+    "text": "#F5F7FA",
+    "text_secondary": "#9BA3AE",
+    "caption_highlight": "#FF2A3C"
+  },
+  "typography": {
+    "family": "Inter",
+    "display": "Space Grotesk",
+    "mono": "JetBrains Mono",
+    "caption_weight": 700,
+    "display_weight": 600
+  },
+  "logo": "brand/logo.svg",
+  "logo_position": "top_left",
+  "watermark_opacity": 0.55,
+  "lower_third": false,
+  "outro_card": true,
+  "safe_area_margin": 96,
+  "ring": {
+    "diameter_ratio": 0.30,
+    "default_anchor": "bottom_right",
+    "cta_anchor": "bottom_center",
+    "stroke": "#FF2A3C",
+    "glow": "#B4001E",
+    "states": {
+      "idle": { "pulse": 0.05, "cycle_s": 2.4 },
+      "emphasis": { "pulse": 0.18, "duration_s": 0.25, "repeats": 2 },
+      "transition": { "expand": 1.4, "duration_s": 0.35 },
+      "exit": { "duration_s": 0.25 }
+    }
+  },
+  "sfx_kit": {
+    "whoosh": "transition",
+    "thump": "emphasis",
+    "ui": "data_chip",
+    "riser": "pre_climax",
+    "power_down": "ring_exit",
+    "power_up": "ring_return"
+  },
+  "music_by_rubric": {
+    "космос": "Orbital Drift",
+    "space": "Orbital Drift",
+    "IT": "Digital Pulse",
+    "технологии": "Overclocked",
+    "tech": "Overclocked",
+    "AI": "System Logic",
+    "ai": "System Logic",
+    "наука": "Biotic Pulse",
+    "медицина": "Biotic Pulse",
+    "science": "Biotic Pulse"
+  },
+  "memes": {
+    "enabled": true,
+    "frequency": 10,
+    "max_duration": 1.5,
+    "forbidden_rubrics": ["наука", "медицина", "science", "medicine"],
+    "allowed_beats": ["context_end", "core1_to_core2"]
+  },
+  "avatar": {
+    "look_id": "",
+    "group_id": "31e8b216cd1e48ba8cdad6d61c7bbb0c",
+    "engine": "avatar_v",
+    "motion_prompt": "Seated at a desk in a dark neon-lit room, chest-up framing, slight high camera angle, speaking into a studio condenser microphone, natural hand gestures visible, serious expert tone, looking into camera"
+  },
+  "voice": {
+    "voice_id": "",
+    "model": "eleven_v3",
+    "stability": 47,
+    "similarity_boost": 0.82,
+    "style": 0.38,
+    "speed": 1.04,
+    "language": "ru"
+  },
+  "magnific_prompt_skeleton": "[SUBJECT], cinematic sci-fi realism, dark graphite background (#0A0C10), subtle red rim light accent (#FF2A3C), cool cyan ambient glow (#37E4FF), volumetric fog, high detail, shallow depth of field, 8k, photorealistic, tech-documentary lighting, no text, no watermark"
+}
