@@ -68,6 +68,9 @@ class SfxClip:
     volume: float
     #: "library" for a sound you supplied, "elevenlabs" for a generated one.
     source: str = "elevenlabs"
+    #: Seconds to skip from the start of the source file. Used to cut long
+    #: cinematic hits down to the useful part around their measured peak.
+    trim_start: float = 0.0
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -77,6 +80,7 @@ class SfxClip:
             "duration": round(self.duration, 3),
             "volume": round(self.volume, 3),
             "source": self.source,
+            "trim_start": round(self.trim_start, 3),
         }
 
 

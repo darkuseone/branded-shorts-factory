@@ -74,10 +74,21 @@ def build_mix(
     for index, clip in enumerate(sfx_clips):
         inputs += ["-i", str(clip.path)]
         label = f"s{index}"
-        filters.append(
-            f"[{len(inputs) // 2 - 1}:a]aresample=44100,volume={clip.volume:.3f},"
-            f"adelay={int(clip.start * 1000)}:all=1[{label}]"
-        )
+        # adelay cannot go negative; anything that would start before t=0 is
+        # trimmed off the head of the file instead, so a whoosh whose peak
+        # sits 0.8s in still lands on a cut at t=0.2.
+        delay_ms = max(0, int(round(clip.start * 1000)))
+        head_trim = max(0.0, getattr(clip, "trim_start", 0.0))
+        if clip.start < 0:
+            head_trim += -clip.start
+        chain = f"[{len(inputs) // 2 - 1}:a]aresample=44100"
+        if head_trim > 0 or clip.duration > 0:
+            end = head_trim + max(clip.duration, 0.05)
+            chain += f",atrim={head_trim:.3f}:{end:.3f},asetpts=N/SR/TB"
+        chain += f",volume={clip.volume:.3f}"
+        if delay_ms > 0:
+            chain += f",adelay={delay_ms}:all=1"
+        filters.append(chain + f"[{label}]")
         sfx_labels.append(label)
 
     music_label = ""

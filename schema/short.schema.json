@@ -95,7 +95,10 @@
         "required": ["at"],
         "properties": {
           "type": {
-            "enum": ["whoosh", "impact", "riser", "swoosh", "click", "pop", "glitch", "sub_drop", "transition", "ui"]
+            "enum": [
+              "whoosh", "impact", "riser", "swoosh", "click", "pop", "glitch",
+              "sub_drop", "transition", "ui", "thump", "power_down", "power_up"
+            ]
           },
           "at": { "type": "number", "minimum": 0 },
           "intensity": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.6 },

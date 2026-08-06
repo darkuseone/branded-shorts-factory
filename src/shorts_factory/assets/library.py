@@ -33,10 +33,46 @@ class LibraryItem:
     tags: list[str] = field(default_factory=list)
     title: str = ""
     duration: float = 0.0
+    #: Measurements from `sfxscan`. Empty when the bank has never been scanned —
+    #: placement then falls back to filename matching and starts the sound on
+    #: the beat instead of aligning by peak.
+    analysis: dict[str, object] = field(default_factory=dict)
 
     @property
     def name(self) -> str:
         return self.path.stem
+
+    @property
+    def peak_at(self) -> float:
+        return float(self.analysis.get("peak_at") or 0.0)
+
+    @property
+    def lufs(self) -> float:
+        return float(self.analysis.get("lufs") or -20.0)
+
+    @property
+    def peak_dbtp(self) -> float:
+        return float(self.analysis.get("peak_dbtp") or 0.0)
+
+    @property
+    def attack(self) -> float:
+        return float(self.analysis.get("attack") or 0.0)
+
+    @property
+    def tail(self) -> float:
+        return float(self.analysis.get("tail") or 0.0)
+
+    @property
+    def shape(self) -> str:
+        return str(self.analysis.get("shape") or "")
+
+    @property
+    def usable_as_accent(self) -> bool:
+        shape = self.shape
+        if shape in {"drone", "bed"}:
+            return False
+        # Without a scan we cannot know — trust the tags and let the picker decide.
+        return True if not shape else bool(self.tags)
 
     def matches(self, wanted: list[str]) -> int:
         """Number of requested tags this item satisfies."""
@@ -81,12 +117,14 @@ class _FolderLibrary:
                 continue
             entry = index.get(path.name, {})
             tags = entry.get("tags") or _tags_from_name(path)
+            analysis = entry.get("analysis") if isinstance(entry.get("analysis"), dict) else {}
             items.append(
                 LibraryItem(
                     path=path,
                     tags=[str(tag).lower() for tag in tags],
                     title=str(entry.get("title") or path.stem),
                     duration=float(entry.get("duration") or 0.0),
+                    analysis=dict(analysis),
                 )
             )
         log.info("%s: %d item(s) in %s", self.label, len(items), self.directory)
@@ -134,6 +172,9 @@ SFX_SYNONYMS: dict[str, tuple[str, ...]] = {
     "glitch": ("glitch", "stutter", "digital", "error", "static"),
     "transition": ("transition", "whoosh", "swoosh", "sweep", "cut"),
     "ui": ("ui", "blip", "beep", "notify", "notification", "confirm"),
+    "thump": ("thump", "pulse", "impact", "hit", "kick"),
+    "power_down": ("power_down", "powerdown", "tick", "click", "ui"),
+    "power_up": ("power_up", "powerup", "tick", "click", "ui"),
 }
 
 
@@ -156,13 +197,19 @@ class SfxLibrary(_FolderLibrary):
         """Best sound for one effect, rotating between equally good matches.
 
         Rotation matters: six identical whooshes in one Short is exactly the
-        cheap-edit sound this project exists to avoid.
+        cheap-edit sound this project exists to avoid. Music beds and drones
+        are excluded even when their tags would otherwise match — they are
+        not accents, and placing one on a cut reads as a mistake.
         """
         wanted = list(SFX_SYNONYMS.get(fx_type, (fx_type,)))
         if extra_tags:
             wanted += [tag.lower() for tag in extra_tags]
 
-        scored = [(item.matches(wanted), item) for item in self.items]
+        scored = [
+            (item.matches(wanted), item)
+            for item in self.items
+            if item.usable_as_accent
+        ]
         hits = [(score, item) for score, item in scored if score > 0]
         if not hits:
             return None

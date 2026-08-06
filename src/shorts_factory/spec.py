@@ -27,7 +27,23 @@ MOTIONS = frozenset({"none", "kenburns", "parallax", "zoom_in", "zoom_out", "pan
 PRIORITIES = frozenset({"low", "normal", "high", "critical"})
 CAPTION_STYLES = frozenset({"karaoke", "word_pop", "line", "none"})
 AUDIO_FX_TYPES = frozenset(
-    {"whoosh", "impact", "riser", "swoosh", "click", "pop", "glitch", "sub_drop", "transition", "ui"}
+    {
+        "whoosh",
+        "impact",
+        "riser",
+        "swoosh",
+        "click",
+        "pop",
+        "glitch",
+        "sub_drop",
+        "transition",
+        "ui",
+        # Ring states from the brand book: a soft pulse under an emphasised
+        # number, and the power-down/up tick as the ring leaves and returns.
+        "thump",
+        "power_down",
+        "power_up",
+    }
 )
 
 # Shorts hard limits (YouTube caps Shorts at 180s; below 8s they underperform).
