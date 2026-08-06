@@ -32,8 +32,8 @@
     "cta_anchor": "bottom_center",
     "stroke": "#FF2A3C",
     "glow": "#FF4D63",
-    "face_zoom": 1.45,
-    "face_position": "center 28%",
+    "face_zoom": 1.9,
+    "face_position": "center 36%",
     "states": {
       "idle": {
         "pulse": 0.05,

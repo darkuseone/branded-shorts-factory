@@ -702,35 +702,37 @@ _RING_BASE_CSS = """\
 /* Soft outer bloom — radial paint survives HF capture better than SVG blur. */
 .pulse-ring-halo {{
   position: absolute;
-  inset: -12%;
+  inset: -18%;
   z-index: 0;
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    transparent 48%,
-    rgba(255, 42, 60, 0.55) 58%,
-    rgba(255, 77, 99, 0.32) 66%,
-    rgba(255, 42, 60, 0.12) 74%,
+    transparent 42%,
+    rgba(255, 42, 60, 0.7) 54%,
+    rgba(255, 90, 110, 0.45) 62%,
+    rgba(255, 42, 60, 0.2) 72%,
     transparent 82%
   );
   pointer-events: none;
 }}
-/* Neon tube rim — white core + red corona via box-shadow (not SVG filters). */
+/* Neon tube rim — white-hot core + red corona via box-shadow (not SVG filters). */
 .pulse-ring-neon {{
   position: absolute;
-  inset: 3.5%;
+  inset: 2.5%;
   z-index: 2;
   border-radius: 50%;
-  border: 5px solid {stroke};
+  border: 6px solid {stroke};
   box-shadow:
-    0 0 2px 1px #fff,
-    0 0 8px 2px #FF8A96,
-    0 0 16px 5px {stroke},
-    0 0 32px 12px {glow},
-    0 0 56px 22px rgba(255, 42, 60, 0.55),
-    0 0 90px 36px rgba(255, 42, 60, 0.28),
-    inset 0 0 10px 2px rgba(255, 180, 190, 0.85),
-    inset 0 0 22px 4px rgba(255, 42, 60, 0.45);
+    0 0 1px 1px #fff,
+    0 0 4px 2px #FFE0E4,
+    0 0 10px 3px #FF8A96,
+    0 0 20px 7px {stroke},
+    0 0 40px 16px {glow},
+    0 0 70px 28px rgba(255, 42, 60, 0.65),
+    0 0 110px 44px rgba(255, 42, 60, 0.35),
+    inset 0 0 8px 2px rgba(255, 255, 255, 0.75),
+    inset 0 0 18px 4px rgba(255, 140, 150, 0.7),
+    inset 0 0 28px 6px rgba(255, 42, 60, 0.4);
   pointer-events: none;
 }}
 .pulse-ring-svg {{
@@ -738,12 +740,12 @@ _RING_BASE_CSS = """\
   inset: 0;
   z-index: 3;
   pointer-events: none;
-  opacity: 0.92;
-  filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 10px {glow}) drop-shadow(0 0 18px {stroke});
+  opacity: 0.95;
+  filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 8px {glow}) drop-shadow(0 0 16px {stroke}) drop-shadow(0 0 28px {stroke});
 }}
 .avatar-clip {{
   position: absolute;
-  inset: 5%;
+  inset: 4.5%;
   border-radius: 50%;
   overflow: hidden;
   z-index: 1;
@@ -755,7 +757,7 @@ _RING_BASE_CSS = """\
   object-fit: cover;
   object-position: {face_position};
   transform: scale({face_zoom});
-  transform-origin: center 28%;
+  transform-origin: center 36%;
 }}
 .ring-network {{
   position: absolute;

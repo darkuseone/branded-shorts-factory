@@ -136,17 +136,13 @@ def verify_output(spec_path: Path, output: Path, composition_dir: Path | None) -
     t_ring = 12.0 if info["duration"] > 13 else max(0.5, info["duration"] / 3)
     rgb = _frame_rgb(output, t_ring)
     w, h = int(info["width"]), int(info["height"])
-    # Avatar wrap ~ left 408 top 1050 size 576 → sample ring band
-    hits = _red_hits(rgb, w, h, 400, 1000, 1050, 1650)
+    # Avatar wrap ~ left 364 top 1050 size 576 (140px right margin for bloom)
+    hits = _red_hits(rgb, w, h, 350, 960, 1050, 1650)
     if hits < 55:
         errors.append(f"pulse ring neon too weak at t={t_ring}s (red hits={hits})")
 
     # Soft bloom just outside the stroke — flat matte rings fail this.
-    bloom = _red_hits(rgb, w, h, 360, 1040, 1000, 1700)
-    if bloom < hits:
-        # bloom ROI is larger; require meaningful red outside the tight clip band
-        pass
-    outer = _red_hits(rgb, w, h, 350, 450, 1100, 1600) + _red_hits(rgb, w, h, 950, 1050, 1100, 1600)
+    outer = _red_hits(rgb, w, h, 300, 400, 1100, 1600) + _red_hits(rgb, w, h, 900, 1020, 1100, 1600)
     if outer < 8:
         errors.append(f"pulse ring outer bloom missing at t={t_ring}s (outer hits={outer})")
 

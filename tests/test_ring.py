@@ -108,7 +108,9 @@ def test_transition_on_topic_change_while_visible():
 def test_layout_box_respects_safe_margins():
     box = layout_box(RingConfig(diameter_ratio=0.30))
     assert box["size"] == 576  # 0.30 * 1920
-    assert box["left"] + box["size"] <= 1080 - 96
+    # Extra right margin so neon bloom isn't clipped by the stage edge.
+    assert box["left"] + box["size"] <= 1080 - 140
+    assert box["left"] >= 96
 
 
 def test_svg_contains_signal_red_stroke():

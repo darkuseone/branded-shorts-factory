@@ -37,8 +37,8 @@ DEFAULT_GLOW = "#FF4D63"
 DEFAULT_IDLE_CYCLE = 2.4
 DEFAULT_EMPHASIS_PULSE = 0.18
 DEFAULT_TRANSITION_EXPAND = 1.4
-DEFAULT_FACE_ZOOM = 1.45
-DEFAULT_FACE_POSITION = "center 28%"
+DEFAULT_FACE_ZOOM = 1.9
+DEFAULT_FACE_POSITION = "center 36%"
 
 
 @dataclass(frozen=True)
@@ -217,8 +217,9 @@ def layout_box(
     elif chosen == "center":
         left = (canvas_w - size) // 2
         top = (canvas_h - size) // 2
-    else:  # bottom_right
-        left = canvas_w - margin - size
+    else:  # bottom_right — leave extra room on the right so neon bloom isn't clipped
+        right_margin = max(margin, 140)
+        left = canvas_w - right_margin - size
         top = canvas_h - bottom - size + int(size * 0.08)
 
     return {"left": left, "top": max(margin, top), "size": size}
