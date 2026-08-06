@@ -33,10 +33,12 @@ RingState = Literal["idle", "emphasis", "transition", "exit", "return_", "hidden
 
 DEFAULT_DIAMETER_RATIO = 0.30
 DEFAULT_STROKE = "#FF2A3C"
-DEFAULT_GLOW = "#B4001E"
+DEFAULT_GLOW = "#FF4D63"
 DEFAULT_IDLE_CYCLE = 2.4
 DEFAULT_EMPHASIS_PULSE = 0.18
 DEFAULT_TRANSITION_EXPAND = 1.4
+DEFAULT_FACE_ZOOM = 1.05
+DEFAULT_FACE_POSITION = "center 36%"
 
 
 @dataclass(frozen=True)
@@ -46,6 +48,10 @@ class RingConfig:
     cta_anchor: str = "bottom_center"
     stroke: str = DEFAULT_STROKE
     glow: str = DEFAULT_GLOW
+    #: Zoom the avatar video inside the circle (1.0 = fit, 1.2 = 20% closer).
+    face_zoom: float = DEFAULT_FACE_ZOOM
+    #: CSS object-position for the face crop inside the circle.
+    face_position: str = DEFAULT_FACE_POSITION
     idle_pulse: float = 0.05
     idle_cycle_s: float = DEFAULT_IDLE_CYCLE
     emphasis_pulse: float = DEFAULT_EMPHASIS_PULSE
@@ -70,6 +76,8 @@ class RingConfig:
             cta_anchor=str(raw.get("cta_anchor") or "bottom_center"),
             stroke=str(raw.get("stroke") or DEFAULT_STROKE),
             glow=str(raw.get("glow") or DEFAULT_GLOW),
+            face_zoom=float(raw.get("face_zoom") or DEFAULT_FACE_ZOOM),
+            face_position=str(raw.get("face_position") or DEFAULT_FACE_POSITION),
             idle_pulse=float(idle.get("pulse") or 0.05),
             idle_cycle_s=float(idle.get("cycle_s") or DEFAULT_IDLE_CYCLE),
             emphasis_pulse=float(emphasis.get("pulse") or DEFAULT_EMPHASIS_PULSE),
@@ -209,33 +217,28 @@ def layout_box(
     elif chosen == "center":
         left = (canvas_w - size) // 2
         top = (canvas_h - size) // 2
-    else:  # bottom_right
-        left = canvas_w - margin - size
+    else:  # bottom_right — leave extra room on the right so neon bloom isn't clipped
+        right_margin = max(margin, 140)
+        left = canvas_w - right_margin - size
         top = canvas_h - bottom - size + int(size * 0.08)
 
     return {"left": left, "top": max(margin, top), "size": size}
 
 
 def ring_svg(config: RingConfig, size: int | None = None) -> str:
-    """Inline SVG for the neon circle. Drawn at unit size, scaled by CSS."""
+    """Inline SVG for the crisp neon rim.
+
+    Glow is intentionally *not* an SVG filter — HyperFrames/Puppeteer screenshot
+    capture often drops ``feGaussianBlur``, leaving a flat matte stroke. Neon
+    bloom is applied via CSS ``box-shadow`` on ``.avatar-clip`` instead.
+    """
     px = size or config.diameter_px
     stroke = config.stroke
-    glow = config.glow
-    # Two concentric strokes: a soft outer glow ring and a crisp inner edge.
     return (
         f'<svg class="pulse-ring-svg" viewBox="0 0 {px} {px}" width="{px}" height="{px}" '
         f'aria-hidden="true">'
-        f"<defs>"
-        f'<filter id="ringGlow" x="-40%" y="-40%" width="180%" height="180%">'
-        f'<feGaussianBlur stdDeviation="{max(2, px * 0.012):.1f}" result="blur"/>'
-        f'<feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>'
-        f"</filter>"
-        f"</defs>"
-        f'<circle cx="{px / 2}" cy="{px / 2}" r="{px * 0.46:.1f}" fill="none" '
-        f'stroke="{glow}" stroke-width="{max(4, px * 0.018):.1f}" opacity="0.55"/>'
         f'<circle class="pulse-ring-stroke" cx="{px / 2}" cy="{px / 2}" r="{px * 0.46:.1f}" '
-        f'fill="none" stroke="{stroke}" stroke-width="{max(5, px * 0.022):.1f}" '
-        f'filter="url(#ringGlow)"/>'
+        f'fill="none" stroke="{stroke}" stroke-width="{max(6, px * 0.024):.1f}"/>'
         f"</svg>"
     )
 

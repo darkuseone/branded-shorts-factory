@@ -1,4 +1,4 @@
-"""Meme policy: frequency, forbidden rubrics, allowed beats."""
+"""Meme policy: frequency, forbidden rubrics, irony beats."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from shorts_factory.assets.meme_policy import (
     decide_meme,
     ensure_meme_visual,
     find_meme_window,
+    rank_beats,
 )
 from shorts_factory.spec import parse_spec
 
@@ -16,31 +17,59 @@ from .conftest import minimal_document
 
 def _spec(**overrides):
     base = {
-        "rubric": "IT",
-        "memes": {"enabled": True, "tags": ["shock"], "max_duration": 1.5},
+        "rubric": "космос",
+        "memes": {"enabled": True, "tags": ["шок"], "max_duration": 1.4},
     }
     base.update(overrides)
     document = minimal_document(**base)
-    # Need enough body segments for core1_to_core2 / context_end windows.
-    document["duration_target"] = 30
+    document["duration_target"] = 45
+    document["hook"] = {
+        "id": "hook",
+        "text": "Можно ли выжить внутри чёрной дыры?",
+        "start": 0,
+        "duration": 2.8,
+        "emphasis": "high",
+    }
     document["script"] = [
-        {"id": "s1", "text": "Context beat sets the scene for the viewer.", "start": 2.5, "duration": 6},
-        {"id": "s2", "text": "Core one delivers the first hard fact.", "start": 8.5, "duration": 6},
-        {"id": "s3", "text": "Core two flips the expectation hard.", "start": 14.5, "duration": 6},
-        {"id": "s4", "text": "Payoff lands before the call to action.", "start": 20.5, "duration": 5},
+        {
+            "id": "s1",
+            "text": "Кажется, горизонт событий — просто тёмная стена. Это миф.",
+            "start": 2.8,
+            "duration": 6,
+        },
+        {
+            "id": "s2",
+            "text": "Приливные силы рвут тело ещё до центра. Давление — как миллиард атмосфер.",
+            "start": 8.8,
+            "duration": 7,
+            "emphasis": "high",
+        },
+        {
+            "id": "s3",
+            "text": "А в центре классическая физика уже не работает.",
+            "start": 15.8,
+            "duration": 6,
+        },
+        {
+            "id": "s4",
+            "text": "Так что ответ короткий: выжить нельзя. И это естественно.",
+            "start": 21.8,
+            "duration": 6,
+        },
     ]
     document["visuals"] = [
-        {"id": "v1", "type": "footage", "query": "server room", "start": 0, "duration": 10},
-        {"id": "v2", "type": "footage", "query": "chip closeup", "start": 10, "duration": 10},
-        {"id": "v3", "type": "footage", "query": "data center", "start": 20, "duration": 10},
+        {"id": "v1", "type": "footage", "query": "black hole accretion", "start": 0, "duration": 10},
+        {"id": "v2", "type": "infographic", "query": "tidal forces diagram", "start": 10, "duration": 10},
+        {"id": "v3", "type": "footage", "query": "spacetime warp", "start": 20, "duration": 12},
+        {"id": "v4", "type": "footage", "query": "event horizon glow", "start": 32, "duration": 13},
     ]
-    document["cta"] = {"text": "Подпишись", "start": 26, "duration": 3}
+    document["cta"] = {"text": "Подпишись", "start": 40, "duration": 4}
     spec, _ = parse_spec(document)
     return spec
 
 
-def test_science_rubric_forbids_memes():
-    spec = _spec(rubric="наука")
+def test_medicine_rubric_forbids_memes():
+    spec = _spec(rubric="медицина")
     policy = MemePolicyConfig()
     history = MemeHistory(videos=["a"] * 20, meme_at=[])
     decision = decide_meme(spec, policy, history)
@@ -48,10 +77,27 @@ def test_science_rubric_forbids_memes():
     assert "forbids" in decision.reason
 
 
+def test_science_rubric_allows_irony_memes():
+    spec = _spec(rubric="наука")
+    policy = MemePolicyConfig(frequency=1)
+    history = MemeHistory(videos=["x"] * 5, meme_at=[])
+    decision = decide_meme(spec, policy, history)
+    assert decision.allowed
+    assert decision.beat in {
+        "hook_punch",
+        "misconception",
+        "absurd_scale",
+        "deadpan_accept",
+        "reveal_twist",
+        "context_end",
+        "core1_to_core2",
+    }
+
+
 def test_frequency_gate_blocks_until_enough_videos_pass():
     spec = _spec()
-    policy = MemePolicyConfig(frequency=10)
-    history = MemeHistory(videos=["v1", "v2", "v3"], meme_at=["v1"])
+    policy = MemePolicyConfig(frequency=4)
+    history = MemeHistory(videos=["v1", "v2"], meme_at=["v1"])
     decision = decide_meme(spec, policy, history)
     assert not decision.allowed
     assert "frequency" in decision.reason
@@ -59,24 +105,30 @@ def test_frequency_gate_blocks_until_enough_videos_pass():
 
 def test_frequency_gate_allows_after_gap():
     spec = _spec()
-    policy = MemePolicyConfig(frequency=10)
-    # 8 videos since last meme → min_gap = 8 → allow
+    policy = MemePolicyConfig(frequency=4)
     history = MemeHistory(
-        videos=["old"] + [f"v{i}" for i in range(8)],
+        videos=["old"] + [f"v{i}" for i in range(3)],
         meme_at=["old"],
     )
     decision = decide_meme(spec, policy, history)
     assert decision.allowed
-    assert decision.beat in {"context_end", "core1_to_core2"}
 
 
-def test_meme_never_lands_in_hook_or_climax():
+def test_hook_punch_is_preferred_for_question_hooks():
+    spec = _spec()
+    policy = MemePolicyConfig(frequency=1)
+    ranked = rank_beats(spec, policy)
+    assert ranked
+    assert ranked[0][0] == "hook_punch"
+    assert ranked[0][1] >= (spec.hook.end if spec.hook else 0)
+
+
+def test_meme_never_lands_in_climax():
     spec = _spec()
     policy = MemePolicyConfig()
     window = find_meme_window(spec, policy)
     assert window is not None
     beat, start, duration = window
-    assert start >= (spec.hook.end if spec.hook else 0)
     assert start + duration <= spec.cta.start
 
 
@@ -89,12 +141,19 @@ def test_ensure_meme_visual_inserts_once():
     visual = ensure_meme_visual(spec, decision)
     assert visual is not None
     assert visual.type == "meme"
+    assert "auto-irony" in visual.notes
     assert sum(1 for item in spec.visuals if item.type == "meme") == 1
-    # Second call is a no-op when a meme already exists.
     assert ensure_meme_visual(spec, decision) is None
 
 
 def test_disabled_scenario_memes_are_skipped():
-    spec = _spec(memes={"enabled": False, "tags": ["shock"]})
+    spec = _spec(memes={"enabled": False, "tags": ["шок"]})
     decision = decide_meme(spec, MemePolicyConfig(), MemeHistory(videos=["a"] * 20))
     assert not decision.allowed
+
+
+def test_cold_start_allows_meme_on_empty_history():
+    spec = _spec()
+    decision = decide_meme(spec, MemePolicyConfig(frequency=4), MemeHistory())
+    assert decision.allowed
+    assert decision.beat == "hook_punch"

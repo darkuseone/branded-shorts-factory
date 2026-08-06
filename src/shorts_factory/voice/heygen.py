@@ -29,7 +29,7 @@ UPLOAD_BASE = "https://upload.heygen.com"
 POLL_INTERVAL = 10.0
 POLL_TIMEOUT = 900.0
 
-EXTERNAL_NAMES = ("avatar.mp4", "avatar.webm", "avatar.mov")
+EXTERNAL_NAMES = ("avatar_close.mp4", "avatar.mp4", "avatar.webm", "avatar.mov")
 
 
 @dataclass

@@ -7,6 +7,7 @@ binary downloads, backoff on 429/5xx — lives here so the adapters stay short.
 
 from __future__ import annotations
 
+import http.client
 import json
 import random
 import threading
@@ -26,6 +27,15 @@ log = get_logger("http")
 
 USER_AGENT = "branded-shorts-factory/0.1 (+https://github.com/darkuseone/branded-shorts-factory)"
 RETRY_STATUSES = frozenset({408, 409, 425, 429, 500, 502, 503, 504})
+
+
+def _safe_request_url(url: str) -> str:
+    """Percent-encode path/query so spaces and quotes don't crash urlopen."""
+    parts = urllib.parse.urlsplit(url)
+    path = urllib.parse.quote(parts.path, safe="/%:@+$,;")
+    query = urllib.parse.quote(parts.query, safe="=&%:@+$,;")
+    fragment = urllib.parse.quote(parts.fragment, safe="=&%:@+$,;")
+    return urllib.parse.urlunsplit((parts.scheme, parts.netloc, path, query, fragment))
 
 
 @dataclass
@@ -109,7 +119,9 @@ class HttpClient:
         last_status: int | None = None
         for attempt in range(self.retries + 1):
             self.limiter.wait()
-            request = urllib.request.Request(url, data=payload, headers=merged, method=method.upper())
+            request = urllib.request.Request(
+                _safe_request_url(url), data=payload, headers=merged, method=method.upper()
+            )
             try:
                 with urllib.request.urlopen(request, timeout=timeout or self.timeout) as raw:
                     return Response(raw.status, dict(raw.headers), raw.read())
@@ -120,8 +132,8 @@ class HttpClient:
                 if exc.code not in RETRY_STATUSES or attempt == self.retries:
                     raise ProviderError(self.provider, last_error, status=exc.code) from exc
                 delay = _retry_after(exc.headers) or self._delay(attempt)
-            except urllib.error.URLError as exc:
-                last_error = f"network error: {exc.reason}"
+            except (urllib.error.URLError, http.client.InvalidURL, ValueError) as exc:
+                last_error = f"network error: {getattr(exc, 'reason', exc)}"
                 if attempt == self.retries:
                     raise ProviderError(self.provider, last_error) from exc
                 delay = self._delay(attempt)

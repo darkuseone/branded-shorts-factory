@@ -25,7 +25,7 @@ from typing import Any
 
 from ..logging_utils import get_logger
 from ..spec import Spec
-from .ring import RingConfig, RingPlan, layout_box, network_overlay_svg, plan_ring, ring_css, ring_svg
+from .ring import RingConfig, RingPlan, layout_box, plan_ring, ring_css, ring_svg
 from .timeline import (
     BOTTOM_UI_RESERVE,
     SAFE_MARGIN,
@@ -207,9 +207,16 @@ class CompositionWriter:
 
         if element.kind == "text":
             role = element.props.get("role", "text")
-            inner = f'<span class="text-inner">{html.escape(element.text)}</span>'
-            if role == "cta":
+            if role == "data_chip":
+                inner = (
+                    f'<span class="data-chip-inner">'
+                    f'<span class="data-chip-label">{html.escape(element.text)}</span>'
+                    f"</span>"
+                )
+            elif role == "cta":
                 inner = f'<span class="cta-inner">{html.escape(element.text)}</span>'
+            else:
+                inner = f'<span class="text-inner">{html.escape(element.text)}</span>'
             return f'<div {attrs} data-role="{role}">{inner}</div>'
 
         if element.kind == "shape":
@@ -222,16 +229,19 @@ class CompositionWriter:
         cfg = self.ring.config
         box = layout_box(cfg, anchor=cfg.default_anchor)
         size = box["size"]
-        network = network_overlay_svg(cfg, size)
+        # Never mount ring-network SVG: even with display:none, HyperFrames
+        # capture painted a persistent tall red ellipse on the left edge.
         return (
             f'<div id="pulse_ring" class="pulse-ring-wrap" '
             f'style="left:{box["left"]}px;top:{box["top"]}px;width:{size}px;height:{size}px;">'
             f'<div class="pulse-ring-breath">'
+            f'<div class="pulse-ring-halo" aria-hidden="true"></div>'
+            f'<div class="pulse-ring-neon" aria-hidden="true"></div>'
             f"{ring_svg(cfg, size)}"
-            f"{network}"
             f'<div class="avatar-clip">'
+            f'<div class="avatar-face">'
             f'<video {attrs} src="{src}" muted playsinline preload="auto"{loop}></video>'
-            f"</div></div></div>"
+            f"</div></div></div></div>"
         )
 
     def _caption_inner(self, element: Element) -> str:
@@ -264,6 +274,7 @@ class CompositionWriter:
         anchor = _CAPTION_ANCHORS.get(captions.position, _CAPTION_ANCHORS["center_bottom"])
 
         blocks: list[str] = [
+            self._brand_font_css(),
             _BASE_CSS.format(
                 width=self.timeline.width,
                 height=self.timeline.height,
@@ -290,10 +301,26 @@ class CompositionWriter:
 
         if self.ring.visible:
             blocks.append(ring_css(self.ring, duration=self.timeline.duration))
-            blocks.append(_RING_BASE_CSS)
+            blocks.append(self._ring_base_css())
+            self._copy_brand_fonts()
+        elif any(el.props.get("role") == "data_chip" for el in self.timeline.elements):
             self._copy_brand_fonts()
 
         return "\n".join(block for block in blocks if block)
+
+    def _ring_base_css(self) -> str:
+        """Neon bloom + face crop — CSS only (SVG filters die in HF capture)."""
+        cfg = self.ring.config
+        stroke = cfg.stroke
+        glow = cfg.glow
+        zoom = max(1.0, float(cfg.face_zoom))
+        position = cfg.face_position or "center 30%"
+        return _RING_BASE_CSS.format(
+            stroke=stroke,
+            glow=glow,
+            face_zoom=f"{zoom:.3f}",
+            face_position=position,
+        )
 
     def _element_css(self, element: Element) -> str:
         duration = max(self.timeline.duration, 0.001)
@@ -462,17 +489,26 @@ class CompositionWriter:
             return
         for path in fonts_dir.glob("*.woff2"):
             self._media_src(path)
+
+    def _brand_font_css(self) -> str:
+        """Inline brand @font-face rules so HyperFrames lint sees declared families."""
         css = Path(__file__).resolve().parents[3] / "brand" / "fonts.css"
-        if css.exists():
-            # Rewrite urls already point at media/; just note presence in DESIGN.
-            pass
+        if not css.exists():
+            return ""
+        try:
+            return css.read_text(encoding="utf-8")
+        except OSError:
+            return ""
 
     def _logo_css(self, element: Element) -> str:
         position = element.props.get("position", "top_left")
         opacity = float(element.props.get("opacity", 0.85))
         vertical = f"top:{SAFE_MARGIN}px;" if position.startswith("top") else f"bottom:{BOTTOM_UI_RESERVE}px;"
         horizontal = f"left:{SAFE_MARGIN}px;" if position.endswith("left") else f"right:{SAFE_MARGIN}px;"
-        return f"position:absolute;{vertical}{horizontal}width:160px;height:auto;opacity:{opacity};"
+        return (
+            f"position:absolute;{vertical}{horizontal}"
+            f"width:160px;height:160px;object-fit:contain;opacity:{opacity};"
+        )
 
     # -- extras -------------------------------------------------------------
 
@@ -542,6 +578,8 @@ def _entrance_for(element: Element) -> tuple[str, str]:
         return "translateY(60px) scale(.92)", "translateY(-20px) scale(.98)"
     if role == "outro":
         return "scale(.94)", "scale(1.02)"
+    if role == "data_chip":
+        return "translateY(28px) translateX(-50%)", "translateY(-8px) translateX(-50%)"
     if element.kind == "caption":
         return "translateY(18px) scale(.98)", "translateY(-10px)"
     return "translateY(24px)", "translateY(-12px)"
@@ -603,6 +641,16 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
 .text[data-role="cta"] {{ bottom: {bottom_reserve}px; }}
 .text[data-role="lower_third"] {{ bottom: calc({bottom_reserve}px + 220px); text-align: left; }}
 .text[data-role="outro"] {{ top: 46%; }}
+.text[data-role="data_chip"] {{
+  top: auto;
+  bottom: calc({bottom_reserve}px + 420px);
+  left: {safe_margin}px;
+  transform: none;
+  width: auto;
+  max-width: 78%;
+  padding: 0;
+  text-align: left;
+}}
 .text-inner {{
   display: inline-block;
   font-size: 54px;
@@ -611,6 +659,25 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   text-shadow: 0 4px 20px rgba(0,0,0,.5);
 }}
 .text[data-role="outro"] .text-inner {{ font-size: 76px; letter-spacing: -0.02em; }}
+.data-chip-inner {{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  background: #14171C;
+  border: 1px solid color-mix(in srgb, var(--primary) 70%, transparent);
+  border-left: 3px solid var(--primary);
+  border-radius: 4px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.45);
+}}
+.data-chip-label {{
+  font-family: "JetBrains Mono", "Space Grotesk", ui-monospace, monospace;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #F5F7FA;
+  white-space: nowrap;
+}}
 .cta-inner {{
   display: inline-block;
   padding: 26px 52px;
@@ -624,55 +691,90 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
 """
 
 _RING_BASE_CSS = """\
-.pulse-ring-wrap {
+.pulse-ring-wrap {{
   position: absolute;
   z-index: 30;
   pointer-events: none;
-}
-.pulse-ring-breath {
+  overflow: visible;
+  isolation: isolate;
+  contain: layout style;
+}}
+.pulse-ring-breath {{
   position: relative;
   width: 100%;
   height: 100%;
-}
-.pulse-ring-svg {
+  overflow: visible;
+}}
+/* Soft outer bloom — radial paint survives HF capture better than SVG blur. */
+.pulse-ring-halo {{
+  position: absolute;
+  inset: -14%;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle closest-side,
+    transparent 62%,
+    rgba(255, 42, 60, 0.75) 78%,
+    rgba(255, 90, 110, 0.4) 88%,
+    transparent 100%
+  );
+  pointer-events: none;
+}}
+/* Neon tube rim — white-hot core + red corona via box-shadow (not SVG filters). */
+.pulse-ring-neon {{
+  position: absolute;
+  inset: 2.5%;
+  z-index: 2;
+  border-radius: 50%;
+  border: 6px solid {stroke};
+  box-shadow:
+    0 0 1px 1px #fff,
+    0 0 4px 2px #FFE0E4,
+    0 0 10px 3px #FF8A96,
+    0 0 20px 7px {stroke},
+    0 0 40px 16px {glow},
+    0 0 64px 24px rgba(255, 42, 60, 0.55),
+    inset 0 0 8px 2px rgba(255, 255, 255, 0.75),
+    inset 0 0 18px 4px rgba(255, 140, 150, 0.7);
+  pointer-events: none;
+}}
+.pulse-ring-svg {{
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 3;
   pointer-events: none;
-}
-.avatar-clip {
+  opacity: 0.95;
+  /* No CSS filter — stacked drop-shadows leaked a tall left ghost in HF capture. */
+}}
+.avatar-clip {{
   position: absolute;
-  inset: 6%;
+  inset: 4.5%;
   border-radius: 50%;
   overflow: hidden;
   z-index: 1;
   background: #0A0C10;
-}
-.avatar-clip video {
+}}
+/* Zoom the face on a WRAPPER — CSS transform on <video> is ignored by HF capture. */
+.avatar-face {{
+  width: 100%;
+  height: 100%;
+  transform: scale({face_zoom});
+  transform-origin: center 36%;
+}}
+.avatar-face video,
+.avatar-clip video {{
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-.ring-network {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 3;
-  pointer-events: none;
-  opacity: 0;
-}
-.pulse-ring-wrap[data-state="transition"] .ring-network,
-.pulse-ring-wrap.is-transition .ring-network {
-  opacity: 1;
-}
-.net-line {
-  stroke-dasharray: 240;
-  stroke-dashoffset: 240;
-  animation: net_draw 0.55s ease-out forwards;
-}
-@keyframes net_draw {
-  to { stroke-dashoffset: 0; }
-}
+  object-position: {face_position};
+  /* no transform here — HF composites <video> without element transforms */
+}}
+.ring-network {{
+  display: none !important;
+}}
+@keyframes net_draw {{
+  to {{ stroke-dashoffset: 0; }}
+}}
 """
 
 _SCRIPT = """\

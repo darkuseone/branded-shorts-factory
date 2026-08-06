@@ -7,6 +7,17 @@ build/
 # Two-phase avatar clips must be committed so Actions can render without HeyGen.
 !jobs/**/avatar.mp4
 !jobs/**/avatar.webm
+# Optional closer crop (ffmpeg) when the HeyGen framing sits the talent too far.
+!jobs/**/avatar_close.mp4
+
+# Pre-staged Magnific/stock b-roll for keyless cloud renders.
+!jobs/**/broll/*.mp4
+!jobs/**/broll/*.webm
+!jobs/**/broll/*.jpg
+!jobs/**/broll/*.png
+
+# Optional avatar-extracted VO fallback when ElevenLabs is unavailable.
+!jobs/**/voice_from_avatar.mp3
 
 # NOTE: assets/music, assets/sfx, assets/memes, brand/ and .state/ are
 # deliberately NOT ignored. GitHub Actions builds from a fresh clone, so
@@ -31,3 +42,7 @@ node_modules/
 .DS_Store
 .idea/
 .vscode/
+
+# Per-slot stock before bake (master/broll.mp4 is the committed track)
+jobs/**/broll/v[0-9].mp4
+jobs/**/broll/v[0-9]_clip.mp4

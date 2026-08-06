@@ -190,7 +190,15 @@ def apply_brandbook_to_spec(spec: Spec, book: Brandbook | None) -> Spec:
 
     look_id = str(book.avatar.get("look_id") or book.avatar.get("avatar_id") or "")
     if look_id and not spec.avatar.avatar_id:
-        spec.avatar = replace(spec.avatar, avatar_id=look_id, enabled=True)
+        # Prefer test look_id; look_id_edit is for regenerating the studio twin.
+        engine = str(book.avatar.get("engine") or "")
+        version = "avatar_5" if engine in {"avatar_v", "avatar_5", "v"} else spec.avatar.version
+        spec.avatar = replace(
+            spec.avatar,
+            avatar_id=look_id,
+            enabled=True,
+            version=version or spec.avatar.version,
+        )
 
     if not spec.music.track:
         track = book.music_for_rubric(spec.rubric)
