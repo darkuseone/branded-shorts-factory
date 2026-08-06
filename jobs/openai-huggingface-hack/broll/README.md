@@ -1,16 +1,22 @@
 # Pre-staged b-roll
 
 Vertical 9:16 clips used when Pexels/Pixabay keys are unavailable.
-The resolver accepts `jobs/<id>/broll/<visual_id>.mp4` as a local override.
+The resolver accepts `jobs/<id>/broll/<visual_id>.*` as a local override.
 
-| File | Slot | Source (Magnific Freepik stock) |
-| --- | --- | --- |
-| v1.mp4 | hook / cyber alert | Red access denied code |
-| v2.mp4 | data center | Server racks |
-| v3.mp4 | AI / models | Artificial intelligence data flow |
-| v4.mp4 | ExploitGym / security UI | Malware scan interface |
-| v5.mp4 | sandbox escape | Zero-day exploit coding |
-| v6.mp4 | production DB | Server aisle |
-| v7.mp4 | SOC swarm | Control room displays |
-| v8.mp4 | cheating punchline | Student taking a test |
-| v9.mp4 | CTA backdrop | Grey connected nodes |
+## This job
+
+- `broll.mp4` / `master.mp4` — single 50s baked track (Magnific Freepik stock slots
+  for hook → CTA) so HyperFrames only mounts one fullscreen video.
+- `v1.mp4`…`v9.mp4` — source slots used to bake the master (optional to keep).
+
+| Slot | Source theme |
+| --- | --- |
+| v1 | Red access denied / cyber alert |
+| v2 | Server racks |
+| v3 | AI data flow |
+| v4 | Malware scan UI |
+| v5 | Zero-day coding |
+| v6 | Server aisle |
+| v7 | Control room displays |
+| v8 | Student exam |
+| v9 | Grey connected nodes |

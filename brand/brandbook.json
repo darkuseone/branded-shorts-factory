@@ -20,7 +20,7 @@
     "caption_weight": 700,
     "display_weight": 600
   },
-  "logo": "brand/logo.svg",
+  "logo": "brand/logo.png",
   "logo_position": "top_left",
   "watermark_opacity": 0.55,
   "lower_third": false,

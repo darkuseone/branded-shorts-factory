@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="REDSHIFT">
-  <!-- Incomplete orbital arc  the brand bumper. Same geometry as the pulse ring. -->
+  <!-- Incomplete orbital arc — the brand bumper. Same geometry as the pulse ring. -->
   <defs>
     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="3" result="blur"/>
@@ -10,12 +10,6 @@
     </filter>
   </defs>
   <circle cx="64" cy="64" r="46" fill="none" stroke="#B4001E" stroke-width="6" opacity="0.45"/>
-  <path d="M 64 18
-           A 46 46 0 1 1 30 98"
-        fill="none"
-        stroke="#FF2A3C"
-        stroke-width="7"
-        stroke-linecap="round"
-        filter="url(#glow)"/>
+  <path d="M 64 18 A 46 46 0 1 1 30 98" fill="none" stroke="#FF2A3C" stroke-width="7" stroke-linecap="round" filter="url(#glow)"/>
   <circle cx="64" cy="18" r="4.5" fill="#37E4FF"/>
 </svg>

@@ -83,110 +83,23 @@
 
   "visuals": [
     {
-      "id": "v1",
+      "id": "broll",
       "type": "footage",
-      "query": "cybersecurity hacking terminal code",
-      "keywords": ["red alert cyber attack", "server room warning lights", "digital breach"],
+      "query": "cybersecurity AI hacking data center neural network",
+      "keywords": [
+        "red alert cyber attack",
+        "server racks",
+        "artificial intelligence",
+        "sandbox escape",
+        "security operations",
+        "exam cheating punchline"
+      ],
       "start": 0,
-      "duration": 3.2,
-      "position": "fullscreen",
-      "motion": "zoom_in",
-      "priority": "critical",
-      "segment_ref": "hook",
-      "must_avoid": ["cartoon", "logo text overlay"]
-    },
-    {
-      "id": "v2",
-      "type": "footage",
-      "query": "AI data center servers night",
-      "keywords": ["server racks blinking lights", "cloud infrastructure", "network operations center"],
-      "start": 3.2,
-      "duration": 5.0,
-      "position": "fullscreen",
-      "motion": "kenburns",
-      "segment_ref": "s1"
-    },
-    {
-      "id": "v3",
-      "type": "footage",
-      "query": "artificial intelligence neural network abstract",
-      "keywords": ["AI agent visualization", "machine learning nodes", "digital brain glow"],
-      "start": 8.2,
-      "duration": 5.8,
-      "position": "fullscreen",
-      "motion": "parallax",
-      "priority": "high",
-      "segment_ref": "s2"
-    },
-    {
-      "id": "v4",
-      "type": "infographic",
-      "query": "cybersecurity benchmark checklist minimal dark",
-      "keywords": ["exploit testing diagram", "vulnerability scoreboard", "security exam UI"],
-      "start": 14.0,
-      "duration": 5.6,
+      "duration": 46.0,
       "position": "fullscreen",
       "motion": "none",
-      "priority": "high",
-      "segment_ref": "s3",
-      "must_include": ["security"]
-    },
-    {
-      "id": "v5",
-      "type": "motion_graphics",
-      "query": "sandbox escape firewall breach animation",
-      "keywords": ["firewall break through", "zero day exploit visual", "network lateral movement"],
-      "start": 19.6,
-      "duration": 5.4,
-      "position": "fullscreen",
-      "motion": "zoom_out",
       "priority": "critical",
-      "segment_ref": "s4"
-    },
-    {
-      "id": "v6",
-      "type": "footage",
-      "query": "database server production room",
-      "keywords": ["SQL database center", "data center corridor", "locked server cage"],
-      "start": 25.0,
-      "duration": 5.8,
-      "position": "fullscreen",
-      "motion": "kenburns",
-      "segment_ref": "s5"
-    },
-    {
-      "id": "v7",
-      "type": "footage",
-      "query": "swarm of screens cyber operations",
-      "keywords": ["SOC multiple monitors", "incident response team screens", "blue team war room"],
-      "start": 30.8,
-      "duration": 5.2,
-      "position": "fullscreen",
-      "motion": "parallax",
-      "priority": "high",
-      "segment_ref": "s6"
-    },
-    {
-      "id": "v8",
-      "type": "footage",
-      "query": "exam test cheating dark humor abstract",
-      "keywords": ["test answers paper", "student exam desk", "answer key document"],
-      "start": 36.0,
-      "duration": 4.6,
-      "position": "fullscreen",
-      "motion": "zoom_in",
-      "segment_ref": "s7"
-    },
-    {
-      "id": "v9",
-      "type": "motion_graphics",
-      "query": "minimal dark particle field graphite tech",
-      "keywords": ["abstract particles loop", "dark tech background"],
-      "start": 40.6,
-      "duration": 5.4,
-      "position": "fullscreen",
-      "motion": "parallax",
-      "allow_magnific": false
+      "notes": "Pre-baked 50s master from Magnific stock slots v1–v9 (single HF video track)."
     }
   ],
 
