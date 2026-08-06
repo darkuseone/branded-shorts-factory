@@ -1019,7 +1019,14 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
     anchor_raw = ring_data.get("anchor")
     anchor = ""
     if isinstance(anchor_raw, str) and anchor_raw.strip():
-        anchor = _enum(ring_data, "anchor", "ring", col, {"bottom_right", "bottom_left", "bottom_center", "center"}, "bottom_right")
+        anchor = _enum(
+            ring_data,
+            "anchor",
+            "ring",
+            col,
+            {"bottom_right", "bottom_left", "bottom_center", "center"},
+            "bottom_right",
+        )
     elif anchor_raw is not None and not isinstance(anchor_raw, str):
         col.error("ring.anchor", f"expected a string, got {type(anchor_raw).__name__}")
     ring = RingSettings(

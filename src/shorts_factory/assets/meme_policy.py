@@ -185,9 +185,7 @@ def _safe_window(start: float, duration: float, *, hook_end: float, climax_start
     end = start + duration
     if start < hook_end + 0.05:
         return False
-    if end > climax_start - 0.05:
-        return False
-    return True
+    return end <= climax_start - 0.05
 
 
 def visual_in_allowed_beat(spec: Spec, visual: Visual, policy: MemePolicyConfig) -> bool:
