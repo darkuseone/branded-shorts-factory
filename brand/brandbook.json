@@ -80,10 +80,11 @@
   "avatar": {
     "look_id": "54172d7a5b2946ed8a592dee955fb0c7",
     "look_id_edit": "48f0bd5e217548ed8bbdfb67e5c1efc9",
-    "_comment_looks": "look_id = current test twin (studio mic / neon room). look_id_edit = primary twin for environment regenerations.",
+    "look_id_edit_studio": "eca97e9fe55f40799b25943fdc1a1599",
+    "_comment_looks": "look_id = current test twin (studio mic photo). look_id_edit = digital twin source for regenerations. look_id_edit_studio = prompt regen of edit twin into neon desk/mic studio.",
     "group_id": "d0573be250724c23bed61037f1c7490d",
     "engine": "avatar_v",
-    "motion_prompt": "Seated at a desk in a dark neon-lit cyberpunk studio, chest-up framing, black crew-neck t-shirt, short spiky dark hair, thin dark rectangular glasses, speaking into a studio dynamic microphone on a boom arm, cool cyan rim light from the left, subtle magenta ambient fill, serious expert tone, looking into camera, natural hand gestures"
+    "motion_prompt": "Calm sci-pop host speaking to camera. Soft natural blinks, tiny head nods only when emphasising a word, shoulders almost still, hands mostly out of frame or very subtle. Grounded posture, realistic timing, no exaggerated gestures, keep the existing studio framing and microphone stable."
   },
   "voice": {
     "voice_id": "14NozJq5eoBmDc1FXFDq",
@@ -96,7 +97,7 @@
     "style": 0.38,
     "speed": 1.04,
     "language": "ru",
-    "_comment": "Primary path: ElevenLabs TTS + word timings, then HeyGen lipsync via audioAssetId. NIKITA2 is a HeyGen-side fallback only."
+    "_comment": "Always use NIKITA2 on HeyGen avatar tests. Pipeline primary: ElevenLabs TTS + word timings, then HeyGen lipsync via audioAssetId."
   },
   "magnific_prompt_skeleton": "[SUBJECT], cinematic sci-fi realism, dark graphite background (#0A0C10), subtle red rim light accent (#FF2A3C), cool cyan ambient glow (#37E4FF), volumetric fog, high detail, shallow depth of field, 8k, photorealistic, tech-documentary lighting, no text, no watermark"
 }
