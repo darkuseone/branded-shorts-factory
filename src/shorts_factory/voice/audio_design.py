@@ -86,9 +86,12 @@ def suggest_audio_fx(spec: Spec) -> list[AudioFx]:
         for beat in trimmed
     ]
     for item in suggestions:
-        log.info("suggested %s @ %.2fs (%s)", item.type, item.at, next(
-            (beat.reason for beat in trimmed if beat.at == item.at and beat.role == item.type), ""
-        ))
+        log.info(
+            "suggested %s @ %.2fs (%s)",
+            item.type,
+            item.at,
+            next((beat.reason for beat in trimmed if beat.at == item.at and beat.role == item.type), ""),
+        )
     return suggestions
 
 
@@ -128,9 +131,7 @@ def collect_beats(spec: Spec) -> list[Beat]:
         if segment.emphasis != "high":
             continue
         at = segment.start + min(0.35, max(guard, segment.duration * 0.12))
-        beats.append(
-            Beat(at=at, role="thump", intensity=0.45, duration=0.5, reason=f"emphasis {segment.id}")
-        )
+        beats.append(Beat(at=at, role="thump", intensity=0.45, duration=0.5, reason=f"emphasis {segment.id}"))
 
     # Ring exit / return from avatar.segments gaps (brand book EXIT / RETURN).
     if spec.avatar.enabled and spec.avatar.segments:
@@ -160,9 +161,7 @@ def collect_beats(spec: Spec) -> list[Beat]:
         )
 
     if spec.cta and spec.cta.text:
-        beats.append(
-            Beat(at=spec.cta.start, role="pop", intensity=0.55, duration=0.6, reason="cta")
-        )
+        beats.append(Beat(at=spec.cta.start, role="pop", intensity=0.55, duration=0.6, reason="cta"))
 
     return sorted(beats, key=lambda beat: beat.at)
 

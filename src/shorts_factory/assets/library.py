@@ -210,11 +210,7 @@ class SfxLibrary(_FolderLibrary):
         if extra_tags:
             wanted += [tag.lower() for tag in extra_tags]
 
-        scored = [
-            (item.matches(wanted), item)
-            for item in self.items
-            if item.usable_as_accent
-        ]
+        scored = [(item.matches(wanted), item) for item in self.items if item.usable_as_accent]
         hits = [(score, item) for score, item in scored if score > 0]
         if not hits:
             return None

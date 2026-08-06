@@ -102,9 +102,7 @@ PEAK_CEILING_DBTP = -1.0
 #: Spectral centroid boundaries, in Hz, for the four bands the roles care about.
 BAND_EDGES = ((300.0, "sub"), (1_200.0, "low"), (4_000.0, "mid"))
 
-_METADATA_RE = re.compile(
-    r"^lavfi\.(?P<key>[\w.]+)=(?P<value>-?[\d.]+|-?inf|nan)$", re.MULTILINE
-)
+_METADATA_RE = re.compile(r"^lavfi\.(?P<key>[\w.]+)=(?P<value>-?[\d.]+|-?inf|nan)$", re.MULTILINE)
 _SUMMARY_RE = re.compile(
     r"^\s*Input (?P<field>Integrated|True Peak|LRA):\s*(?P<value>-?[\d.]+|-?inf)",
     re.MULTILINE,
@@ -395,8 +393,18 @@ def _run(command: list[str], timeout: float = 120.0) -> str:
 def _loudness(path: Path, ffmpeg: str) -> tuple[float, float, float]:
     """Integrated loudness, true peak and range, via `loudnorm`'s own analysis."""
     output = _run(
-        [ffmpeg, "-hide_banner", "-nostats", "-i", str(path),
-         "-af", "loudnorm=print_format=summary", "-f", "null", "-"]
+        [
+            ffmpeg,
+            "-hide_banner",
+            "-nostats",
+            "-i",
+            str(path),
+            "-af",
+            "loudnorm=print_format=summary",
+            "-f",
+            "null",
+            "-",
+        ]
     )
     found = {match.group("field"): match.group("value") for match in _SUMMARY_RE.finditer(output)}
     return (

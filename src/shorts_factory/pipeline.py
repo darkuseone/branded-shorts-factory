@@ -312,9 +312,7 @@ class Pipeline:
         )
 
     def _record_meme_history(self, spec: Spec, result: RunResult) -> None:
-        used = any(
-            item.visual.type == "meme" and item.qa.outcome == "accepted" for item in result.resolved
-        )
+        used = any(item.visual.type == "meme" and item.qa.outcome == "accepted" for item in result.resolved)
         path = history_path(self.settings.paths.root)
         history = MemeHistory.load(path)
         history.record(spec.id, used_meme=used)

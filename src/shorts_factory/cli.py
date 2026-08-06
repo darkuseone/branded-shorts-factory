@@ -1,12 +1,12 @@
 """Command line entry point.
 
-    python -m shorts_factory validate jobs/my-short.json
-    python -m shorts_factory plan     jobs/my-short.json
-    python -m shorts_factory prepare  jobs/my-short.json
-    python -m shorts_factory build    jobs/my-short.json
-    python -m shorts_factory render   jobs/my-short.json
-    python -m shorts_factory sfxscan
-    python -m shorts_factory doctor
+python -m shorts_factory validate jobs/my-short.json
+python -m shorts_factory plan     jobs/my-short.json
+python -m shorts_factory prepare  jobs/my-short.json
+python -m shorts_factory build    jobs/my-short.json
+python -m shorts_factory render   jobs/my-short.json
+python -m shorts_factory sfxscan
+python -m shorts_factory doctor
 """
 
 from __future__ import annotations

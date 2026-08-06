@@ -231,10 +231,10 @@ def ring_svg(config: RingConfig, size: int | None = None) -> str:
         f'<feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>'
         f"</filter>"
         f"</defs>"
-        f'<circle cx="{px/2}" cy="{px/2}" r="{px*0.46:.1f}" fill="none" '
-        f'stroke="{glow}" stroke-width="{max(4, px*0.018):.1f}" opacity="0.55"/>'
-        f'<circle class="pulse-ring-stroke" cx="{px/2}" cy="{px/2}" r="{px*0.46:.1f}" '
-        f'fill="none" stroke="{stroke}" stroke-width="{max(5, px*0.022):.1f}" '
+        f'<circle cx="{px / 2}" cy="{px / 2}" r="{px * 0.46:.1f}" fill="none" '
+        f'stroke="{glow}" stroke-width="{max(4, px * 0.018):.1f}" opacity="0.55"/>'
+        f'<circle class="pulse-ring-stroke" cx="{px / 2}" cy="{px / 2}" r="{px * 0.46:.1f}" '
+        f'fill="none" stroke="{stroke}" stroke-width="{max(5, px * 0.022):.1f}" '
         f'filter="url(#ringGlow)"/>'
         f"</svg>"
     )
@@ -321,14 +321,15 @@ def network_overlay_svg(config: RingConfig, size: int) -> str:
         lines.append(
             f'<line class="net-line" x1="{parent[0]:.1f}" y1="{parent[1]:.1f}" '
             f'x2="{x:.1f}" y2="{y:.1f}" stroke="{config.stroke}" '
-            f'stroke-width="{max(1.5, size*0.006):.1f}" opacity="0.85"/>'
+            f'stroke-width="{max(1.5, size * 0.006):.1f}" opacity="0.85"/>'
         )
     dots = "".join(
-        f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{max(2, size*0.012):.1f}" fill="{config.stroke}"/>'
+        f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{max(2, size * 0.012):.1f}" fill="{config.stroke}"/>'
         for x, y in nodes
     )
+    view = f"{-size * 0.2:.0f} {-size * 0.55:.0f} {size * 1.4:.0f} {size * 1.2:.0f}"
     return (
-        f'<svg class="ring-network" viewBox="{-size*0.2:.0f} {-size*0.55:.0f} {size*1.4:.0f} {size*1.2:.0f}" '
+        f'<svg class="ring-network" viewBox="{view}" '
         f'width="{size}" height="{size}" aria-hidden="true">'
         f"{''.join(lines)}{dots}</svg>"
     )

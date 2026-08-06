@@ -49,9 +49,7 @@ class MemePolicyConfig:
             forbidden_rubrics=[str(item).lower() for item in forbidden]
             if isinstance(forbidden, list)
             else list(DEFAULT_FORBIDDEN),
-            allowed_beats=[str(item) for item in beats]
-            if isinstance(beats, list)
-            else list(DEFAULT_BEATS),
+            allowed_beats=[str(item) for item in beats] if isinstance(beats, list) else list(DEFAULT_BEATS),
         )
 
 
@@ -87,8 +85,7 @@ class MemeHistory:
     def save(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
-            json.dumps({"videos": self.videos, "meme_at": self.meme_at}, ensure_ascii=False, indent=2)
-            + "\n",
+            json.dumps({"videos": self.videos, "meme_at": self.meme_at}, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
 

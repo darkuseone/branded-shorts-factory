@@ -227,8 +227,8 @@ class CompositionWriter:
             f'<div id="pulse_ring" class="pulse-ring-wrap" '
             f'style="left:{box["left"]}px;top:{box["top"]}px;width:{size}px;height:{size}px;">'
             f'<div class="pulse-ring-breath">'
-            f'{ring_svg(cfg, size)}'
-            f'{network}'
+            f"{ring_svg(cfg, size)}"
+            f"{network}"
             f'<div class="avatar-clip">'
             f'<video {attrs} src="{src}" muted playsinline preload="auto"{loop}></video>'
             f"</div></div></div>"
@@ -431,10 +431,7 @@ class CompositionWriter:
     def _avatar_css(self, element: Element) -> str:
         if self.ring.visible:
             # Positioning lives on the wrapper; the video fills the clipped circle.
-            return (
-                "position:absolute;inset:0;width:100%;height:100%;"
-                "object-fit:cover;border-radius:50%;"
-            )
+            return "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;"
         layout = element.props.get("layout", {})
         scale = float(layout.get("scale", 0.34))
         width = int(self.timeline.width * scale)
