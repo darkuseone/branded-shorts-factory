@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -96,7 +97,7 @@ def verify_composition_css(composition_dir: Path) -> list[str]:
         errors.append("composition still uses SVG glow filters (drop in HF capture)")
     if "object-position" not in html:
         errors.append("composition missing object-position for face crop")
-    if "ring-network" in html:
+    if re.search(r"<svg[^>]*class=\"[^\"]*ring-network", html):
         errors.append("composition still mounts ring-network SVG (causes left red ghost in HF)")
     return errors
 

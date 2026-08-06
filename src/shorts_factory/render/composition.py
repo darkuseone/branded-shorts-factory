@@ -505,7 +505,10 @@ class CompositionWriter:
         opacity = float(element.props.get("opacity", 0.85))
         vertical = f"top:{SAFE_MARGIN}px;" if position.startswith("top") else f"bottom:{BOTTOM_UI_RESERVE}px;"
         horizontal = f"left:{SAFE_MARGIN}px;" if position.endswith("left") else f"right:{SAFE_MARGIN}px;"
-        return f"position:absolute;{vertical}{horizontal}width:160px;height:auto;opacity:{opacity};"
+        return (
+            f"position:absolute;{vertical}{horizontal}"
+            f"width:160px;height:160px;object-fit:contain;opacity:{opacity};"
+        )
 
     # -- extras -------------------------------------------------------------
 
