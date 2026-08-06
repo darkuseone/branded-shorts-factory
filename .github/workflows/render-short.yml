@@ -104,6 +104,10 @@ jobs:
           if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="--dry-run"; fi
           python -m shorts_factory $ARGS render "${{ steps.pick.outputs.spec }}"
 
+      - name: Verify output (catch dead b-roll / flat ring / missing neon)
+        if: success() && inputs.dry_run != true
+        run: python3 scripts/verify_short.py "${{ steps.pick.outputs.spec }}"
+
       - name: Summary
         if: always()
         run: |
