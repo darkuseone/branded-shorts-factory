@@ -32,6 +32,7 @@ TRACK_AVATAR = 3
 TRACK_CAPTIONS = 4
 TRACK_BRAND = 5
 TRACK_CTA = 6
+TRACK_MEME = 7
 TRACK_AUDIO_VOICE = 10
 TRACK_AUDIO_SFX = 11
 TRACK_AUDIO_MUSIC = 12
@@ -205,10 +206,10 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
         asset = item.asset
         layout = dict(_POSITION_LAYOUT.get(visual.position, _POSITION_LAYOUT["fullscreen"]))
         is_full = visual.position in {"fullscreen", "background"}
-        # Memes punch over b-roll; they must not share TRACK_BROLL or HyperFrames
-        # rejects the composition as overlapping_clips_same_track.
+        # Memes punch over b-roll on their own track so they never fight
+        # fullscreen footage or data chips (HyperFrames forbids same-track overlap).
         if visual.type == "meme":
-            track = TRACK_OVERLAY
+            track = TRACK_MEME
         else:
             track = TRACK_BROLL if is_full else TRACK_OVERLAY
 

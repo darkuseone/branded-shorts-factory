@@ -103,7 +103,8 @@ class HyperFramesRunner:
 
     def render(self, project_dir: Path, output: Path) -> StepResult:
         output.parent.mkdir(parents=True, exist_ok=True)
-        args = ["render", "index.html", "--out", str(output)]
+        # HyperFrames ≥0.7 takes the project dir + `-o/--output` (not `index.html --out`).
+        args = ["render", ".", "--output", str(output)]
         if self.settings.render_with_docker:
             args.append("--docker")
         args += self.extra_render_args

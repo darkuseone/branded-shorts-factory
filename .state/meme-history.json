@@ -4,7 +4,10 @@
     "test-short",
     "a",
     "b",
-    "c"
+    "c",
+    "openai-huggingface-hack"
   ],
-  "meme_at": []
+  "meme_at": [
+    "openai-huggingface-hack"
+  ]
 }
