@@ -23,14 +23,17 @@ PYTHONPATH=src python -m shorts_factory validate jobs/my-short.json
 | `id` | string | да | слаг: имя файла на выходе и имя отчёта |
 | `title` | string | да | заголовок, он же текст аутро-карточки |
 | `topic` | string | нет | тема одной строкой (нужна QA как контекст) |
+| `rubric` | string | нет | рубрика канала: космос / IT / технологии / AI / наука — музыка и мемы |
 | `language` | string | нет | `ru` по умолчанию |
 | `duration_target` | number | да | 5–180 с. Больше 60 — предупреждение |
 | `hook` | object \| string | нет | первый кадр-крючок |
 | `script` | array \| string | да | закадровый текст по сегментам |
 | `voice_settings` | object | нет | ElevenLabs v3 |
-| `avatar` | object | нет | HeyGen Avatar 5 |
+| `avatar` | object | нет | HeyGen Avatar 5 / `provider: external` |
+| `ring` | object | нет | Pulse Ring overrides |
+| `sfx.policy` | object | нет | потолок плотности звукового дизайна |
 | `visuals` | array | да | визуальные слоты (минимум один) |
-| `music` | object | нет | трек из `assets/music/` |
+| `music` | object | нет | трек из `assets/music/` (пусто → по `rubric`) |
 | `audio_fx` | array | нет | звуковой дизайн; пусто → предложим сами |
 | `captions` | object | нет | субтитры |
 | `brand_elements` | object | нет | бренд для конкретного ролика |

@@ -68,6 +68,9 @@ class SfxClip:
     volume: float
     #: "library" for a sound you supplied, "elevenlabs" for a generated one.
     source: str = "elevenlabs"
+    #: Seconds to skip from the start of the source file. Used to cut long
+    #: cinematic hits down to the useful part around their measured peak.
+    trim_start: float = 0.0
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -77,6 +80,7 @@ class SfxClip:
             "duration": round(self.duration, 3),
             "volume": round(self.volume, 3),
             "source": self.source,
+            "trim_start": round(self.trim_start, 3),
         }
 
 
@@ -92,6 +96,9 @@ FX_PROMPTS = {
     "sub_drop": "deep sub bass drop, very short",
     "transition": "modern short-form video transition sound, snappy",
     "ui": "subtle interface confirmation blip",
+    "thump": "soft low thump pulse, short, dry, not aggressive",
+    "power_down": "short quiet power-down tick, soft electronic fade",
+    "power_up": "short quiet power-up tick, soft electronic chirp",
 }
 
 
@@ -229,6 +236,28 @@ class ElevenLabsClient:
 
     def generate_all_fx(self, effects: list[AudioFx]) -> list[SfxClip]:
         return [clip for clip in (self.generate_fx(fx) for fx in effects) if clip]
+
+    def cache_fx_to_bank(self, clip: SfxClip, bank_dir: Path) -> Path | None:
+        """Copy a generated effect into ``assets/sfx/`` so the bank grows.
+
+        Filenames are tagged with the fx type so later ``sfxscan`` + pick()
+        can reuse them. Index.json is left for ``sfxscan`` to refresh.
+        """
+        if not clip.path.exists():
+            return None
+        bank_dir.mkdir(parents=True, exist_ok=True)
+        # fx_id looks like "fx_whoosh_3" — keep type in the filename.
+        safe = "".join(ch if ch.isalnum() or ch in "-_" else "-" for ch in clip.fx_id)
+        dest = bank_dir / f"generated-{safe}{clip.path.suffix or '.mp3'}"
+        if dest.exists():
+            return dest
+        try:
+            dest.write_bytes(clip.path.read_bytes())
+        except OSError as exc:
+            log.warning("could not cache fx %s into bank: %s", clip.fx_id, exc, extra={"stage": "voice"})
+            return None
+        log.info("cached generated fx → %s", dest.name, extra={"stage": "voice"})
+        return dest
 
 
 def _words_from_alignment(alignment: object) -> list[WordTiming]:

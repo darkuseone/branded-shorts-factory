@@ -1,25 +1,35 @@
 # Music library
 
-Drop your five tracks here (`.mp3`, `.wav`, `.m4a`, `.aac`, `.ogg`, `.flac`).
-
-The scenario JSON selects one by filename stem:
+Drop tracks here (`.mp3`, `.wav`, `.m4a`, `.aac`, `.ogg`, `.flac`). The scenario
+JSON picks one by filename stem:
 
 ```json
-"music": { "track": "tension_01", "volume": 0.16, "ducking": true }
+"music": { "track": "Orbital Drift", "volume": 0.16, "ducking": true }
 ```
 
-`tension_01` matches `tension_01.mp3`. A prefix is enough — `"tension"` finds it
-too. If the named track is missing, the first file in this folder is used and the
-run report says so.
+A prefix is enough — `"Orbital"` finds `Orbital Drift.mp3`. If the named track
+is missing, the first file in this folder is used and the run report says so.
+
+Current bank (REDSHIFT mood set):
+
+| File | Mood |
+| --- | --- |
+| `Biotic Pulse.mp3` | organic / science |
+| `Digital Pulse.mp3` | IT / UI pulse |
+| `Orbital Drift.mp3` | space / calm |
+| `Overclocked.mp3` | tension / tech |
+| `System Logic.mp3` | AI / data |
+
+Two more files were moved here from `assets/sfx/` after the analyser classified
+them as music beds (`alexzavesa-calm-elegant-logo-…`, `idoberg-relaxing-guitar-loop-…`).
+They are fine as beds; they must not be used as montage accents.
 
 ## Optional `index.json`
-
-Add tags and titles if you want them in reports:
 
 ```json
 {
   "items": [
-    { "file": "tension_01.mp3", "title": "Tension 01", "tags": ["dark", "science"], "duration": 128 }
+    { "file": "Orbital Drift.mp3", "title": "Orbital Drift", "tags": ["space", "calm"], "duration": 128 }
   ]
 }
 ```
@@ -27,5 +37,4 @@ Add tags and titles if you want them in reports:
 Ducking is applied at mix time with a real sidechain compressor, so pick tracks
 with headroom rather than pre-ducked stems.
 
-Треки **нужно коммитить**: GitHub Actions собирает ролик из свежего клона
-репозитория, и незакоммиченный файл для сборки просто не существует.
+Треки **нужно коммитить**: GitHub Actions собирает ролик из свежего клона.
