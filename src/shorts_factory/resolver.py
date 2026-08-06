@@ -297,23 +297,52 @@ class VisualResolver:
     # -- memes --------------------------------------------------------------
 
     def _resolve_meme(self, spec: Spec, visual: Visual) -> VisualQA:
-        """Memes come only from the user's bank, only on an explicit tag."""
+        """Memes come only from the user's bank, matched by irony beat + tags."""
         result = VisualQA(visual_id=visual.id, outcome="rejected", attempts=1)
         if not spec.memes.enabled:
             result.notes.append("meme slot skipped: memes.enabled is false")
             return result
 
-        tags = visual.keywords or visual.must_include or spec.memes.tags
-        matches = self.memes.find([tag.lower() for tag in tags], limit=1)
-        if not matches:
-            result.notes.append(f"no meme in the bank matches {tags}")
+        tags = [tag.lower() for tag in (visual.keywords or visual.must_include or spec.memes.tags)]
+        beat = ""
+        humor = ""
+        if visual.notes.startswith("auto-irony:"):
+            parts = visual.notes.split(":")
+            beat = parts[1] if len(parts) > 1 else ""
+            humor = parts[2] if len(parts) > 2 else ""
+
+        science_safe = (spec.rubric or "").lower() in {
+            "космос",
+            "space",
+            "наука",
+            "science",
+            "ai",
+            "технологии",
+            "tech",
+            "it",
+        }
+        item = self.memes.pick_for_beat(
+            beat=beat,
+            tags=tags,
+            humor=humor,
+            science_safe=science_safe,
+        )
+        if item is None:
+            matches = self.memes.find(tags, limit=1)
+            item = matches[0] if matches else None
+        if item is None:
+            result.notes.append(f"no meme in the bank matches {tags or beat or humor}")
             return result
 
-        item = matches[0]
+        # Clamp the slot to the punch window so a 9s NOOOO never eats the VO.
+        usable = item.max_use or min(spec.memes.max_duration, item.duration or spec.memes.max_duration)
+        usable = max(0.5, min(usable, spec.memes.max_duration, visual.duration or usable))
+        visual.duration = usable
+
         candidate = Candidate(
             source="meme_library",
             external_id=item.name,
-            media_type="video" if item.path.suffix.lower() in {".mp4", ".webm"} else "image",
+            media_type="video" if item.path.suffix.lower() in {".mp4", ".webm", ".gif"} else "image",
             download_url="",
             title=item.title,
             tags=item.tags,
@@ -321,5 +350,12 @@ class VisualResolver:
         )
         result.outcome = "accepted"
         result.asset = LocalAsset(candidate=candidate, path=item.path)
-        result.notes.append(f"meme '{item.name}' matched tags {tags}")
+        result.notes.append(
+            f"meme '{item.name}' humor={item.humor or '?'} beat={beat or item.beats[:1]} "
+            f"trim={item.trim_start:g}s use={usable:g}s"
+        )
+        # Stash trim on the visual notes for the timeline writer.
+        visual.notes = (
+            f"{visual.notes}|trim_start={item.trim_start:g}|max_use={usable:g}|humor={item.humor}"
+        )
         return result

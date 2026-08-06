@@ -207,9 +207,16 @@ class CompositionWriter:
 
         if element.kind == "text":
             role = element.props.get("role", "text")
-            inner = f'<span class="text-inner">{html.escape(element.text)}</span>'
-            if role == "cta":
+            if role == "data_chip":
+                inner = (
+                    f'<span class="data-chip-inner">'
+                    f'<span class="data-chip-label">{html.escape(element.text)}</span>'
+                    f"</span>"
+                )
+            elif role == "cta":
                 inner = f'<span class="cta-inner">{html.escape(element.text)}</span>'
+            else:
+                inner = f'<span class="text-inner">{html.escape(element.text)}</span>'
             return f'<div {attrs} data-role="{role}">{inner}</div>'
 
         if element.kind == "shape":
@@ -291,6 +298,8 @@ class CompositionWriter:
         if self.ring.visible:
             blocks.append(ring_css(self.ring, duration=self.timeline.duration))
             blocks.append(_RING_BASE_CSS)
+            self._copy_brand_fonts()
+        elif any(el.props.get("role") == "data_chip" for el in self.timeline.elements):
             self._copy_brand_fonts()
 
         return "\n".join(block for block in blocks if block)
@@ -542,6 +551,8 @@ def _entrance_for(element: Element) -> tuple[str, str]:
         return "translateY(60px) scale(.92)", "translateY(-20px) scale(.98)"
     if role == "outro":
         return "scale(.94)", "scale(1.02)"
+    if role == "data_chip":
+        return "translateY(28px) translateX(-50%)", "translateY(-8px) translateX(-50%)"
     if element.kind == "caption":
         return "translateY(18px) scale(.98)", "translateY(-10px)"
     return "translateY(24px)", "translateY(-12px)"
@@ -603,6 +614,16 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
 .text[data-role="cta"] {{ bottom: {bottom_reserve}px; }}
 .text[data-role="lower_third"] {{ bottom: calc({bottom_reserve}px + 220px); text-align: left; }}
 .text[data-role="outro"] {{ top: 46%; }}
+.text[data-role="data_chip"] {{
+  top: auto;
+  bottom: calc({bottom_reserve}px + 420px);
+  left: {safe_margin}px;
+  transform: none;
+  width: auto;
+  max-width: 78%;
+  padding: 0;
+  text-align: left;
+}}
 .text-inner {{
   display: inline-block;
   font-size: 54px;
@@ -611,6 +632,25 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   text-shadow: 0 4px 20px rgba(0,0,0,.5);
 }}
 .text[data-role="outro"] .text-inner {{ font-size: 76px; letter-spacing: -0.02em; }}
+.data-chip-inner {{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  background: #14171C;
+  border: 1px solid color-mix(in srgb, var(--primary) 70%, transparent);
+  border-left: 3px solid var(--primary);
+  border-radius: 4px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.45);
+}}
+.data-chip-label {{
+  font-family: "JetBrains Mono", "Space Grotesk", ui-monospace, monospace;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #F5F7FA;
+  white-space: nowrap;
+}}
 .cta-inner {{
   display: inline-block;
   padding: 26px 52px;

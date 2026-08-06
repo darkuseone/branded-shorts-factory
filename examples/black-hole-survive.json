@@ -1,0 +1,239 @@
+{
+  "id": "black-hole-survive",
+  "title": "Можно ли выжить внутри чёрной дыры?",
+  "topic": "Surviving inside a black hole — tidal forces, event horizon, singularity",
+  "rubric": "космос",
+  "language": "ru",
+  "duration_target": 52,
+
+  "hook": {
+    "id": "hook",
+    "text": "Можно ли выжить внутри чёрной дыры?",
+    "start": 0,
+    "duration": 2.6,
+    "emphasis": "high",
+    "on_camera": true
+  },
+
+  "script": [
+    {
+      "id": "s1",
+      "text": "Кажется, горизонт событий — просто тёмная стена. Пересёк — и ты внутри. Это миф.",
+      "start": 2.6,
+      "duration": 5.8
+    },
+    {
+      "id": "s2",
+      "text": "Ещё до центра приливные силы рвут тело в нить. Спагеттификация — не метафора.",
+      "start": 8.4,
+      "duration": 6.2,
+      "emphasis": "high"
+    },
+    {
+      "id": "s3",
+      "text": "У сверхмассивной дыры горизонт шире — боль растягивается. Но финал тот же.",
+      "start": 14.6,
+      "duration": 6.0
+    },
+    {
+      "id": "s4",
+      "text": "В центре классическая физика ломается. Плотность стремится к бесконечности.",
+      "start": 20.6,
+      "duration": 6.4,
+      "emphasis": "high"
+    },
+    {
+      "id": "s5",
+      "text": "Информация, которую ты нёс, может сохраниться на горизонте. Ты — нет.",
+      "start": 27.0,
+      "duration": 6.2
+    },
+    {
+      "id": "s6",
+      "text": "Так что ответ короткий: выжить нельзя. И это естественно.",
+      "start": 33.2,
+      "duration": 5.5,
+      "emphasis": "high",
+      "on_camera": true
+    },
+    {
+      "id": "s7",
+      "text": "Зато теперь ты знаешь, почему туда лучше не лезть даже в мысленном эксперименте.",
+      "start": 38.7,
+      "duration": 5.8
+    }
+  ],
+
+  "voice_settings": {
+    "provider": "elevenlabs",
+    "model": "eleven_v3",
+    "language": "ru"
+  },
+
+  "avatar": {
+    "enabled": true,
+    "provider": "heygen",
+    "version": "avatar_5",
+    "position": "bottom_right",
+    "scale": 0.30,
+    "background": "transparent",
+    "segments": ["hook", "s6"]
+  },
+
+  "visuals": [
+    {
+      "id": "v1",
+      "type": "footage",
+      "query": "black hole accretion disk cinematic",
+      "keywords": ["event horizon glow", "accretion disk space", "schwarzschild black hole"],
+      "start": 0,
+      "duration": 2.6,
+      "position": "fullscreen",
+      "motion": "zoom_in",
+      "priority": "critical",
+      "segment_ref": "hook",
+      "must_avoid": ["cartoon", "logo", "text"]
+    },
+    {
+      "id": "v2",
+      "type": "footage",
+      "query": "spacetime curvature grid warp",
+      "keywords": ["gravity well animation", "warped space grid", "general relativity visual"],
+      "start": 2.6,
+      "duration": 5.8,
+      "position": "fullscreen",
+      "motion": "kenburns",
+      "segment_ref": "s1"
+    },
+    {
+      "id": "v3",
+      "type": "infographic",
+      "query": "tidal forces spaghettification diagram minimal",
+      "keywords": ["tidal stretch diagram", "astronaut stretch science", "gravity gradient"],
+      "start": 8.4,
+      "duration": 6.2,
+      "position": "fullscreen",
+      "motion": "none",
+      "priority": "high",
+      "segment_ref": "s2",
+      "must_include": ["tidal"]
+    },
+    {
+      "id": "v4",
+      "type": "footage",
+      "query": "supermassive black hole galaxy center",
+      "keywords": ["milky way black hole", "sagittarius a star orbits", "galactic core"],
+      "start": 14.6,
+      "duration": 6.0,
+      "position": "fullscreen",
+      "motion": "zoom_out",
+      "segment_ref": "s3"
+    },
+    {
+      "id": "v5",
+      "type": "motion_graphics",
+      "query": "singularity density infinity minimal dark",
+      "keywords": ["point singularity abstract", "infinite density visual", "physics breakdown"],
+      "start": 20.6,
+      "duration": 6.4,
+      "position": "fullscreen",
+      "motion": "parallax",
+      "priority": "high",
+      "segment_ref": "s4"
+    },
+    {
+      "id": "v6",
+      "type": "infographic",
+      "query": "holographic principle horizon information",
+      "keywords": ["event horizon information surface", "black hole entropy diagram", "hawking radiation soft"],
+      "start": 27.0,
+      "duration": 6.2,
+      "position": "fullscreen",
+      "motion": "none",
+      "segment_ref": "s5"
+    },
+    {
+      "id": "v7",
+      "type": "footage",
+      "query": "astronaut silhouette against nebula dark",
+      "keywords": ["lone astronaut space", "human scale cosmos", "void silhouette"],
+      "start": 33.2,
+      "duration": 5.5,
+      "position": "fullscreen",
+      "motion": "zoom_in",
+      "priority": "high",
+      "segment_ref": "s6"
+    },
+    {
+      "id": "v8",
+      "type": "footage",
+      "query": "deep space stars slow drift",
+      "keywords": ["starfield slow pan", "cosmic void calm", "night sky deep"],
+      "start": 38.7,
+      "duration": 5.8,
+      "position": "fullscreen",
+      "motion": "kenburns",
+      "segment_ref": "s7"
+    },
+    {
+      "id": "v9",
+      "type": "motion_graphics",
+      "query": "minimal particle field dark graphite",
+      "keywords": ["abstract particles loop", "dark tech background"],
+      "start": 44.5,
+      "duration": 7.5,
+      "position": "fullscreen",
+      "motion": "parallax",
+      "allow_magnific": false
+    }
+  ],
+
+  "music": {
+    "volume": 0.15,
+    "ducking": true,
+    "duck_to": 0.05,
+    "fade_in": 0.5,
+    "fade_out": 1.2
+  },
+
+  "audio_fx": [
+    { "type": "impact", "at": 0.08, "intensity": 0.7, "duration": 0.9 },
+    { "type": "whoosh", "at": 8.3, "intensity": 0.55, "duration": 0.7 },
+    { "type": "riser", "at": 19.8, "intensity": 0.6, "duration": 0.9 },
+    { "type": "sub_drop", "at": 20.6, "intensity": 0.72, "duration": 0.85 },
+    { "type": "pop", "at": 44.5, "intensity": 0.45, "duration": 0.5 }
+  ],
+
+  "captions": {
+    "enabled": true,
+    "style": "karaoke",
+    "position": "center_bottom",
+    "max_chars_per_line": 22,
+    "stroke": true,
+    "uppercase": false
+  },
+
+  "brand_elements": {},
+
+  "cta": {
+    "text": "Подпишись — сигнал из будущего",
+    "start": 44.5,
+    "duration": 5.0,
+    "style": "badge"
+  },
+
+  "memes": {
+    "enabled": true,
+    "tags": ["вопрос", "шок", "естественно", "миф"],
+    "max_count": 1,
+    "max_duration": 1.3
+  },
+
+  "constraints": {
+    "magnific_token_budget": 10,
+    "allow_generative": true,
+    "require_vision_qa": true,
+    "min_visual_score": 0.62,
+    "manual_review_ok": true
+  }
+}

@@ -61,25 +61,42 @@
   },
   "memes": {
     "enabled": true,
-    "frequency": 10,
-    "max_duration": 1.5,
-    "forbidden_rubrics": ["наука", "медицина", "science", "medicine"],
-    "allowed_beats": ["context_end", "core1_to_core2"]
+    "frequency": 4,
+    "max_duration": 1.4,
+    "max_per_video": 1,
+    "prefer_safe_for_science": true,
+    "forbidden_rubrics": ["медицина", "medicine"],
+    "allowed_beats": [
+      "hook_punch",
+      "misconception",
+      "absurd_scale",
+      "deadpan_accept",
+      "reveal_twist",
+      "context_end",
+      "core1_to_core2"
+    ],
+    "tone": "meta_irony"
   },
   "avatar": {
-    "look_id": "ca4970eacdf34c099f393ad885214428",
-    "group_id": "7890ab9e56ac4c8e979f914b3d7140ee",
+    "look_id": "54172d7a5b2946ed8a592dee955fb0c7",
+    "look_id_edit": "48f0bd5e217548ed8bbdfb67e5c1efc9",
+    "_comment_looks": "look_id = current test twin (studio mic / neon room). look_id_edit = primary twin for environment regenerations.",
+    "group_id": "d0573be250724c23bed61037f1c7490d",
     "engine": "avatar_v",
-    "motion_prompt": "Seated at a desk in a dark neon-lit room, chest-up framing, slight high camera angle, speaking into a studio condenser microphone, natural hand gestures visible, serious expert tone, looking into camera"
+    "motion_prompt": "Seated at a desk in a dark neon-lit cyberpunk studio, chest-up framing, black crew-neck t-shirt, short spiky dark hair, thin dark rectangular glasses, speaking into a studio dynamic microphone on a boom arm, cool cyan rim light from the left, subtle magenta ambient fill, serious expert tone, looking into camera, natural hand gestures"
   },
   "voice": {
     "voice_id": "14NozJq5eoBmDc1FXFDq",
+    "provider": "elevenlabs",
+    "heygen_voice_id": "84c8bb1e9b8744e2a2ce5a04ed0fb459",
+    "heygen_voice_name": "NIKITA2",
     "model": "eleven_v3",
     "stability": 47,
     "similarity_boost": 0.82,
     "style": 0.38,
     "speed": 1.04,
-    "language": "ru"
+    "language": "ru",
+    "_comment": "Primary path: ElevenLabs TTS + word timings, then HeyGen lipsync via audioAssetId. NIKITA2 is a HeyGen-side fallback only."
   },
   "magnific_prompt_skeleton": "[SUBJECT], cinematic sci-fi realism, dark graphite background (#0A0C10), subtle red rim light accent (#FF2A3C), cool cyan ambient glow (#37E4FF), volumetric fog, high detail, shallow depth of field, 8k, photorealistic, tech-documentary lighting, no text, no watermark"
 }

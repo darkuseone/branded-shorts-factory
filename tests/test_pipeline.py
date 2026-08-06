@@ -155,12 +155,17 @@ def test_offline_run_spends_no_tokens(settings, minimal_spec):
     assert resolver.budget.spent == 0, "free stock that passes QA must never cost tokens"
 
 
-def test_meme_slot_without_a_bank_is_reported_not_faked(settings, minimal_spec):
+def test_meme_slot_without_a_bank_is_reported_not_faked(settings, minimal_spec, tmp_path):
+    from shorts_factory.assets.library import MemeLibrary
+
     minimal_spec.memes.enabled = True
     minimal_spec.memes.tags = ["shock"]
     minimal_spec.visuals[0].type = "meme"
     minimal_spec.visuals[0].keywords = ["shock"]
+    empty_bank = tmp_path / "empty-memes"
+    empty_bank.mkdir()
     resolver = build_resolver(settings, minimal_spec)
+    resolver.memes = MemeLibrary(empty_bank)
     resolved = resolver.resolve(minimal_spec, minimal_spec.visuals[0])
     assert resolved.qa.outcome == "rejected"
     assert "no meme in the bank" in resolved.qa.notes[0]
