@@ -14,6 +14,10 @@
     },
     "title": { "type": "string", "minLength": 1 },
     "topic": { "type": "string" },
+    "rubric": {
+      "type": "string",
+      "description": "Channel rubric: космос / IT / технологии / AI / наука (and EN aliases). Drives music pick and meme bans."
+    },
     "language": { "type": "string", "default": "ru" },
     "duration_target": { "type": "number", "minimum": 5, "maximum": 180 },
 
@@ -52,8 +56,16 @@
       "type": "object",
       "properties": {
         "enabled": { "type": "boolean", "default": true },
-        "provider": { "type": "string", "default": "heygen" },
-        "avatar_id": { "type": "string" },
+        "provider": {
+          "type": "string",
+          "default": "heygen",
+          "description": "heygen (API) or external (jobs/<id>/avatar.mp4 committed after the chat-side HeyGen step)."
+        },
+        "avatar_id": { "type": "string", "description": "HeyGen look_id. Falls back to brandbook.avatar.look_id." },
+        "external_path": {
+          "type": "string",
+          "description": "Optional path to a pre-rendered avatar clip. Default: jobs/<id>/avatar.mp4|.webm."
+        },
         "version": { "type": "string", "default": "avatar_5" },
         "position": {
           "enum": ["bottom_right", "bottom_left", "bottom_center", "center", "fullscreen", "top_right"]
@@ -64,6 +76,32 @@
           "type": "array",
           "items": { "type": "string" },
           "description": "Script segment ids the avatar appears on. Empty = whole video."
+        }
+      }
+    },
+
+    "ring": {
+      "type": "object",
+      "description": "Pulse Ring overrides. Geometry defaults live in brand/brandbook.json.",
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "anchor": { "enum": ["bottom_right", "bottom_left", "bottom_center", "center"] },
+        "diameter_ratio": { "type": "number", "minimum": 0.1, "maximum": 0.8 }
+      }
+    },
+
+    "sfx": {
+      "type": "object",
+      "description": "Sound-design policy for automatic placement.",
+      "properties": {
+        "policy": {
+          "type": "object",
+          "properties": {
+            "max_effects": { "type": "integer", "minimum": 0, "maximum": 40 },
+            "min_gap": { "type": "number", "minimum": 0.2, "maximum": 10, "default": 1.2 },
+            "type_cooldown": { "type": "number", "minimum": 0, "maximum": 30, "default": 4 },
+            "voice_guard": { "type": "number", "minimum": 0, "maximum": 2, "default": 0.4 }
+          }
         }
       }
     },
@@ -119,7 +157,7 @@
           "enum": ["center", "center_bottom", "bottom", "top", "upper_third", "lower_third"]
         },
         "max_chars_per_line": { "type": "integer", "minimum": 10, "maximum": 48, "default": 22 },
-        "highlight_color": { "type": "string", "default": "#FFD400" },
+        "highlight_color": { "type": "string", "default": "#FF2A3C" },
         "text_color": { "type": "string", "default": "#FFFFFF" },
         "stroke": { "type": "boolean", "default": true },
         "uppercase": { "type": "boolean", "default": false }

@@ -2,12 +2,11 @@
 
     python -m shorts_factory validate jobs/my-short.json
     python -m shorts_factory plan     jobs/my-short.json
+    python -m shorts_factory prepare  jobs/my-short.json
     python -m shorts_factory build    jobs/my-short.json
+    python -m shorts_factory render   jobs/my-short.json
     python -m shorts_factory sfxscan
     python -m shorts_factory doctor
-
-Exit codes: 0 success, 1 recoverable failure (render failed, slots unfilled),
-2 invalid scenario JSON, 3 bad usage.
 """
 
 from __future__ import annotations
@@ -49,7 +48,9 @@ def build_parser() -> argparse.ArgumentParser:
     for name, help_text in (
         ("validate", "check a scenario JSON and report every issue"),
         ("plan", "search, QA and lay out the timeline without rendering"),
+        ("prepare", "phase 1: voice + words.json artifact (no avatar, no render)"),
         ("build", "the full pipeline, ending in an MP4"),
+        ("render", "phase 3: build using jobs/<id>/avatar.mp4 (no HeyGen API)"),
     ):
         command = sub.add_parser(name, help=help_text)
         command.add_argument("spec", type=Path, help="path to the scenario JSON")
@@ -92,7 +93,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _validate(spec, issues)
 
         pipeline = Pipeline(settings)
-        result = pipeline.plan(spec, issues) if args.command == "plan" else pipeline.run(spec, issues)
+        if args.command == "plan":
+            result = pipeline.plan(spec, issues)
+        elif args.command == "prepare":
+            result = pipeline.prepare(spec, issues)
+        elif args.command == "render":
+            result = pipeline.render_only(spec, issues)
+        else:
+            result = pipeline.run(spec, issues)
 
         if getattr(args, "json", False):
             print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
@@ -224,7 +232,7 @@ def _doctor(settings: Settings) -> int:
 
 
 def _succeeded(result: RunResult, command: str) -> bool:
-    if command == "plan":
+    if command in {"plan", "prepare"}:
         return not result.qa.rejected
     return result.rendered and not result.qa.rejected
 
@@ -234,6 +242,10 @@ def _print_summary(result: RunResult, command: str) -> None:
     log.info("QA: %s", result.qa.summary())
     if result.budget:
         log.info("Magnific tokens: %d/%d used", result.budget.spent, result.budget.total)
+    if result.prepare_dir:
+        log.info("prepare artifact: %s", result.prepare_dir)
+    if result.avatar:
+        log.info("avatar: %s (%s)", result.avatar.path.name, result.avatar.source)
     for warning in result.warnings:
         log.warning("%s", warning)
     for item in result.qa.manual_review:
@@ -244,13 +256,13 @@ def _print_summary(result: RunResult, command: str) -> None:
         )
     if result.report_path:
         log.info("report: %s", result.report_path)
-    if command != "plan":
-        if result.rendered:
-            log.info("output: %s", result.output)
-        else:
-            log.error("no video was produced")
-    elif result.composition_dir:
-        log.info("composition: %s", result.composition_dir)
+    if command in {"plan", "prepare"}:
+        if result.composition_dir:
+            log.info("composition: %s", result.composition_dir)
+    elif result.rendered:
+        log.info("output: %s", result.output)
+    else:
+        log.error("no video was produced")
 
 
 def _replace(settings: Settings, **changes: object) -> Settings:

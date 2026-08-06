@@ -1,12 +1,12 @@
 """Brandbook support.
 
-The brandbook is not available yet, so this module defines its shape and merges
-whatever exists on disk over the per-video `brand_elements`. Precedence is:
+Precedence:
 
     brand_elements (per video)  >  brand/brandbook.json  >  built-in defaults
 
-That way the day the brandbook arrives, dropping the file in is the whole
-integration — no code change, and individual videos can still override.
+The brandbook also carries channel-wide defaults for avatar look, ElevenLabs
+voice, music-by-rubric and meme policy — those are applied onto the Spec in
+``apply_brandbook_to_spec``.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from ..logging_utils import get_logger
-from ..spec import BrandElements
+from ..spec import BrandElements, CaptionSettings, Spec, VoiceSettings
 
 log = get_logger("brand")
 
@@ -40,6 +40,10 @@ class Brandbook:
     lower_third: bool | None = None
     outro_card: bool | None = None
     safe_area_margin: int = 96
+    music_by_rubric: dict[str, str] = field(default_factory=dict)
+    memes: dict[str, Any] = field(default_factory=dict)
+    avatar: dict[str, Any] = field(default_factory=dict)
+    voice: dict[str, Any] = field(default_factory=dict)
     extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
@@ -59,6 +63,10 @@ class Brandbook:
 
         colors = data.get("colors") if isinstance(data.get("colors"), dict) else {}
         typography = data.get("typography") if isinstance(data.get("typography"), dict) else {}
+        music_map = data.get("music_by_rubric") if isinstance(data.get("music_by_rubric"), dict) else {}
+        memes = data.get("memes") if isinstance(data.get("memes"), dict) else {}
+        avatar = data.get("avatar") if isinstance(data.get("avatar"), dict) else {}
+        voice = data.get("voice") if isinstance(data.get("voice"), dict) else {}
         known = {
             "name": str(data.get("name", "")),
             "color_primary": str(colors.get("primary", data.get("color_primary", ""))),
@@ -72,6 +80,25 @@ class Brandbook:
         opacity = data.get("watermark_opacity")
         lower_third = data.get("lower_third")
         outro_card = data.get("outro_card")
+        reserved = {
+            "colors",
+            "typography",
+            "music_by_rubric",
+            "memes",
+            "avatar",
+            "voice",
+            "name",
+            "logo",
+            "logo_position",
+            "watermark_opacity",
+            "lower_third",
+            "outro_card",
+            "safe_area_margin",
+            "color_primary",
+            "color_accent",
+            "color_background",
+            "font_family",
+        }
         log.info("brandbook loaded: %s", known["name"] or path.name)
         return cls(
             **known,
@@ -79,8 +106,22 @@ class Brandbook:
             lower_third=lower_third if isinstance(lower_third, bool) else None,
             outro_card=outro_card if isinstance(outro_card, bool) else None,
             safe_area_margin=int(data.get("safe_area_margin", 96) or 96),
-            extra={k: v for k, v in data.items() if k not in {"colors", "typography"}},
+            music_by_rubric={str(k): str(v) for k, v in music_map.items()},
+            memes=dict(memes),
+            avatar=dict(avatar),
+            voice=dict(voice),
+            extra={k: v for k, v in data.items() if k not in reserved},
         )
+
+    def music_for_rubric(self, rubric: str) -> str:
+        """Track stem for a rubric, case-insensitive. Empty when unknown."""
+        if not rubric:
+            return ""
+        wanted = rubric.strip()
+        if wanted in self.music_by_rubric:
+            return self.music_by_rubric[wanted]
+        lowered = {key.lower(): value for key, value in self.music_by_rubric.items()}
+        return lowered.get(wanted.lower(), "")
 
 
 def apply_brandbook(brand: BrandElements, book: Brandbook | None) -> BrandElements:
@@ -113,3 +154,65 @@ def apply_brandbook(brand: BrandElements, book: Brandbook | None) -> BrandElemen
         updates["outro_card"] = book.outro_card
 
     return replace(brand, **updates) if updates else brand
+
+
+def apply_brandbook_to_spec(spec: Spec, book: Brandbook | None) -> Spec:
+    """Merge brandbook into brand, voice, avatar and music when the JSON left them blank."""
+    if book is None:
+        return spec
+
+    spec.brand = apply_brandbook(spec.brand, book)
+
+    voice_defaults = VoiceSettings()
+    voice_updates: dict[str, Any] = {}
+    book_voice_id = str(book.voice.get("voice_id") or "")
+    if book_voice_id and not spec.voice.voice_id:
+        voice_updates["voice_id"] = book_voice_id
+    for field_name, key, cast in (
+        ("model", "model", str),
+        ("stability", "stability", float),
+        ("similarity_boost", "similarity_boost", float),
+        ("style", "style", float),
+        ("speed", "speed", float),
+        ("language", "language", str),
+    ):
+        raw = book.voice.get(key)
+        if raw is None or raw == "":
+            continue
+        current = getattr(spec.voice, field_name)
+        if current == getattr(voice_defaults, field_name):
+            try:
+                voice_updates[field_name] = cast(raw)
+            except (TypeError, ValueError):
+                continue
+    if voice_updates:
+        spec.voice = replace(spec.voice, **voice_updates)
+
+    look_id = str(book.avatar.get("look_id") or book.avatar.get("avatar_id") or "")
+    if look_id and not spec.avatar.avatar_id:
+        spec.avatar = replace(spec.avatar, avatar_id=look_id, enabled=True)
+
+    if not spec.music.track:
+        track = book.music_for_rubric(spec.rubric)
+        if track:
+            spec.music = replace(spec.music, track=track)
+            log.info("music track from rubric %r → %s", spec.rubric, track)
+
+    # Channel meme defaults: enable when brandbook says so and the scenario
+    # did not explicitly disable (enabled false is the JSON default).
+    if book.memes.get("enabled") and not spec.memes.enabled and "memes" not in spec.raw:
+        tags = book.memes.get("tags") if isinstance(book.memes.get("tags"), list) else []
+        max_duration = book.memes.get("max_duration")
+        spec.memes = replace(
+            spec.memes,
+            enabled=True,
+            tags=[str(tag) for tag in tags] if tags else spec.memes.tags,
+            max_duration=float(max_duration)
+            if isinstance(max_duration, (int, float))
+            else spec.memes.max_duration,
+        )
+
+    if book.caption_highlight and spec.captions.highlight_color == CaptionSettings().highlight_color:
+        spec.captions = replace(spec.captions, highlight_color=book.caption_highlight)
+
+    return spec

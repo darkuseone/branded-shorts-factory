@@ -4,10 +4,14 @@ build/
 *.webm
 *.mov
 
-# NOTE: assets/music, assets/sfx, assets/memes and brand/ are deliberately NOT
-# ignored. GitHub Actions builds from a fresh clone, so anything the render
-# needs — tracks, sounds, memes, logo, brandbook — has to be committed or the
-# build silently comes out without it.
+# Two-phase avatar clips must be committed so Actions can render without HeyGen.
+!jobs/**/avatar.mp4
+!jobs/**/avatar.webm
+
+# NOTE: assets/music, assets/sfx, assets/memes, brand/ and .state/ are
+# deliberately NOT ignored. GitHub Actions builds from a fresh clone, so
+# anything the render needs — tracks, sounds, memes, logo, brandbook, meme
+# cadence — has to be committed or the build silently comes out without it.
 
 # Python
 __pycache__/

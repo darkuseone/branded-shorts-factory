@@ -1,11 +1,13 @@
-"""HeyGen Avatar 5 — the presenter track.
+"""HeyGen Avatar — the presenter track.
 
-Preferred path: narration is synthesised locally by ElevenLabs, uploaded to
-HeyGen as an audio asset and used to drive the avatar. That keeps one voice
-render as the single source of truth for both the mix and the caption timings.
+Three paths, in preference order:
 
-Fallback path: hand HeyGen the text and a voice id and let it speak. Used when
-the upload endpoint is unavailable or no local narration exists.
+1. **External** — ``jobs/<id>/avatar.mp4`` (or ``.webm``) already in the repo.
+   Used by the two-phase pipeline: Actions prepare the voice, a chat agent
+   renders the avatar via HeyGen MCP, commits the clip, Actions render.
+   No ``HEYGEN_API_KEY`` needed at build time.
+2. **API + local narration** — upload ElevenLabs audio, drive the avatar with it.
+3. **API + text** — fall back to HeyGen TTS when upload fails.
 """
 
 from __future__ import annotations
@@ -27,6 +29,8 @@ UPLOAD_BASE = "https://upload.heygen.com"
 POLL_INTERVAL = 10.0
 POLL_TIMEOUT = 900.0
 
+EXTERNAL_NAMES = ("avatar.mp4", "avatar.webm", "avatar.mov")
+
 
 @dataclass
 class AvatarClip:
@@ -36,6 +40,7 @@ class AvatarClip:
     height: int = VIDEO_HEIGHT
     transparent: bool = False
     video_id: str = ""
+    source: str = "heygen"
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -43,6 +48,7 @@ class AvatarClip:
             "duration": round(self.duration, 2),
             "transparent": self.transparent,
             "video_id": self.video_id,
+            "source": self.source,
         }
 
 
@@ -70,6 +76,63 @@ class HeyGenClient:
         if not self.settings.credentials.heygen:
             return "HEYGEN_API_KEY not set"
         return ""
+
+    # -- external (two-phase) -----------------------------------------------
+
+    def load_external(
+        self,
+        spec_id: str,
+        avatar: AvatarSettings,
+        *,
+        duration_hint: float = 0.0,
+    ) -> AvatarClip | None:
+        """Load a pre-rendered avatar clip from disk. No API call."""
+        path = self._resolve_external_path(spec_id, avatar)
+        if path is None:
+            return None
+        from ..media.ffmpeg import probe
+
+        info = probe(path, self.settings.ffprobe_cmd)
+        duration = info.duration if info and info.duration else duration_hint
+        transparent = path.suffix.lower() == ".webm" or avatar.background == "transparent"
+        log.info("using external avatar %s (%.1fs)", path, duration, extra={"stage": "avatar"})
+        return AvatarClip(
+            path=path,
+            duration=duration or duration_hint,
+            width=info.width if info and info.width else VIDEO_WIDTH,
+            height=info.height if info and info.height else VIDEO_HEIGHT,
+            transparent=transparent,
+            video_id="external",
+            source="external",
+        )
+
+    def _resolve_external_path(self, spec_id: str, avatar: AvatarSettings) -> Path | None:
+        candidates: list[Path] = []
+        if avatar.external_path:
+            candidates.append(Path(avatar.external_path))
+            if not Path(avatar.external_path).is_absolute():
+                candidates.append(self.settings.paths.root / avatar.external_path)
+        jobs_dir = self.settings.paths.root / "jobs" / spec_id
+        for name in EXTERNAL_NAMES:
+            candidates.append(jobs_dir / name)
+        # Also accept jobs/avatar_<id>.mp4 for flat layouts.
+        for name in EXTERNAL_NAMES:
+            candidates.append(self.settings.paths.root / "jobs" / f"{spec_id}_{name}")
+
+        seen: set[Path] = set()
+        for candidate in candidates:
+            resolved = candidate.resolve() if candidate.exists() else candidate
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            if candidate.exists() and candidate.is_file():
+                return candidate
+        return None
+
+    def prefers_external(self, spec_id: str, avatar: AvatarSettings) -> bool:
+        if avatar.provider.lower() == "external":
+            return True
+        return self._resolve_external_path(spec_id, avatar) is not None
 
     # -- assets -------------------------------------------------------------
 
@@ -108,10 +171,24 @@ class HeyGenClient:
         text: str = "",
         audio_path: Path | None = None,
         duration_hint: float = 0.0,
+        spec_id: str = "",
     ) -> AvatarClip | None:
-        """Render the avatar clip and download it. ``None`` when unavailable."""
+        """Render or load the avatar clip. ``None`` when unavailable."""
         if not avatar.enabled:
             return None
+
+        if spec_id and self.prefers_external(spec_id, avatar):
+            clip = self.load_external(spec_id, avatar, duration_hint=duration_hint)
+            if clip is not None:
+                return clip
+            if avatar.provider.lower() == "external":
+                log.warning(
+                    "avatar.provider=external but no clip at jobs/%s/avatar.*",
+                    spec_id,
+                    extra={"stage": "avatar"},
+                )
+                return None
+
         if not self.is_available:
             log.info("skipped: %s", self.unavailable_reason(), extra={"stage": "avatar"})
             return None
@@ -177,7 +254,7 @@ class HeyGenClient:
             log.error("avatar download failed: %s", exc, extra={"stage": "avatar"})
             return None
 
-        from ..media.ffmpeg import probe  # local import keeps media optional here
+        from ..media.ffmpeg import probe
 
         info = probe(target, self.settings.ffprobe_cmd)
         return AvatarClip(
@@ -187,6 +264,7 @@ class HeyGenClient:
             height=info.height if info and info.height else VIDEO_HEIGHT,
             transparent=avatar.background == "transparent",
             video_id=video_id,
+            source="heygen",
         )
 
     def _wait_for(self, video_id: str) -> str | None:

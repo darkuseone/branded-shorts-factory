@@ -1,11 +1,13 @@
-name: Build Short
+name: Render Short
 
-# Full single-shot build (local / fallback). Prefer the two-phase flow:
-#   prepare-short.yml  →  HeyGen MCP in chat  →  render-short.yml
-#
-# This workflow still works when HEYGEN_API_KEY is set and no external
-# avatar clip exists under jobs/<id>/.
+# Phase 3 of the two-phase pipeline.
+# Triggers when a committed avatar clip lands under jobs/<id>/avatar.*.
+# Uses the external avatar path — no HEYGEN_API_KEY required.
 on:
+  push:
+    paths:
+      - "jobs/**/avatar.mp4"
+      - "jobs/**/avatar.webm"
   workflow_dispatch:
     inputs:
       spec:
@@ -13,25 +15,25 @@ on:
         required: true
         default: "examples/venus-hell.json"
       dry_run:
-        description: "Stop before rendering (search + QA + composition only)"
+        description: "Stop before rendering"
         type: boolean
         default: false
       docker:
-        description: "Render inside Docker (recommended on runners)"
+        description: "Render inside Docker"
         type: boolean
         default: true
 
 concurrency:
-  group: build-short-${{ github.ref }}
+  group: render-short-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  build:
+  render:
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
     env:
-      HEYGEN_API_KEY: ${{ secrets.HEYGEN_API_KEY }}
+      # HeyGen is intentionally omitted — avatar comes from jobs/<id>/avatar.*
       ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
       MAGNIFIC_API_KEY: ${{ secrets.MAGNIFIC_API_KEY }}
       GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
@@ -49,14 +51,29 @@ jobs:
       - name: Pick the scenario
         id: pick
         run: |
-          SPEC="${{ inputs.spec }}"
+          if [ -n "${{ inputs.spec }}" ]; then
+            SPEC="${{ inputs.spec }}"
+          else
+            # Avatar push: jobs/<id>/avatar.mp4 → jobs/<id>.json
+            AVATAR=$(git diff --name-only --diff-filter=d '${{ github.event.before }}' '${{ github.sha }}' \
+                     -- 'jobs/**/avatar.mp4' 'jobs/**/avatar.webm' | tail -n 1)
+            if [ -n "$AVATAR" ]; then
+              ID=$(basename "$(dirname "$AVATAR")")
+              SPEC="jobs/${ID}.json"
+            fi
+          fi
           if [ -z "$SPEC" ] || [ ! -f "$SPEC" ]; then
             echo "::error::No scenario JSON found (looked for '$SPEC')"
             exit 1
           fi
+          ID=$(python3 -c "import json;print(json.load(open('$SPEC'))['id'])")
+          if [ ! -f "jobs/${ID}/avatar.mp4" ] && [ ! -f "jobs/${ID}/avatar.webm" ]; then
+            echo "::error::Missing jobs/${ID}/avatar.mp4 (or .webm) — run prepare + HeyGen first"
+            exit 1
+          fi
           echo "spec=$SPEC" >> "$GITHUB_OUTPUT"
-          echo "id=$(python3 -c "import json;print(json.load(open('$SPEC'))['id'])")" >> "$GITHUB_OUTPUT"
-          echo "Building $SPEC"
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+          echo "Rendering $SPEC with external avatar"
 
       - uses: actions/setup-python@v5
         with:
@@ -77,22 +94,22 @@ jobs:
       - name: Environment check
         run: python -m shorts_factory doctor
 
-      - name: Validate the scenario
+      - name: Validate
         run: python -m shorts_factory validate "${{ steps.pick.outputs.spec }}"
 
-      - name: Build
+      - name: Render (external avatar)
         id: build
         run: |
           ARGS=""
           if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="--dry-run"; fi
-          python -m shorts_factory $ARGS build "${{ steps.pick.outputs.spec }}"
+          python -m shorts_factory $ARGS render "${{ steps.pick.outputs.spec }}"
 
       - name: Summary
         if: always()
         run: |
           REPORT="build/reports/${{ steps.pick.outputs.id }}.json"
           {
-            echo "## ${{ steps.pick.outputs.id }}"
+            echo "## render ${{ steps.pick.outputs.id }}"
             if [ -f "$REPORT" ]; then
               python3 - "$REPORT" <<'PY'
           import json, sys
@@ -103,11 +120,13 @@ jobs:
           budget = report.get("budget") or {}
           print(f"- Magnific tokens: **{budget.get('spent', 0)}/{budget.get('total', 0)}**")
           print(f"- Output: `{report.get('output') or 'not produced'}`")
+          avatar = (report.get("voice") or {}).get("avatar") or {}
+          print(f"- Avatar source: **{avatar.get('source', '?')}**")
           for warning in report.get("warnings", [])[:15]:
               print(f"  - ⚠️ {warning}")
           PY
             else
-              echo "No report was produced — check the build step log."
+              echo "No report was produced — check the render step log."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 

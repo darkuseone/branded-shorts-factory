@@ -4,19 +4,33 @@ Stages run in a fixed order and each one degrades rather than aborts, so a
 missing credential costs you a track — not the run. What actually happened is
 always written to `build/reports/<id>.json`.
 
-    validate → brand → voice → avatar → visuals (search + 2× QA)
-            → captions → music → mix → timeline → composition → render
+Two-phase flow (HeyGen MCP lives in chat, secrets live in Actions):
+
+    prepare → voice.wav + words.json artifact
+    (chat)  → HeyGen avatar → commit jobs/<id>/avatar.mp4
+    render  → timeline + ring + mix + HyperFrames
+
+Full local path still works: ``build`` does prepare + avatar API + render.
 """
 
 from __future__ import annotations
 
 import json
+import shutil
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
-from .assets.brand import Brandbook, apply_brandbook
+from .assets.brand import Brandbook, apply_brandbook_to_spec
 from .assets.library import MemeLibrary, MusicLibrary, SfxLibrary
+from .assets.meme_policy import (
+    MemeDecision,
+    MemeHistory,
+    MemePolicyConfig,
+    decide_meme,
+    ensure_meme_visual,
+    history_path,
+)
 from .config import Settings
 from .errors import RenderError
 from .generative.budget import TokenBudget
@@ -45,6 +59,7 @@ class RunResult:
     output: Path | None = None
     composition_dir: Path | None = None
     report_path: Path | None = None
+    prepare_dir: Path | None = None
     timeline: Timeline | None = None
     qa: QAReport = field(default_factory=QAReport)
     resolved: list[ResolvedVisual] = field(default_factory=list)
@@ -58,6 +73,7 @@ class RunResult:
     budget: TokenBudget | None = None
     spec_issues: list[SpecIssue] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    meme_decision: MemeDecision | None = None
 
     @property
     def rendered(self) -> bool:
@@ -72,6 +88,7 @@ class RunResult:
             "spec_id": self.spec_id,
             "output": str(self.output) if self.output else None,
             "composition_dir": str(self.composition_dir) if self.composition_dir else None,
+            "prepare_dir": str(self.prepare_dir) if self.prepare_dir else None,
             "rendered": self.rendered,
             "needs_review": self.needs_review,
             "spec_issues": [str(issue) for issue in self.spec_issues],
@@ -86,6 +103,15 @@ class RunResult:
                 "avatar": self.avatar.to_dict() if self.avatar else None,
                 "music": str(self.music) if self.music else None,
             },
+            "meme": (
+                {
+                    "allowed": self.meme_decision.allowed,
+                    "reason": self.meme_decision.reason,
+                    "beat": self.meme_decision.beat,
+                }
+                if self.meme_decision
+                else None
+            ),
             "timeline": self.timeline.to_dict() if self.timeline else None,
             "render": self.render.to_dict() if self.render else None,
         }
@@ -109,6 +135,7 @@ class Pipeline:
         self.music_library = MusicLibrary(settings.paths.music_library)
         self.sfx_library = SfxLibrary(settings.paths.sfx_library)
         self.meme_library = MemeLibrary(settings.paths.meme_library)
+        self._brandbook: Brandbook | None = None
 
     # -- entry points -------------------------------------------------------
 
@@ -116,6 +143,7 @@ class Pipeline:
         """Everything except audio, avatar and rendering — a cheap dry pass."""
         result = RunResult(spec_id=spec.id, spec_issues=list(issues or []), budget=self.budget)
         self._apply_brand(spec, result)
+        self._apply_meme_policy(spec, result)
         self._resolve_visuals(spec, result)
         result.captions = build_cues(spec.all_segments, [], spec.captions)
         result.music = self._resolve_music(spec, result)
@@ -127,26 +155,63 @@ class Pipeline:
         )
         result.warnings.extend(result.timeline.warnings)
 
-        # Writing the composition here is what makes `plan` previewable: open
-        # the generated index.html in a browser to see the layout before
-        # spending a single voice or render credit.
         composition = CompositionWriter(
             spec,
             result.timeline,
             self.settings.paths.composition / spec.id,
-            ring=_ring_plan(spec),
+            ring=_ring_plan(spec, self._brandbook),
         ).write()
         result.composition_dir = composition.directory
 
         self._write_report(spec, result)
         return result
 
-    def run(self, spec: Spec, issues: list[SpecIssue] | None = None) -> RunResult:
-        """The full build."""
+    def prepare(self, spec: Spec, issues: list[SpecIssue] | None = None) -> RunResult:
+        """Phase 1: brand, voice (+ word timings), visuals, QA. No avatar, no render.
+
+        Writes ``build/prepare/<id>/`` with narration, ``words.json`` and a report —
+        the artifact the chat agent downloads before calling HeyGen MCP.
+        """
         result = RunResult(spec_id=spec.id, spec_issues=list(issues or []), budget=self.budget)
 
         with stage("brand", log):
             self._apply_brand(spec, result)
+
+        with stage("memes", log):
+            self._apply_meme_policy(spec, result)
+
+        with stage("voice", log) as info:
+            self._synthesize_voice(spec, result)
+            info["clips"] = len(result.voice_clips)
+            info["fx"] = len(result.sfx_clips)
+
+        with stage("visuals", log) as info:
+            self._resolve_visuals(spec, result)
+            info["qa"] = result.qa.summary()
+
+        with stage("captions", log) as info:
+            result.captions = build_cues(spec.all_segments, result.voice_clips, spec.captions)
+            info["cues"] = len(result.captions)
+
+        with stage("music", log):
+            result.music = self._resolve_music(spec, result)
+
+        with stage("prepare_artifact", log) as info:
+            result.prepare_dir = self._write_prepare_artifact(spec, result)
+            info["dir"] = str(result.prepare_dir)
+
+        self._write_report(spec, result)
+        return result
+
+    def run(self, spec: Spec, issues: list[SpecIssue] | None = None) -> RunResult:
+        """The full build (prepare stages + avatar + render)."""
+        result = RunResult(spec_id=spec.id, spec_issues=list(issues or []), budget=self.budget)
+
+        with stage("brand", log):
+            self._apply_brand(spec, result)
+
+        with stage("memes", log):
+            self._apply_meme_policy(spec, result)
 
         with stage("voice", log) as info:
             self._synthesize_voice(spec, result)
@@ -185,7 +250,9 @@ class Pipeline:
 
         with stage("compose", log) as info:
             composition_dir = self.settings.paths.composition / spec.id
-            writer = CompositionWriter(spec, result.timeline, composition_dir, ring=_ring_plan(spec))
+            writer = CompositionWriter(
+                spec, result.timeline, composition_dir, ring=_ring_plan(spec, self._brandbook)
+            )
             composition = writer.write()
             result.composition_dir = composition.directory
             info["media"] = composition.media_files
@@ -200,16 +267,61 @@ class Pipeline:
                 result.warnings.append(str(exc))
                 log.error("%s", exc, extra={"stage": "render"})
 
+        self._record_meme_history(spec, result)
         self._write_report(spec, result)
         return result
+
+    def render_only(self, spec: Spec, issues: list[SpecIssue] | None = None) -> RunResult:
+        """Phase 3: require ``jobs/<id>/avatar.*``; skip HeyGen API calls."""
+        if not self.avatar_client.prefers_external(spec.id, spec.avatar):
+            spec.avatar = replace(spec.avatar, provider="external")
+        return self.run(spec, issues)
 
     # -- stages -------------------------------------------------------------
 
     def _apply_brand(self, spec: Spec, result: RunResult) -> None:
         book = Brandbook.load(self.settings.paths.brand_dir)
-        spec.brand = apply_brandbook(spec.brand, book)
+        self._brandbook = book
+        apply_brandbook_to_spec(spec, book)
         if book is None:
             result.warnings.append("no brandbook found; using per-video brand_elements")
+
+    def _apply_meme_policy(self, spec: Spec, result: RunResult) -> None:
+        raw = self._brandbook.memes if self._brandbook else {}
+        policy = MemePolicyConfig.from_brandbook(raw)
+        history = MemeHistory.load(history_path(self.settings.paths.root))
+        decision = decide_meme(spec, policy, history)
+        result.meme_decision = decision
+
+        if decision.allowed:
+            ensure_meme_visual(spec, decision)
+        else:
+            kept = []
+            for visual in spec.visuals:
+                if visual.type != "meme":
+                    kept.append(visual)
+                    continue
+                result.warnings.append(f"meme slot {visual.id} skipped: {decision.reason}")
+            spec.visuals = kept
+
+        log.info(
+            "meme policy: %s (%s)",
+            "allow" if decision.allowed else "deny",
+            decision.reason,
+            extra={"stage": "memes"},
+        )
+
+    def _record_meme_history(self, spec: Spec, result: RunResult) -> None:
+        used = any(
+            item.visual.type == "meme" and item.qa.outcome == "accepted" for item in result.resolved
+        )
+        path = history_path(self.settings.paths.root)
+        history = MemeHistory.load(path)
+        history.record(spec.id, used_meme=used)
+        try:
+            history.save(path)
+        except OSError as exc:
+            result.warnings.append(f"could not update meme history: {exc}")
 
     def _synthesize_voice(self, spec: Spec, result: RunResult) -> None:
         if self.voice_client.is_available:
@@ -235,6 +347,8 @@ class Pipeline:
         if missing:
             if self.voice_client.is_available:
                 generated = self.voice_client.generate_all_fx(missing)
+                for clip in generated:
+                    self.voice_client.cache_fx_to_bank(clip, self.settings.paths.sfx_library)
             elif self.sfx_library.items:
                 result.warnings.append(
                     f"{len(missing)} effect(s) have no match in {self.settings.paths.sfx_library} "
@@ -244,12 +358,7 @@ class Pipeline:
         result.sfx_clips = sorted(from_library + generated, key=lambda clip: clip.start)
 
     def _generate_avatar(self, spec: Spec, result: RunResult) -> None:
-        """Render the presenter over the window it is supposed to speak in.
-
-        The avatar is driven by our own ElevenLabs narration, so the audio has
-        to be positioned relative to the start of that window — otherwise the
-        lip sync drifts by however long the intro was.
-        """
+        """Load or render the presenter for the window it is supposed to speak in."""
         if not spec.avatar.enabled:
             return
 
@@ -272,6 +381,19 @@ class Pipeline:
                 + ", ".join(f"{a:g}–{b:g}s silent" for a, b in gaps)
                 + "); the presenter stays on screen through the gaps"
             )
+
+        if self.avatar_client.prefers_external(spec.id, spec.avatar):
+            result.avatar = self.avatar_client.generate(
+                spec.avatar,
+                spec.voice,
+                text=" ".join(segment.text for segment in segments),
+                audio_path=None,
+                duration_hint=window_end - window_start,
+                spec_id=spec.id,
+            )
+            if result.avatar is None:
+                result.warnings.append("avatar track missing; the render continues without a presenter")
+            return
 
         clips = [clip for clip in result.voice_clips if not wanted or clip.segment_id in wanted]
         narration: Path | None = None
@@ -301,6 +423,7 @@ class Pipeline:
             text=" ".join(segment.text for segment in segments),
             audio_path=narration,
             duration_hint=window_end - window_start,
+            spec_id=spec.id,
         )
         if result.avatar is None:
             result.warnings.append("avatar track missing; the render continues without a presenter")
@@ -323,6 +446,11 @@ class Pipeline:
         log.info("%s", result.qa.summary(), extra={"stage": "visuals"})
 
     def _resolve_music(self, spec: Spec, result: RunResult) -> Path | None:
+        if not spec.music.track and self._brandbook is not None:
+            track = self._brandbook.music_for_rubric(spec.rubric)
+            if track:
+                spec.music = replace(spec.music, track=track)
+
         if not spec.music.track and not self.music_library.items:
             return None
         item = self.music_library.resolve(spec.music.track)
@@ -354,6 +482,69 @@ class Pipeline:
                 f"pre-mix unavailable ({mix.reason}); audio tracks are handed to the renderer separately"
             )
 
+    def _write_prepare_artifact(self, spec: Spec, result: RunResult) -> Path:
+        """Persist voice + word timings for the chat-side HeyGen step."""
+        target = self.settings.paths.workdir / "prepare" / spec.id
+        target.mkdir(parents=True, exist_ok=True)
+
+        words_payload: list[dict[str, Any]] = []
+        for clip in result.voice_clips:
+            dest = target / f"{clip.segment_id}{clip.path.suffix}"
+            if clip.path.exists():
+                shutil.copy2(clip.path, dest)
+            words_payload.append(
+                {
+                    "segment_id": clip.segment_id,
+                    "start": clip.start,
+                    "duration": clip.duration,
+                    "text": clip.text,
+                    "file": dest.name,
+                    "words": [
+                        {"word": word.word, "start": word.start, "end": word.end} for word in clip.words
+                    ],
+                }
+            )
+
+        if result.voice_clips:
+            narration = target / "voice.mp3"
+            mix = build_mix(
+                narration,
+                duration=spec.spoken_duration or spec.duration_target,
+                voice_clips=result.voice_clips,
+                sfx_clips=[],
+                music_path=None,
+                music=spec.music,
+                ffmpeg=self.settings.ffmpeg_cmd,
+            )
+            if not mix.ok and result.voice_clips[0].path.exists():
+                shutil.copy2(result.voice_clips[0].path, narration)
+
+        motion = ""
+        if self._brandbook and isinstance(self._brandbook.avatar, dict):
+            motion = str(self._brandbook.avatar.get("motion_prompt") or "")
+
+        (target / "words.json").write_text(
+            json.dumps(
+                {
+                    "id": spec.id,
+                    "duration_target": spec.duration_target,
+                    "look_id": spec.avatar.avatar_id,
+                    "motion_prompt": motion,
+                    "segments": words_payload,
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        (target / "report.json").write_text(
+            json.dumps(result.to_dict(), ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        log.info("prepare artifact at %s", target, extra={"stage": "prepare"})
+        return target
+
     # -- reporting ----------------------------------------------------------
 
     def _write_report(self, spec: Spec, result: RunResult) -> None:
@@ -364,14 +555,18 @@ class Pipeline:
         log.info("report written to %s", path, extra={"stage": "report"})
 
 
-def _ring_plan(spec: Spec) -> RingPlan:
+def _ring_plan(spec: Spec, book: Brandbook | None = None) -> RingPlan:
     """Load ring geometry from the brandbook when present, else use defaults."""
-    book = Brandbook.load(Path(__file__).resolve().parents[2] / "brand")
+    if book is None:
+        book = Brandbook.load(Path(__file__).resolve().parents[2] / "brand")
     raw = None
     if book is not None:
         extra = book.extra if isinstance(book.extra, dict) else {}
-        # Brandbook.load puts the whole file into extra sans colors/typography,
-        # so the `ring` block is available there.
         candidate = extra.get("ring")
         raw = candidate if isinstance(candidate, dict) else None
-    return plan_ring(spec, RingConfig.from_brandbook(raw))
+    config = RingConfig.from_brandbook(raw)
+    if spec.ring.diameter_ratio is not None:
+        config = replace(config, diameter_ratio=spec.ring.diameter_ratio)
+    if spec.ring.anchor:
+        config = replace(config, default_anchor=spec.ring.anchor)
+    return plan_ring(spec, config)

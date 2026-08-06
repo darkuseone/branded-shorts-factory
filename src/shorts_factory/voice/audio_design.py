@@ -73,23 +73,27 @@ def suggest_audio_fx(spec: Spec) -> list[AudioFx]:
         return list(spec.audio_fx)
 
     beats = collect_beats(spec)
-    trimmed = enforce_density(beats, duration=spec.duration_target)
+    policy = spec.sfx_policy
+    trimmed = enforce_density(
+        beats,
+        duration=spec.duration_target,
+        max_effects=policy.max_effects,
+        min_gap=policy.min_gap,
+        type_cooldown=policy.type_cooldown,
+    )
     suggestions = [
         AudioFx(type=beat.role, at=round(beat.at, 3), intensity=beat.intensity, duration=beat.duration)
         for beat in trimmed
     ]
-    if suggestions:
-        log.info(
-            "proposed %d audio effects (%s)",
-            len(suggestions),
-            ", ".join(f"{fx.type}@{fx.at:g}s" for fx in suggestions),
-            extra={"stage": "audio"},
-        )
+    for item in suggestions:
+        log.info("suggested %s @ %.2fs (%s)", item.type, item.at, next(
+            (beat.reason for beat in trimmed if beat.at == item.at and beat.role == item.type), ""
+        ))
     return suggestions
 
 
 def collect_beats(spec: Spec) -> list[Beat]:
-    """The montage moments that earn a sound, in timeline order."""
+    """Map brand-book ring states and montage structure onto sound anchors."""
     beats: list[Beat] = []
 
     if spec.hook:
@@ -103,9 +107,7 @@ def collect_beats(spec: Spec) -> list[Beat]:
             )
         )
 
-    # Topic changes, not every visual cut. A fullscreen→fullscreen swap of
-    # related b-roll is one continuous thought; a position change or a jump
-    # into motion_graphics/infographic is a new beat.
+    # Topic changes, not every visual cut.
     for previous, current in zip(spec.visuals, spec.visuals[1:], strict=False):
         if not _is_topic_change(previous, current):
             continue
@@ -121,17 +123,16 @@ def collect_beats(spec: Spec) -> list[Beat]:
             )
         )
 
-    # Soft pulse under emphasised narration — the brand book's EMPHASIS state.
+    guard = spec.sfx_policy.voice_guard
     for segment in spec.all_segments:
         if segment.emphasis != "high":
             continue
-        # Land just after the first syllable so the word itself is clear.
-        at = segment.start + min(0.35, max(0.15, segment.duration * 0.12))
-        beats.append(Beat(at=at, role="thump", intensity=0.45, duration=0.5, reason=f"emphasis {segment.id}"))
+        at = segment.start + min(0.35, max(guard, segment.duration * 0.12))
+        beats.append(
+            Beat(at=at, role="thump", intensity=0.45, duration=0.5, reason=f"emphasis {segment.id}")
+        )
 
-    # Ring exit / return: when the presenter leaves the frame for a full-screen
-    # payoff and when they come back. Approximated from avatar.segments — the
-    # gaps between them are where the ring collapses.
+    # Ring exit / return from avatar.segments gaps (brand book EXIT / RETURN).
     if spec.avatar.enabled and spec.avatar.segments:
         on_ids = set(spec.avatar.segments)
         present = [segment for segment in spec.all_segments if segment.id in on_ids]
@@ -146,8 +147,6 @@ def collect_beats(spec: Spec) -> list[Beat]:
                 Beat(at=right.start, role="power_up", intensity=0.4, duration=0.25, reason="ring return")
             )
 
-    # One riser into the climax — the last high-emphasis beat, or the last
-    # high-priority visual if the script has no emphasis marks.
     climax = _climax_at(spec)
     if climax is not None and climax > RISER_LEAD:
         beats.append(
@@ -160,7 +159,7 @@ def collect_beats(spec: Spec) -> list[Beat]:
             )
         )
 
-    if spec.cta:
+    if spec.cta and spec.cta.text:
         beats.append(
             Beat(at=spec.cta.start, role="pop", intensity=0.55, duration=0.6, reason="cta")
         )
@@ -168,16 +167,25 @@ def collect_beats(spec: Spec) -> list[Beat]:
     return sorted(beats, key=lambda beat: beat.at)
 
 
-def enforce_density(beats: list[Beat], *, duration: float) -> list[Beat]:
+def enforce_density(
+    beats: list[Beat],
+    *,
+    duration: float,
+    max_effects: int | None = None,
+    min_gap: float = MIN_GAP,
+    type_cooldown: float = SAME_TYPE_GAP,
+) -> list[Beat]:
     """Cap how many sounds a Short gets and keep them from stacking.
 
     Ceiling scales with length so a 20-second short stays sparse and a
     55-second one still has room for a climax build. Same-type beats closer
-    than `SAME_TYPE_GAP` collapse into the first one.
+    than ``type_cooldown`` collapse into the first one.
     """
-    ceiling = max(4, min(MAX_AUTO_FX, int(duration / 6) + 1))
+    derived = max(4, min(MAX_AUTO_FX, int(duration / 6) + 1))
+    ceiling = max_effects if max_effects is not None else derived
+    ceiling = max(0, min(ceiling, MAX_AUTO_FX if max_effects is None else max(ceiling, 0)))
     kept: list[Beat] = []
-    last_at = -MIN_GAP
+    last_at = -min_gap
     last_by_type: dict[str, float] = {}
 
     # Priority: hook impact and climax riser first, then topic changes, then
@@ -190,17 +198,15 @@ def enforce_density(beats: list[Beat], *, duration: float) -> list[Beat]:
     for beat in ordered:
         if len(accepted) >= ceiling:
             break
-        if beat.at - last_by_type.get(beat.role, -SAME_TYPE_GAP) < SAME_TYPE_GAP:
+        if beat.at - last_by_type.get(beat.role, -type_cooldown) < type_cooldown:
             continue
-        # Soft check against any neighbour; the hard gap is applied after sort.
-        if any(abs(beat.at - other.at) < MIN_GAP and other.role != beat.role for other in accepted):
-            # Keep the higher-priority one already accepted.
+        if any(abs(beat.at - other.at) < min_gap and other.role != beat.role for other in accepted):
             continue
         accepted.append(beat)
         last_by_type[beat.role] = beat.at
 
     for beat in sorted(accepted, key=lambda item: item.at):
-        if beat.at - last_at < MIN_GAP and kept:
+        if beat.at - last_at < min_gap and kept:
             continue
         kept.append(beat)
         last_at = beat.at
@@ -214,6 +220,11 @@ def _is_topic_change(previous: Visual, current: Visual) -> bool:
         return True
     if current.priority in {"high", "critical"} and previous.priority not in {"high", "critical"}:
         return True
+    if previous.query and current.query and previous.query.lower() != current.query.lower():
+        prev_words = set(previous.query.lower().split())
+        cur_words = set(current.query.lower().split())
+        if not (prev_words & cur_words) and current.start - previous.end >= 0.4:
+            return True
     # Same type and position — only count it if the gap between them is long
     # enough that the ear has settled; otherwise it is one continuous thought.
     return current.start - previous.end >= 0.8

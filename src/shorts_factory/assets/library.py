@@ -137,9 +137,14 @@ class _FolderLibrary:
         for item in self.items:
             if item.path.name.lower() == wanted or item.name.lower() == wanted:
                 return item
-        # Fall back to a prefix match so "pulse" finds "pulse_01.mp3".
         for item in self.items:
-            if item.name.lower().startswith(wanted):
+            if item.title and item.title.lower() == wanted:
+                return item
+        # Fall back to a prefix / substring match so "pulse" finds "Digital Pulse".
+        for item in self.items:
+            if item.name.lower().startswith(wanted) or wanted in item.name.lower():
+                return item
+            if item.title and wanted in item.title.lower():
                 return item
         return None
 

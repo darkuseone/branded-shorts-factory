@@ -46,6 +46,23 @@ AUDIO_FX_TYPES = frozenset(
     }
 )
 
+# Channel rubrics from the REDSHIFT brand book. Free-form strings are accepted
+# too — the set is only for autocomplete and music/meme policy matching.
+RUBRICS = frozenset(
+    {
+        "космос",
+        "space",
+        "it",
+        "технологии",
+        "tech",
+        "ai",
+        "наука",
+        "science",
+        "медицина",
+        "medicine",
+    }
+)
+
 # Shorts hard limits (YouTube caps Shorts at 180s; below 8s they underperform).
 MIN_DURATION = 5.0
 MAX_DURATION = 180.0
@@ -276,6 +293,9 @@ class AvatarSettings:
     scale: float = 0.34
     background: str = "transparent"
     segments: list[str] = field(default_factory=list)
+    #: When set (or when ``provider`` is ``external``), the pipeline loads
+    #: ``jobs/<id>/avatar.mp4`` instead of calling the HeyGen API.
+    external_path: str = ""
 
 
 @dataclass
@@ -353,7 +373,7 @@ class CaptionSettings:
     size: int = 72
     position: str = "center_bottom"
     max_chars_per_line: int = 22
-    highlight_color: str = "#FFD400"
+    highlight_color: str = "#FF2A3C"
     text_color: str = "#FFFFFF"
     stroke: bool = True
     uppercase: bool = False
@@ -364,14 +384,14 @@ class BrandElements:
     logo: str = ""
     logo_position: str = "top_left"
     lower_third: bool = False
-    color_primary: str = "#0F62FE"
-    color_accent: str = "#FFD400"
-    color_background: str = "#050608"
+    color_primary: str = "#FF2A3C"
+    color_accent: str = "#37E4FF"
+    color_background: str = "#0A0C10"
     font_family: str = "Inter"
     intro_sting: bool = False
     outro_card: bool = True
     safe_area: bool = True
-    watermark_opacity: float = 0.85
+    watermark_opacity: float = 0.55
 
 
 @dataclass
@@ -393,6 +413,25 @@ class MemeSettings:
     tags: list[str] = field(default_factory=list)
     max_count: int = 1
     max_duration: float = 1.5
+
+
+@dataclass
+class SfxPolicy:
+    """Density caps for automatic sound design (brand book §7)."""
+
+    max_effects: int | None = None  # None → derived from duration
+    min_gap: float = 1.2
+    type_cooldown: float = 4.0
+    voice_guard: float = 0.4
+
+
+@dataclass
+class RingSettings:
+    """Optional per-video overrides for the Pulse Ring."""
+
+    enabled: bool = True
+    anchor: str = ""  # empty → brandbook default
+    diameter_ratio: float | None = None
 
 
 @dataclass
@@ -425,6 +464,9 @@ class Spec:
     cta: Cta | None
     memes: MemeSettings
     constraints: Constraints
+    rubric: str = ""
+    sfx_policy: SfxPolicy = field(default_factory=SfxPolicy)
+    ring: RingSettings = field(default_factory=RingSettings)
     raw: dict[str, Any] = field(default_factory=dict)
 
     # -- derived views ------------------------------------------------------
@@ -633,13 +675,19 @@ def _parse_voice(data: dict[str, Any], col: _Collector, language: str) -> VoiceS
 def _parse_avatar(data: dict[str, Any], col: _Collector) -> AvatarSettings:
     path = "avatar"
     enabled = _bool(data, "enabled", path, col, bool(data))
+    provider = (_string(data, "provider", path, col, default="heygen") or "heygen").lower()
     avatar_id = _string(data, "avatar_id", path, col)
-    if enabled and not avatar_id:
-        col.warn(f"{path}.avatar_id", "missing; the avatar track will be skipped")
-        enabled = False
+    external_path = _string(data, "external_path", path, col)
+    if enabled and not avatar_id and provider != "external" and not external_path:
+        # Brandbook may still fill avatar_id later; keep enabled so prepare/render
+        # can pick up jobs/<id>/avatar.mp4 without a HeyGen call.
+        col.warn(
+            f"{path}.avatar_id",
+            "missing; will use brandbook look_id or jobs/<id>/avatar.mp4 if present",
+        )
     return AvatarSettings(
         enabled=enabled,
-        provider=_string(data, "provider", path, col, default="heygen") or "heygen",
+        provider=provider,
         avatar_id=avatar_id,
         version=_string(data, "version", path, col, default="avatar_5") or "avatar_5",
         position=_enum(
@@ -653,6 +701,7 @@ def _parse_avatar(data: dict[str, Any], col: _Collector) -> AvatarSettings:
         scale=float(_number(data, "scale", path, col, default=0.34, minimum=0.1, maximum=1.0) or 0.34),
         background=_string(data, "background", path, col, default="transparent") or "transparent",
         segments=_string_list(data, "segments", path, col),
+        external_path=external_path,
     )
 
 
@@ -791,6 +840,10 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
     title = _string(data, "title", "$", col, required=True)
     language = _string(data, "language", "$", col, default="ru") or "ru"
     topic = _string(data, "topic", "$", col) or title
+    rubric_raw = _string(data, "rubric", "$", col)
+    rubric = rubric_raw.strip()
+    if rubric and rubric.lower() not in RUBRICS and rubric not in RUBRICS:
+        col.info("rubric", f"{rubric!r} is not a known REDSHIFT rubric; music/meme policies may miss it")
     duration_target = _number(
         data,
         "duration_target",
@@ -873,8 +926,8 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
             _number(captions_data, "max_chars_per_line", "captions", col, default=22, minimum=10, maximum=48)
             or 22
         ),
-        highlight_color=_string(captions_data, "highlight_color", "captions", col, default="#FFD400")
-        or "#FFD400",
+        highlight_color=_string(captions_data, "highlight_color", "captions", col, default="#FF2A3C")
+        or "#FF2A3C",
         text_color=_string(captions_data, "text_color", "captions", col, default="#FFFFFF") or "#FFFFFF",
         stroke=_bool(captions_data, "stroke", "captions", col, True),
         uppercase=_bool(captions_data, "uppercase", "captions", col, False),
@@ -892,21 +945,21 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
             "top_left",
         ),
         lower_third=_bool(brand_data, "lower_third", "brand_elements", col, False),
-        color_primary=_string(brand_data, "color_primary", "brand_elements", col, default="#0F62FE")
-        or "#0F62FE",
-        color_accent=_string(brand_data, "color_accent", "brand_elements", col, default="#FFD400")
-        or "#FFD400",
-        color_background=_string(brand_data, "color_background", "brand_elements", col, default="#050608")
-        or "#050608",
+        color_primary=_string(brand_data, "color_primary", "brand_elements", col, default="#FF2A3C")
+        or "#FF2A3C",
+        color_accent=_string(brand_data, "color_accent", "brand_elements", col, default="#37E4FF")
+        or "#37E4FF",
+        color_background=_string(brand_data, "color_background", "brand_elements", col, default="#0A0C10")
+        or "#0A0C10",
         font_family=_string(brand_data, "font_family", "brand_elements", col, default="Inter") or "Inter",
         intro_sting=_bool(brand_data, "intro_sting", "brand_elements", col, False),
         outro_card=_bool(brand_data, "outro_card", "brand_elements", col, True),
         safe_area=_bool(brand_data, "safe_area", "brand_elements", col, True),
         watermark_opacity=float(
             _number(
-                brand_data, "watermark_opacity", "brand_elements", col, default=0.85, minimum=0.0, maximum=1.0
+                brand_data, "watermark_opacity", "brand_elements", col, default=0.55, minimum=0.0, maximum=1.0
             )
-            or 0.85
+            or 0.55
         ),
     )
 
@@ -942,6 +995,39 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
     if memes.enabled and not memes.tags:
         col.warn("memes.tags", "memes enabled without tags; nothing will be inserted")
 
+    sfx_raw = data.get("sfx")
+    sfx_data = _obj(sfx_raw if isinstance(sfx_raw, dict) else {}, "sfx", col)
+    policy_data = _obj(sfx_data.get("policy") if isinstance(sfx_data, dict) else {}, "sfx.policy", col)
+    max_fx = _number(policy_data, "max_effects", "sfx.policy", col, minimum=0.0, maximum=40.0)
+    sfx_policy = SfxPolicy(
+        max_effects=int(max_fx) if max_fx is not None else None,
+        min_gap=float(
+            _number(policy_data, "min_gap", "sfx.policy", col, default=1.2, minimum=0.2, maximum=10.0) or 1.2
+        ),
+        type_cooldown=float(
+            _number(policy_data, "type_cooldown", "sfx.policy", col, default=4.0, minimum=0.0, maximum=30.0)
+            or 4.0
+        ),
+        voice_guard=float(
+            _number(policy_data, "voice_guard", "sfx.policy", col, default=0.4, minimum=0.0, maximum=2.0)
+            or 0.4
+        ),
+    )
+
+    ring_data = _obj(data.get("ring"), "ring", col)
+    diameter = _number(ring_data, "diameter_ratio", "ring", col, minimum=0.1, maximum=0.8)
+    anchor_raw = ring_data.get("anchor")
+    anchor = ""
+    if isinstance(anchor_raw, str) and anchor_raw.strip():
+        anchor = _enum(ring_data, "anchor", "ring", col, {"bottom_right", "bottom_left", "bottom_center", "center"}, "bottom_right")
+    elif anchor_raw is not None and not isinstance(anchor_raw, str):
+        col.error("ring.anchor", f"expected a string, got {type(anchor_raw).__name__}")
+    ring = RingSettings(
+        enabled=_bool(ring_data, "enabled", "ring", col, True),
+        anchor=anchor,
+        diameter_ratio=float(diameter) if diameter is not None else None,
+    )
+
     constraints_data = _obj(data.get("constraints"), "constraints", col)
     budget_value = _number(constraints_data, "magnific_token_budget", "constraints", col, minimum=0.0)
     constraints = Constraints(
@@ -972,6 +1058,7 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
         duration_target=float(duration_target or MIN_DURATION),
         language=language,
         topic=topic,
+        rubric=rubric,
         hook=hook,
         script=script,
         voice=_parse_voice(_obj(data.get("voice_settings"), "voice_settings", col), col, language),
@@ -983,6 +1070,8 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
         brand=brand,
         cta=cta,
         memes=memes,
+        sfx_policy=sfx_policy,
+        ring=ring,
         constraints=constraints,
         raw=data,
     )

@@ -67,8 +67,8 @@
     "allowed_beats": ["context_end", "core1_to_core2"]
   },
   "avatar": {
-    "look_id": "",
-    "group_id": "31e8b216cd1e48ba8cdad6d61c7bbb0c",
+    "look_id": "ca4970eacdf34c099f393ad885214428",
+    "group_id": "7890ab9e56ac4c8e979f914b3d7140ee",
     "engine": "avatar_v",
     "motion_prompt": "Seated at a desk in a dark neon-lit room, chest-up framing, slight high camera angle, speaking into a studio condenser microphone, natural hand gestures visible, serious expert tone, looking into camera"
   },
