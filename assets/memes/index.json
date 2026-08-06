@@ -1,0 +1,1410 @@
+{
+  "_comment": "REDSHIFT meme bank — humor roles for meta-irony sci-pop. Regenerate via scripts/build_meme_index.py",
+  "items": [
+    {
+      "file": "FEW MOMENTS.mp4",
+      "title": "A few moments later",
+      "tags": [
+        "later",
+        "время",
+        "переход",
+        "спустя"
+      ],
+      "humor": "time_skip",
+      "beats": [
+        "context_end",
+        "core1_to_core2"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 2.155,
+      "trim_start": 0.0,
+      "max_use": 1.5,
+      "note": ""
+    },
+    {
+      "file": "IMG_5530.jpeg",
+      "title": "Hide the Pain Harold",
+      "tags": [
+        "deadpan",
+        "harold",
+        "боль",
+        "улыбка"
+      ],
+      "humor": "deadpan_accept",
+      "beats": [
+        "deadpan_accept",
+        "absurd_scale"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.2,
+      "note": "Forced smile while spacetime tears you apart"
+    },
+    {
+      "file": "IMG_5531.jpeg",
+      "title": "IMG_5531",
+      "tags": [
+        "img_5531",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "IMG_5532.jpeg",
+      "title": "IMG_5532",
+      "tags": [
+        "img_5532",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "IMG_5534.jpeg",
+      "title": "IMG_5534",
+      "tags": [
+        "img_5534",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "IMG_5535.jpeg",
+      "title": "IMG_5535",
+      "tags": [
+        "img_5535",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "IMG_5596.jpeg",
+      "title": "IMG_5596",
+      "tags": [
+        "img_5596",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "IMG_5597.jpeg",
+      "title": "IMG_5597",
+      "tags": [
+        "img_5597",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "IMG_5598.jpeg",
+      "title": "IMG_5598",
+      "tags": [
+        "img_5598",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "IMG_5599.jpeg",
+      "title": "IMG_5599",
+      "tags": [
+        "img_5599",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "IMG_5600.gif",
+      "title": "Homelander smile",
+      "tags": [
+        "homelander",
+        "напряг",
+        "улыбка"
+      ],
+      "humor": "forced_composure",
+      "beats": [
+        "doubt",
+        "misconception"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 1.42,
+      "trim_start": 0.0,
+      "max_use": 1.2,
+      "note": ""
+    },
+    {
+      "file": "IMG_5601.jpeg",
+      "title": "IMG_5601",
+      "tags": [
+        "img_5601",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "IMG_5602.jpeg",
+      "title": "IMG_5602",
+      "tags": [
+        "img_5602",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "IMG_5603.jpeg",
+      "title": "IMG_5603",
+      "tags": [
+        "img_5603",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "IMG_5604.jpeg",
+      "title": "IMG_5604",
+      "tags": [
+        "img_5604",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "IMG_5605.jpeg",
+      "title": "IMG_5605",
+      "tags": [
+        "img_5605",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "IMG_5606.jpeg",
+      "title": "IMG_5606",
+      "tags": [
+        "img_5606",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "IMG_5607.jpeg",
+      "title": "IMG_5607",
+      "tags": [
+        "img_5607",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "IMG_5608.jpeg",
+      "title": "IMG_5608",
+      "tags": [
+        "img_5608",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "IMG_5609.jpeg",
+      "title": "IMG_5609",
+      "tags": [
+        "img_5609",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "IMG_5610.jpeg",
+      "title": "IMG_5610",
+      "tags": [
+        "img_5610",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "IMG_5611.jpeg",
+      "title": "IMG_5611",
+      "tags": [
+        "img_5611",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "IMG_5612.jpeg",
+      "title": "IMG_5612",
+      "tags": [
+        "img_5612",
+        "reaction",
+        "still",
+        "лицо"
+      ],
+      "humor": "reaction",
+      "beats": [
+        "hook_punch",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.0,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "NICE.mp4",
+      "title": "Nice",
+      "tags": [
+        "nice",
+        "ирония",
+        "ок"
+      ],
+      "humor": "praise_irony",
+      "beats": [
+        "praise_irony",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 2.229,
+      "trim_start": 0.0,
+      "max_use": 1.3,
+      "note": ""
+    },
+    {
+      "file": "NOOOOOOOOOOOO.mp4",
+      "title": "NOOOOO",
+      "tags": [
+        "no",
+        "нет",
+        "отчаяние"
+      ],
+      "humor": "despair",
+      "beats": [
+        "absurd_scale",
+        "reveal_twist"
+      ],
+      "intensity": "mid",
+      "safe_for_science": true,
+      "duration": 9.408,
+      "trim_start": 0.0,
+      "max_use": 1.4,
+      "note": "длинный рёв — только первые ~1.4с"
+    },
+    {
+      "file": "a-vy-o-chem-sprosili.mp4",
+      "title": "А вы о чём спросили",
+      "tags": [
+        "hook",
+        "irony",
+        "вопрос",
+        "не-в-тему"
+      ],
+      "humor": "misconception",
+      "beats": [
+        "hook_punch",
+        "misconception"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 1.633,
+      "trim_start": 0.0,
+      "max_use": 1.3,
+      "note": "после странного/слишком широкого вопроса в хуке"
+    },
+    {
+      "file": "alo-alo-ne-otvlekaemsya.mp4",
+      "title": "Ало не отвлекаемся",
+      "tags": [
+        "внимание",
+        "назад-к-теме",
+        "фокус"
+      ],
+      "humor": "focus",
+      "beats": [
+        "context_end"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 3.567,
+      "trim_start": 0.4,
+      "max_use": 1.4,
+      "note": "вернуть зрителя после отступления"
+    },
+    {
+      "file": "andruha-u-nas-trup.mp4",
+      "title": "Андрюха у нас труп",
+      "tags": [
+        "deadpan",
+        "катастрофа",
+        "конец",
+        "смерть"
+      ],
+      "humor": "deadpan_accept",
+      "beats": [
+        "absurd_scale",
+        "deadpan_accept"
+      ],
+      "intensity": "hard",
+      "safe_for_science": true,
+      "duration": 2.633,
+      "trim_start": 0.0,
+      "max_use": 1.5,
+      "note": "когда объект «уже мёртв» — чёрная дыра, зонд, звезда"
+    },
+    {
+      "file": "cho-kavo-suchara.mp4",
+      "title": "Чо каво",
+      "tags": [
+        "casual",
+        "привет",
+        "реакция"
+      ],
+      "humor": "hook_punch",
+      "beats": [
+        "hook_punch"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 1.283,
+      "trim_start": 0.0,
+      "max_use": 1.1,
+      "note": ""
+    },
+    {
+      "file": "chto-ty-skazal-seichas.mp4",
+      "title": "Что ты сказал сейчас",
+      "tags": [
+        "wtf",
+        "переспросить",
+        "сомнение"
+      ],
+      "humor": "doubt",
+      "beats": [
+        "misconception",
+        "doubt"
+      ],
+      "intensity": "mid",
+      "safe_for_science": true,
+      "duration": 2.283,
+      "trim_start": 0.0,
+      "max_use": 1.4,
+      "note": ""
+    },
+    {
+      "file": "da-chto-ty-chert-poberi.mp4",
+      "title": "Да что ты чёрт побери",
+      "tags": [
+        "неожиданность",
+        "шок"
+      ],
+      "humor": "shock",
+      "beats": [
+        "absurd_scale",
+        "reveal_twist"
+      ],
+      "intensity": "mid",
+      "safe_for_science": true,
+      "duration": 2.367,
+      "trim_start": 0.0,
+      "max_use": 1.4,
+      "note": ""
+    },
+    {
+      "file": "davai-po-novoi.mp4",
+      "title": "Давай по новой",
+      "tags": [
+        "заново",
+        "ошибка",
+        "пересчёт"
+      ],
+      "humor": "retry",
+      "beats": [
+        "misconception"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 1.867,
+      "trim_start": 0.0,
+      "max_use": 1.3,
+      "note": ""
+    },
+    {
+      "file": "estestvenno.mp4",
+      "title": "Естественно",
+      "tags": [
+        "deadpan",
+        "естественно",
+        "ирония",
+        "принято"
+      ],
+      "humor": "deadpan_accept",
+      "beats": [
+        "deadpan_accept",
+        "absurd_scale"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 1.486,
+      "trim_start": 0.0,
+      "max_use": 1.2,
+      "note": "сухо принять невозможное — фирменный научпоп-приём"
+    },
+    {
+      "file": "eto-dukhovnaua-skrepa.mp4",
+      "title": "Это духовная скрепа",
+      "tags": [
+        "ирония",
+        "мета",
+        "традиция"
+      ],
+      "humor": "meta",
+      "beats": [
+        "reveal_twist"
+      ],
+      "intensity": "soft",
+      "safe_for_science": false,
+      "duration": 2.167,
+      "trim_start": 0.0,
+      "max_use": 1.4,
+      "note": "осторожно — политический оттенок; лучше не в космос"
+    },
+    {
+      "file": "gai-lost-palochku.mp4",
+      "title": "Гай потерял палочку",
+      "tags": [
+        "star-wars",
+        "потерял",
+        "фейл"
+      ],
+      "humor": "fail",
+      "beats": [
+        "misconception"
+      ],
+      "intensity": "mid",
+      "safe_for_science": true,
+      "duration": 12.917,
+      "trim_start": 8.0,
+      "max_use": 1.5,
+      "note": "длинный клип — берём только финальный панч"
+    },
+    {
+      "file": "gde-dengi-lebovski.mp4",
+      "title": "Где деньги Лебовски",
+      "tags": [
+        "где",
+        "деньги",
+        "лебовски"
+      ],
+      "humor": "demand",
+      "beats": [
+        "context_end"
+      ],
+      "intensity": "mid",
+      "safe_for_science": false,
+      "duration": 4.917,
+      "trim_start": 2.5,
+      "max_use": 1.4,
+      "note": ""
+    },
+    {
+      "file": "genialno-eto-shedevr.mp4",
+      "title": "Гениально это шедевр",
+      "tags": [
+        "praise",
+        "гениально",
+        "сарказм",
+        "шедевр"
+      ],
+      "humor": "praise_irony",
+      "beats": [
+        "praise_irony",
+        "reveal_twist"
+      ],
+      "intensity": "mid",
+      "safe_for_science": true,
+      "duration": 5.56,
+      "trim_start": 3.5,
+      "max_use": 1.5,
+      "note": "саркастическая похвала после «очевидного» вывода"
+    },
+    {
+      "file": "lyudi-stali-kretiny.mp4",
+      "title": "Люди стали кретины",
+      "tags": [
+        "глупость",
+        "люди",
+        "судья"
+      ],
+      "humor": "judge",
+      "beats": [
+        "misconception"
+      ],
+      "intensity": "hard",
+      "safe_for_science": false,
+      "duration": 9.55,
+      "trim_start": 6.5,
+      "max_use": 1.4,
+      "note": ""
+    },
+    {
+      "file": "minut-5-10-pyatogo.mp4",
+      "title": "Минут 5–10 пятого",
+      "tags": [
+        "время",
+        "оценка",
+        "примерно"
+      ],
+      "humor": "time_skip",
+      "beats": [
+        "context_end"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 6.0,
+      "trim_start": 3.5,
+      "max_use": 1.4,
+      "note": ""
+    },
+    {
+      "file": "mish-mne-pohui-tinkov.mp4",
+      "title": "Миш мне похуй",
+      "tags": [
+        "dismiss",
+        "пофиг",
+        "тинькофф"
+      ],
+      "humor": "dismiss",
+      "beats": [
+        "deadpan_accept"
+      ],
+      "intensity": "hard",
+      "safe_for_science": false,
+      "duration": 2.483,
+      "trim_start": 0.0,
+      "max_use": 1.3,
+      "note": ""
+    },
+    {
+      "file": "nahui-etu-gotovku.mp4",
+      "title": "Нахуй эту готовку",
+      "tags": [
+        "reject",
+        "не-надо",
+        "отмена"
+      ],
+      "humor": "reject",
+      "beats": [
+        "misconception"
+      ],
+      "intensity": "hard",
+      "safe_for_science": false,
+      "duration": 7.833,
+      "trim_start": 5.0,
+      "max_use": 1.4,
+      "note": ""
+    },
+    {
+      "file": "net.mp4",
+      "title": "Нет",
+      "tags": [
+        "devito",
+        "нет",
+        "отказ",
+        "сомнение"
+      ],
+      "humor": "doubt",
+      "beats": [
+        "misconception",
+        "doubt",
+        "hook_punch"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 2.033,
+      "trim_start": 0.0,
+      "max_use": 1.2,
+      "note": "тихое «нет» на миф или тупой вопрос"
+    },
+    {
+      "file": "nihuya-tinkov.mp4",
+      "title": "Нихуя Тинькофф",
+      "tags": [
+        "нихуя",
+        "тинькофф",
+        "шок"
+      ],
+      "humor": "shock",
+      "beats": [
+        "absurd_scale",
+        "reveal_twist"
+      ],
+      "intensity": "hard",
+      "safe_for_science": false,
+      "duration": 1.967,
+      "trim_start": 0.0,
+      "max_use": 1.2,
+      "note": ""
+    },
+    {
+      "file": "nihuya-ty-viebal-po-mne.mp4",
+      "title": "Нихуя ты выебал по мне",
+      "tags": [
+        "жёстко",
+        "удар",
+        "шок"
+      ],
+      "humor": "shock",
+      "beats": [
+        "absurd_scale"
+      ],
+      "intensity": "hard",
+      "safe_for_science": false,
+      "duration": 3.604,
+      "trim_start": 1.5,
+      "max_use": 1.3,
+      "note": ""
+    },
+    {
+      "file": "round-larin.mp4",
+      "title": "Round Ларин",
+      "tags": [
+        "короткий",
+        "панч",
+        "раунд"
+      ],
+      "humor": "hook_punch",
+      "beats": [
+        "hook_punch"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 0.8,
+      "trim_start": 0.0,
+      "max_use": 0.8,
+      "note": ""
+    },
+    {
+      "file": "sho-opyat.mp4",
+      "title": "Шо опять",
+      "tags": [
+        "опять",
+        "снова",
+        "усталость"
+      ],
+      "humor": "retry",
+      "beats": [
+        "misconception",
+        "hook_punch"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 2.28,
+      "trim_start": 0.0,
+      "max_use": 1.3,
+      "note": ""
+    },
+    {
+      "file": "slazz-slazzz.mp4",
+      "title": "Слазь",
+      "tags": [
+        "слазь",
+        "уйди"
+      ],
+      "humor": "reject",
+      "beats": [
+        "misconception"
+      ],
+      "intensity": "mid",
+      "safe_for_science": false,
+      "duration": 5.683,
+      "trim_start": 3.5,
+      "max_use": 1.3,
+      "note": ""
+    },
+    {
+      "file": "smeh-moment.mp4",
+      "title": "Смех момент",
+      "tags": [
+        "реакция",
+        "смех",
+        "ха"
+      ],
+      "humor": "laugh",
+      "beats": [
+        "reveal_twist"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 3.136,
+      "trim_start": 1.0,
+      "max_use": 1.3,
+      "note": ""
+    },
+    {
+      "file": "somnenie-okey-tinkov.mp4",
+      "title": "Сомнение окей",
+      "tags": [
+        "окей",
+        "скепсис",
+        "сомнение"
+      ],
+      "humor": "doubt",
+      "beats": [
+        "doubt",
+        "misconception"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 3.317,
+      "trim_start": 0.5,
+      "max_use": 1.4,
+      "note": ""
+    },
+    {
+      "file": "strashno-ochen.mp4",
+      "title": "Страшно очень",
+      "tags": [
+        "страх",
+        "страшно",
+        "ужас"
+      ],
+      "humor": "fear",
+      "beats": [
+        "absurd_scale",
+        "deadpan_accept"
+      ],
+      "intensity": "mid",
+      "safe_for_science": true,
+      "duration": 6.333,
+      "trim_start": 3.5,
+      "max_use": 1.4,
+      "note": "после жуткой цифры — температура, давление, tidал"
+    },
+    {
+      "file": "this-is-russia-zhirinovskij.mp4",
+      "title": "This is Russia",
+      "tags": [
+        "this-is",
+        "жириновский",
+        "россия"
+      ],
+      "humor": "meta",
+      "beats": [
+        "reveal_twist"
+      ],
+      "intensity": "hard",
+      "safe_for_science": false,
+      "duration": 10.0,
+      "trim_start": 7.0,
+      "max_use": 1.5,
+      "note": ""
+    },
+    {
+      "file": "troe-detei-oba-uchatsya.mp4",
+      "title": "Трое детей оба учатся",
+      "tags": [
+        "абсурд",
+        "логика",
+        "математика"
+      ],
+      "humor": "logic_fail",
+      "beats": [
+        "misconception",
+        "doubt"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 2.717,
+      "trim_start": 0.0,
+      "max_use": 1.5,
+      "note": "идеально под парадокс / противоречие в объяснении"
+    },
+    {
+      "file": "ty-po-moemu-pereputal.mp4",
+      "title": "Ты по-моему перепутал",
+      "tags": [
+        "миф",
+        "ошибка",
+        "перепутал"
+      ],
+      "humor": "misconception",
+      "beats": [
+        "misconception",
+        "doubt"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 3.4,
+      "trim_start": 0.8,
+      "max_use": 1.5,
+      "note": "разнос популярного мифа"
+    },
+    {
+      "file": "v-tennise=mne-nravitsya-tennis.mp4",
+      "title": "В теннисе мне нравится теннис",
+      "tags": [
+        "мета",
+        "очевидно",
+        "тавтология"
+      ],
+      "humor": "tautology",
+      "beats": [
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 7.683,
+      "trim_start": 4.5,
+      "max_use": 1.5,
+      "note": ""
+    },
+    {
+      "file": "vy-kto-takie.mp4",
+      "title": "Вы кто такие",
+      "tags": [
+        "ворота",
+        "кто-такие",
+        "не-ваше"
+      ],
+      "humor": "gatekeep",
+      "beats": [
+        "hook_punch"
+      ],
+      "intensity": "mid",
+      "safe_for_science": true,
+      "duration": 5.04,
+      "trim_start": 2.5,
+      "max_use": 1.4,
+      "note": ""
+    },
+    {
+      "file": "zalet-uzhe-upal.mp4",
+      "title": "Залёт уже упал",
+      "tags": [
+        "поздно",
+        "уже",
+        "упал"
+      ],
+      "humor": "too_late",
+      "beats": [
+        "absurd_scale",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 2.2,
+      "trim_start": 0.0,
+      "max_use": 1.3,
+      "note": ""
+    },
+    {
+      "file": "zhal-dobryaka.mp4",
+      "title": "Жаль добряка",
+      "tags": [
+        "добряк",
+        "жалость",
+        "жаль"
+      ],
+      "humor": "pity",
+      "beats": [
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 2.48,
+      "trim_start": 0.0,
+      "max_use": 1.3,
+      "note": ""
+    },
+    {
+      "file": "Вот это поворот!.mp4",
+      "title": "Вот это поворот",
+      "tags": [
+        "неожиданно",
+        "поворот",
+        "твист"
+      ],
+      "humor": "reveal_twist",
+      "beats": [
+        "reveal_twist",
+        "core1_to_core2"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 1.37,
+      "trim_start": 0.0,
+      "max_use": 1.2,
+      "note": "стык ядер — лучший твист-мем канала"
+    },
+    {
+      "file": "ДИЧЬ.mp4",
+      "title": "Дичь",
+      "tags": [
+        "бред",
+        "дичь",
+        "странно"
+      ],
+      "humor": "judge",
+      "beats": [
+        "absurd_scale",
+        "misconception"
+      ],
+      "intensity": "mid",
+      "safe_for_science": true,
+      "duration": 3.669,
+      "trim_start": 1.5,
+      "max_use": 1.3,
+      "note": ""
+    },
+    {
+      "file": "ЛУЧШАЯ РАБОТА В МИРЕ.mp4",
+      "title": "Лучшая работа в мире",
+      "tags": [
+        "ирония",
+        "лучшая",
+        "работа"
+      ],
+      "humor": "praise_irony",
+      "beats": [
+        "praise_irony"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 3.2,
+      "trim_start": 1.0,
+      "max_use": 1.4,
+      "note": ""
+    },
+    {
+      "file": "ЛЯ ТЫ КРЫСА.mp4",
+      "title": "Ля ты крыса",
+      "tags": [
+        "крыса",
+        "обвинение"
+      ],
+      "humor": "accuse",
+      "beats": [
+        "reveal_twist"
+      ],
+      "intensity": "mid",
+      "safe_for_science": false,
+      "duration": 1.664,
+      "trim_start": 0.0,
+      "max_use": 1.2,
+      "note": ""
+    },
+    {
+      "file": "МАЛЬЧИК ОБИДЕЛСЯ.mp4",
+      "title": "Мальчик обиделся",
+      "tags": [
+        "малыш",
+        "обида"
+      ],
+      "humor": "pity",
+      "beats": [
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 2.197,
+      "trim_start": 0.0,
+      "max_use": 1.3,
+      "note": ""
+    },
+    {
+      "file": "Оу, май!.mp4",
+      "title": "Оу май",
+      "tags": [
+        "oh-my",
+        "вау",
+        "шок"
+      ],
+      "humor": "shock",
+      "beats": [
+        "absurd_scale",
+        "hook_punch",
+        "reveal_twist"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 2.432,
+      "trim_start": 0.0,
+      "max_use": 1.3,
+      "note": ""
+    },
+    {
+      "file": "ПАЦАН К УСПЕХУ ШЕЛ.mp4",
+      "title": "Пацан к успеху шёл",
+      "tags": [
+        "успех",
+        "фейл",
+        "шёл"
+      ],
+      "humor": "fail",
+      "beats": [
+        "absurd_scale",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 2.901,
+      "trim_start": 0.0,
+      "max_use": 1.5,
+      "note": "попытка → катастрофа (зонд, экспедиция)"
+    },
+    {
+      "file": "СИЛЬНОЕ ЗАЯВЛЕНИЕ.mp4",
+      "title": "Сильное заявление",
+      "tags": [
+        "заявление",
+        "сильно",
+        "тезис"
+      ],
+      "humor": "praise_irony",
+      "beats": [
+        "hook_punch",
+        "praise_irony"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 4.608,
+      "trim_start": 2.0,
+      "max_use": 1.4,
+      "note": "сразу после жирного тезиса в хуке"
+    },
+    {
+      "file": "ТИТРЫ РОБЕРТ.mp4",
+      "title": "Титры Роберт",
+      "tags": [
+        "конец",
+        "роберт",
+        "титры"
+      ],
+      "humor": "outro_joke",
+      "beats": [
+        "context_end"
+      ],
+      "intensity": "soft",
+      "safe_for_science": false,
+      "duration": 7.808,
+      "trim_start": 5.5,
+      "max_use": 1.5,
+      "note": ""
+    },
+    {
+      "file": "УПАЛА ЧЕЛЮСТЬ.mp4",
+      "title": "Упала челюсть",
+      "tags": [
+        "вау",
+        "цифра",
+        "челюсть",
+        "шок"
+      ],
+      "humor": "shock",
+      "beats": [
+        "absurd_scale",
+        "reveal_twist",
+        "hook_punch"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 1.643,
+      "trim_start": 0.0,
+      "max_use": 1.3,
+      "note": "после невозможной цифры — давление, масса, температура"
+    },
+    {
+      "file": "ЧЕГО БЛЯТЬ.mp4",
+      "title": "Чего блять",
+      "tags": [
+        "wtf",
+        "чего",
+        "шок"
+      ],
+      "humor": "shock",
+      "beats": [
+        "absurd_scale",
+        "hook_punch",
+        "reveal_twist"
+      ],
+      "intensity": "hard",
+      "safe_for_science": false,
+      "duration": 1.557,
+      "trim_start": 0.0,
+      "max_use": 1.2,
+      "note": "жёсткий wtf — только если тон ролика позволяет"
+    },
+    {
+      "file": "ЧЕТКО, МОГЕТЕ.mp4",
+      "title": "Чётко можете",
+      "tags": [
+        "praise",
+        "можете",
+        "чётко"
+      ],
+      "humor": "praise_irony",
+      "beats": [
+        "praise_irony"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 7.061,
+      "trim_start": 4.5,
+      "max_use": 1.4,
+      "note": ""
+    },
+    {
+      "file": "и-так-сойдет.mp4",
+      "title": "И так сойдёт",
+      "tags": [
+        "deadpan",
+        "модель",
+        "приближение",
+        "сойдёт"
+      ],
+      "humor": "deadpan_accept",
+      "beats": [
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 2.469,
+      "trim_start": 0.0,
+      "max_use": 1.3,
+      "note": "когда модель «достаточно хороша» — сферическая корова vibe"
+    }
+  ]
+}

@@ -37,6 +37,13 @@ class LibraryItem:
     #: placement then falls back to filename matching and starts the sound on
     #: the beat instead of aligning by peak.
     analysis: dict[str, object] = field(default_factory=dict)
+    #: Meme catalog fields from assets/memes/index.json.
+    humor: str = ""
+    beats: list[str] = field(default_factory=list)
+    intensity: str = "soft"
+    safe_for_science: bool = True
+    trim_start: float = 0.0
+    max_use: float = 0.0
 
     @property
     def name(self) -> str:
@@ -77,6 +84,9 @@ class LibraryItem:
     def matches(self, wanted: list[str]) -> int:
         """Number of requested tags this item satisfies."""
         haystack = set(self.tags) | set(_tags_from_name(self.path))
+        if self.humor:
+            haystack.add(self.humor.lower())
+        haystack.update(beat.lower() for beat in self.beats)
         return sum(1 for tag in wanted if tag.lower() in haystack)
 
 
@@ -125,6 +135,12 @@ class _FolderLibrary:
                     title=str(entry.get("title") or path.stem),
                     duration=float(entry.get("duration") or 0.0),
                     analysis=dict(analysis),
+                    humor=str(entry.get("humor") or ""),
+                    beats=[str(beat) for beat in (entry.get("beats") or [])],
+                    intensity=str(entry.get("intensity") or "soft"),
+                    safe_for_science=bool(entry.get("safe_for_science", True)),
+                    trim_start=float(entry.get("trim_start") or 0.0),
+                    max_use=float(entry.get("max_use") or 0.0),
                 )
             )
         log.info("%s: %d item(s) in %s", self.label, len(items), self.directory)
@@ -240,3 +256,48 @@ class MemeLibrary(_FolderLibrary):
         if not hits:
             log.info("no meme matches tags %s", tags)
         return [item for _, item in hits[:limit]]
+
+    def pick_for_beat(
+        self,
+        *,
+        beat: str,
+        tags: list[str],
+        humor: str = "",
+        science_safe: bool = True,
+        prefer_short: bool = True,
+    ) -> LibraryItem | None:
+        """Pick one meme for an irony beat, preferring short safe clips."""
+        wanted = [tag.lower() for tag in tags]
+        if humor:
+            wanted.append(humor.lower())
+        if beat:
+            wanted.append(beat.lower())
+
+        pool: list[tuple[int, float, LibraryItem]] = []
+        for item in self.items:
+            if science_safe and not item.safe_for_science:
+                continue
+            if item.intensity == "hard" and science_safe:
+                continue
+            if beat and item.beats and beat not in item.beats and humor not in item.beats:
+                # Still allow strong tag matches even if beat list misses.
+                if item.matches(wanted) < 2:
+                    continue
+            score = item.matches(wanted)
+            if beat and beat in item.beats:
+                score += 3
+            if humor and item.humor == humor:
+                score += 2
+            if score <= 0:
+                continue
+            usable = item.max_use or (item.duration if item.duration else 1.2)
+            # Prefer punchy clips under ~1.6s of usable length.
+            brevity = 2.0 if usable <= 1.6 else (1.0 if usable <= 2.2 else 0.0)
+            pool.append((score, brevity if prefer_short else 0.0, item))
+
+        if not pool:
+            # Soft fallback: ignore science_safe for soft intensity only.
+            return self.find(wanted, limit=1)[0] if self.find(wanted, limit=1) else None
+
+        pool.sort(key=lambda row: (-row[0], -row[1], row[2].name))
+        return pool[0][2]

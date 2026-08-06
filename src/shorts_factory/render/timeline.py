@@ -151,6 +151,9 @@ def build_timeline(
     _add_visuals(timeline, spec, resolved)
     _add_avatar(timeline, spec, avatar, avatar_start)
     _add_captions(timeline, spec, captions or [])
+    from .data_chips import add_data_chips  # lazy: avoid circular import with Element
+
+    add_data_chips(timeline, spec)
     _add_brand(timeline, spec)
     _add_cta(timeline, spec)
     _add_audio(timeline, spec, voice_clips or [], sfx_clips or [], music_path)
@@ -217,6 +220,18 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
             props["source_duration"] = round(asset.duration, 3)
         if visual.type == "meme":
             props["meme"] = True
+            # Punch trim from the catalog (resolver encodes it in visual.notes).
+            for chunk in (visual.notes or "").split("|"):
+                if chunk.startswith("trim_start="):
+                    try:
+                        props["trim_start"] = float(chunk.split("=", 1)[1])
+                    except ValueError:
+                        pass
+                if chunk.startswith("max_use="):
+                    try:
+                        props["playback_duration"] = float(chunk.split("=", 1)[1])
+                    except ValueError:
+                        pass
 
         timeline.add(
             Element(
