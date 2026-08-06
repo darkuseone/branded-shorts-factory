@@ -1,0 +1,41 @@
+---
+description: Долгий цикл write→run→fix→continue для рендера Shorts
+alwaysApply: true
+---
+
+# Долгий цикл: пиши → запускай → чини → продолжай
+
+Для пайплайна Shorts (HyperFrames / Pulse Ring / avatar) **не останавливайся после первой ошибки**. Работай циклом, пока `verify` не станет зелёным или не исчерпаются осмысленные попытки.
+
+## Цикл
+
+1. **Пиши** — минимальный патч под конкретный failure (не рефактор всего).
+2. **Запускай** (только бесплатные/локальные ассеты; платные ключи не трогать):
+
+```bash
+unset ELEVENLABS_API_KEY ELEVEN_API_KEY PEXELS_API_KEY PIXABAY_API_KEY \
+      GROK_API_KEY MAGNIFIC_API_KEY HEYGEN_API_KEY POND5_API_KEY
+export HYPERFRAMES_DOCKER=0 HYPERFRAMES_RENDER_ARGS='--low-memory-mode --workers 1' PYTHONPATH=src
+python3 scripts/render_fix_loop.py jobs/<id>.json --render --max-attempts 2
+```
+
+3. **Читай отчёт** `build/reports/<id>.loop.json` — там `findings[].category` и `findings[].fix`.
+4. **Чини** по хинту → commit → push → снова шаг 2.
+5. **Продолжай**, пока `ok: true` или одна и та же ошибка не повторится 2 раза без прогресса.
+
+## Известные ловушки HF (не гадай заново)
+
+| Симптом | Причина | Фикс |
+| --- | --- | --- |
+| Плоский красный ring | SVG `feGaussianBlur` дропается | CSS `.pulse-ring-neon` + `.pulse-ring-halo` |
+| Лицо далеко в круге | `transform` на `<video>` игнорируется | `avatar_close.mp4` (ffmpeg) + `.avatar-face` |
+| Высокий красный овал слева | logo `height:auto` растягивается | logo `160×160; object-fit:contain` |
+| Мёртвый b-roll после 1-го клипа | несколько fullscreen подряд | один baked `broll/broll.mp4` |
+| `ring-network` ghost | SVG с `display:none` всё равно рисуется | не монтировать SVG |
+
+## Правила цикла
+
+- Платные MCP/API (Magnific, HeyGen, ElevenLabs, Pexels…) в лупе **запрещены**, если токены уже тратили или пользователь сказал не тратить.
+- После каждого успешного/провалившегося рендера обновляй PR.
+- Артефакт клади в `/opt/cursor/artifacts/<id>.mp4`.
+- Юнит-тесты (`pytest tests/test_ring.py`) — до долгого рендера, не вместо него.
