@@ -1,0 +1,12 @@
+# REDSHIFT custom Skills
+
+Cursor loads these from `.cursor/skills/<name>/SKILL.md` (invoke with `/name` or automatically by description).
+
+| Skill | When |
+| --- | --- |
+| [`neon-ring-animation`](neon-ring-animation/SKILL.md) | Pulse Ring neon states & HF-safe glow |
+| [`talking-head-circle-behavior`](talking-head-circle-behavior/SKILL.md) | Face crop / zoom inside the circle |
+| [`self-heal-video-pipeline`](self-heal-video-pipeline/SKILL.md) | write→run→fix→continue render loop |
+| [`motion-graphics-style`](motion-graphics-style/SKILL.md) | After Effects–like Shorts motion language |
+
+Related always-on rule: `.cursor/rules/render-fix-loop.mdc`.

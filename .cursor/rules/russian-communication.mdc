@@ -16,7 +16,8 @@ alwaysApply: true
 
 - Основной фокус: видео-пайплайны (YouTube Shorts, HeyGen, HyperFrames, Magnific, ElevenLabs).
 - Часто Cloud Agents и работа с телефона — решения должны быть быстрыми в реализации и удобными в поддержке с телефона.
-- Рендер Shorts: долгий цикл **пиши → запускай → чини → продолжай** (`scripts/render_fix_loop.py` + правило `render-fix-loop`).
+- Skills: `/neon-ring-animation`, `/talking-head-circle-behavior`, `/self-heal-video-pipeline`, `/motion-graphics-style`
+- Рендер Shorts: долгий цикл **пиши → запускай → чини → продолжай** (`scripts/render_fix_loop.py` + правило `render-fix-loop` + skill `self-heal-video-pipeline`).
 - В будущем — трейдинг-боты.
 - Не усложняй архитектуру без необходимости.
 
