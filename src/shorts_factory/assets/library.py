@@ -279,10 +279,15 @@ class MemeLibrary(_FolderLibrary):
                 continue
             if item.intensity == "hard" and science_safe:
                 continue
-            if beat and item.beats and beat not in item.beats and humor not in item.beats:
-                # Still allow strong tag matches even if beat list misses.
-                if item.matches(wanted) < 2:
-                    continue
+            # Still allow strong tag matches even if beat list misses.
+            if (
+                beat
+                and item.beats
+                and beat not in item.beats
+                and humor not in item.beats
+                and item.matches(wanted) < 2
+            ):
+                continue
             score = item.matches(wanted)
             if beat and beat in item.beats:
                 score += 3

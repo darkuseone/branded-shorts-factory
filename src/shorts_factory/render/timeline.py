@@ -7,6 +7,7 @@ and the composition writer just walks it.
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
@@ -223,15 +224,11 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
             # Punch trim from the catalog (resolver encodes it in visual.notes).
             for chunk in (visual.notes or "").split("|"):
                 if chunk.startswith("trim_start="):
-                    try:
+                    with contextlib.suppress(ValueError):
                         props["trim_start"] = float(chunk.split("=", 1)[1])
-                    except ValueError:
-                        pass
                 if chunk.startswith("max_use="):
-                    try:
+                    with contextlib.suppress(ValueError):
                         props["playback_duration"] = float(chunk.split("=", 1)[1])
-                    except ValueError:
-                        pass
 
         timeline.add(
             Element(
