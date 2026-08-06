@@ -234,6 +234,8 @@ class CompositionWriter:
             f'<div id="pulse_ring" class="pulse-ring-wrap" '
             f'style="left:{box["left"]}px;top:{box["top"]}px;width:{size}px;height:{size}px;">'
             f'<div class="pulse-ring-breath">'
+            f'<div class="pulse-ring-halo" aria-hidden="true"></div>'
+            f'<div class="pulse-ring-neon" aria-hidden="true"></div>'
             f"{ring_svg(cfg, size)}"
             f"{network}"
             f'<div class="avatar-clip">'
@@ -695,28 +697,57 @@ _RING_BASE_CSS = """\
   position: relative;
   width: 100%;
   height: 100%;
+  overflow: visible;
+}}
+/* Soft outer bloom — radial paint survives HF capture better than SVG blur. */
+.pulse-ring-halo {{
+  position: absolute;
+  inset: -12%;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    transparent 48%,
+    rgba(255, 42, 60, 0.55) 58%,
+    rgba(255, 77, 99, 0.32) 66%,
+    rgba(255, 42, 60, 0.12) 74%,
+    transparent 82%
+  );
+  pointer-events: none;
+}}
+/* Neon tube rim — white core + red corona via box-shadow (not SVG filters). */
+.pulse-ring-neon {{
+  position: absolute;
+  inset: 3.5%;
+  z-index: 2;
+  border-radius: 50%;
+  border: 5px solid {stroke};
+  box-shadow:
+    0 0 2px 1px #fff,
+    0 0 8px 2px #FF8A96,
+    0 0 16px 5px {stroke},
+    0 0 32px 12px {glow},
+    0 0 56px 22px rgba(255, 42, 60, 0.55),
+    0 0 90px 36px rgba(255, 42, 60, 0.28),
+    inset 0 0 10px 2px rgba(255, 180, 190, 0.85),
+    inset 0 0 22px 4px rgba(255, 42, 60, 0.45);
+  pointer-events: none;
 }}
 .pulse-ring-svg {{
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 3;
   pointer-events: none;
-  filter: drop-shadow(0 0 6px {glow}) drop-shadow(0 0 14px {stroke});
+  opacity: 0.92;
+  filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 10px {glow}) drop-shadow(0 0 18px {stroke});
 }}
 .avatar-clip {{
   position: absolute;
-  inset: 6%;
+  inset: 5%;
   border-radius: 50%;
   overflow: hidden;
   z-index: 1;
   background: #0A0C10;
-  border: 3px solid {stroke};
-  box-shadow:
-    0 0 8px 2px {stroke},
-    0 0 22px 8px {glow},
-    0 0 42px 16px rgba(255, 42, 60, 0.55),
-    0 0 72px 28px rgba(255, 42, 60, 0.28),
-    inset 0 0 18px rgba(255, 42, 60, 0.35);
 }}
 .avatar-clip video {{
   width: 100%;
@@ -724,13 +755,13 @@ _RING_BASE_CSS = """\
   object-fit: cover;
   object-position: {face_position};
   transform: scale({face_zoom});
-  transform-origin: center 32%;
+  transform-origin: center 28%;
 }}
 .ring-network {{
   position: absolute;
   left: 0;
   top: 0;
-  z-index: 3;
+  z-index: 4;
   pointer-events: none;
   display: none;
   opacity: 0;

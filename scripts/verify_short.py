@@ -86,20 +86,17 @@ def _red_hits(rgb: bytes, width: int, height: int, x0: int, x1: int, y0: int, y1
 def verify_composition_css(composition_dir: Path) -> list[str]:
     html = (composition_dir / "index.html").read_text(encoding="utf-8")
     errors: list[str] = []
-    if "box-shadow" not in html or "avatar-clip" not in html:
-        errors.append("composition missing CSS neon box-shadow on .avatar-clip")
+    if "pulse-ring-neon" not in html or "pulse-ring-halo" not in html:
+        errors.append("composition missing dedicated neon/halo ring layers")
+    if "box-shadow" not in html:
+        errors.append("composition missing CSS neon box-shadow")
     if "feGaussianBlur" in html or "ringGlow" in html:
         errors.append("composition still uses SVG glow filters (drop in HF capture)")
-    if "transform: scale(" not in html and "transform:scale(" not in html:
-        # face zoom is on .avatar-clip video
-        if "face_zoom" in html or "scale(1." not in html:
-            pass
-        if "scale(1.2" not in html and "scale(1.20" not in html:
-            # allow configured zoom from brandbook
-            if "object-position" not in html:
-                errors.append("composition missing face zoom / object-position crop")
     if "object-position" not in html:
         errors.append("composition missing object-position for face crop")
+    # face_zoom from brandbook should be >1.2 for the close crop
+    if "scale(1." not in html and "scale(1," not in html:
+        errors.append("composition missing face zoom scale(...)")
     return errors
 
 
@@ -141,8 +138,17 @@ def verify_output(spec_path: Path, output: Path, composition_dir: Path | None) -
     w, h = int(info["width"]), int(info["height"])
     # Avatar wrap ~ left 408 top 1050 size 576 → sample ring band
     hits = _red_hits(rgb, w, h, 400, 1000, 1050, 1650)
-    if hits < 40:
+    if hits < 55:
         errors.append(f"pulse ring neon too weak at t={t_ring}s (red hits={hits})")
+
+    # Soft bloom just outside the stroke — flat matte rings fail this.
+    bloom = _red_hits(rgb, w, h, 360, 1040, 1000, 1700)
+    if bloom < hits:
+        # bloom ROI is larger; require meaningful red outside the tight clip band
+        pass
+    outer = _red_hits(rgb, w, h, 350, 450, 1100, 1600) + _red_hits(rgb, w, h, 950, 1050, 1100, 1600)
+    if outer < 8:
+        errors.append(f"pulse ring outer bloom missing at t={t_ring}s (outer hits={outer})")
 
     if composition_dir and composition_dir.exists():
         errors.extend(verify_composition_css(composition_dir))
