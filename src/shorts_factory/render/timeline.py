@@ -205,7 +205,12 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
         asset = item.asset
         layout = dict(_POSITION_LAYOUT.get(visual.position, _POSITION_LAYOUT["fullscreen"]))
         is_full = visual.position in {"fullscreen", "background"}
-        track = TRACK_BROLL if is_full else TRACK_OVERLAY
+        # Memes punch over b-roll; they must not share TRACK_BROLL or HyperFrames
+        # rejects the composition as overlapping_clips_same_track.
+        if visual.type == "meme":
+            track = TRACK_OVERLAY
+        else:
+            track = TRACK_BROLL if is_full else TRACK_OVERLAY
 
         props: dict[str, Any] = {
             "layout": layout,
@@ -273,13 +278,20 @@ def _add_avatar(timeline: Timeline, spec: Spec, avatar: AvatarClip | None, start
 def _add_captions(timeline: Timeline, spec: Spec, cues: list[CaptionCue]) -> None:
     if not spec.captions.enabled or not cues:
         return
-    for index, cue in enumerate(cues):
+    ordered = sorted(cues, key=lambda cue: cue.start)
+    for index, cue in enumerate(ordered):
+        start = round(cue.start, 3)
+        end = round(cue.end, 3)
+        if index + 1 < len(ordered):
+            # Snap to the next cue so rounded float tails never overlap.
+            end = min(end, round(ordered[index + 1].start, 3))
+        duration = max(end - start, 0.05)
         timeline.add(
             Element(
                 id=f"cap_{index:03d}",
                 kind="caption",
-                start=cue.start,
-                duration=max(cue.duration, 0.35),
+                start=start,
+                duration=duration,
                 track=TRACK_CAPTIONS,
                 text=cue.text,
                 props={
@@ -333,7 +345,8 @@ def _add_brand(timeline: Timeline, spec: Spec) -> None:
                 kind="text",
                 start=max(0.0, spec.duration_target - length),
                 duration=length,
-                track=TRACK_BRAND,
+                # CTA track — logo owns TRACK_BRAND for the full duration.
+                track=TRACK_CTA,
                 text=spec.title,
                 props={"role": "outro", "color": brand.color_primary, "accent": brand.color_accent},
             )

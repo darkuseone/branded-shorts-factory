@@ -271,6 +271,7 @@ class CompositionWriter:
         anchor = _CAPTION_ANCHORS.get(captions.position, _CAPTION_ANCHORS["center_bottom"])
 
         blocks: list[str] = [
+            self._brand_font_css(),
             _BASE_CSS.format(
                 width=self.timeline.width,
                 height=self.timeline.height,
@@ -471,10 +472,16 @@ class CompositionWriter:
             return
         for path in fonts_dir.glob("*.woff2"):
             self._media_src(path)
+
+    def _brand_font_css(self) -> str:
+        """Inline brand @font-face rules so HyperFrames lint sees declared families."""
         css = Path(__file__).resolve().parents[3] / "brand" / "fonts.css"
-        if css.exists():
-            # Rewrite urls already point at media/; just note presence in DESIGN.
-            pass
+        if not css.exists():
+            return ""
+        try:
+            return css.read_text(encoding="utf-8")
+        except OSError:
+            return ""
 
     def _logo_css(self, element: Element) -> str:
         position = element.props.get("position", "top_left")
