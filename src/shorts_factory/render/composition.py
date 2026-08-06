@@ -25,6 +25,7 @@ from typing import Any
 
 from ..logging_utils import get_logger
 from ..spec import Spec
+from .ring import RingConfig, RingPlan, layout_box, network_overlay_svg, plan_ring, ring_css, ring_svg
 from .timeline import (
     BOTTOM_UI_RESERVE,
     SAFE_MARGIN,
@@ -76,12 +77,13 @@ class CompositionResult:
 class CompositionWriter:
     """Turns a `Timeline` into an on-disk HyperFrames project."""
 
-    def __init__(self, spec: Spec, timeline: Timeline, directory: Path):
+    def __init__(self, spec: Spec, timeline: Timeline, directory: Path, ring: RingPlan | None = None):
         self.spec = spec
         self.timeline = timeline
         self.directory = directory
         self.media_dir = directory / "media"
         self._copied: dict[Path, str] = {}
+        self.ring = ring or plan_ring(spec, RingConfig())
 
     # -- entry point --------------------------------------------------------
 
@@ -184,6 +186,8 @@ class CompositionWriter:
             if not src:
                 return ""
             loop = " loop" if element.props.get("loop") else ""
+            if element.kind == "avatar" and self.ring.visible:
+                return self._avatar_with_ring(attrs, src, loop)
             return f'<video {attrs} src="{src}" muted playsinline preload="auto"{loop}></video>'
 
         if element.kind == "image":
@@ -212,6 +216,23 @@ class CompositionWriter:
             return f'<div {attrs} data-role="{element.props.get("role", "shape")}"></div>'
 
         return ""
+
+    def _avatar_with_ring(self, attrs: str, src: str, loop: str) -> str:
+        """Presenter clipped to a circle, wrapped by the neon pulse ring."""
+        cfg = self.ring.config
+        box = layout_box(cfg, anchor=cfg.default_anchor)
+        size = box["size"]
+        network = network_overlay_svg(cfg, size)
+        return (
+            f'<div id="pulse_ring" class="pulse-ring-wrap" '
+            f'style="left:{box["left"]}px;top:{box["top"]}px;width:{size}px;height:{size}px;">'
+            f'<div class="pulse-ring-breath">'
+            f'{ring_svg(cfg, size)}'
+            f'{network}'
+            f'<div class="avatar-clip">'
+            f'<video {attrs} src="{src}" muted playsinline preload="auto"{loop}></video>'
+            f"</div></div></div>"
+        )
 
     def _caption_inner(self, element: Element) -> str:
         words: Iterable[dict[str, Any]] = element.props.get("words") or []
@@ -266,6 +287,12 @@ class CompositionWriter:
 
         for element in self.timeline.visual_elements:
             blocks.append(self._element_css(element))
+
+        if self.ring.visible:
+            blocks.append(ring_css(self.ring, duration=self.timeline.duration))
+            blocks.append(_RING_BASE_CSS)
+            self._copy_brand_fonts()
+
         return "\n".join(block for block in blocks if block)
 
     def _element_css(self, element: Element) -> str:
@@ -327,19 +354,31 @@ class CompositionWriter:
                 )
             )
         elif element.kind == "avatar":
-            keyframes.append(
-                _keyframes(
-                    name,
-                    [
-                        (0.0, "opacity:0;transform:translateY(40px);"),
-                        (p0, "opacity:0;transform:translateY(40px);"),
-                        (p1, "opacity:1;transform:translateY(0);"),
-                        (p2, "opacity:1;transform:translateY(0);"),
-                        (p3, "opacity:0;transform:translateY(20px);"),
-                        (100.0, "opacity:0;"),
-                    ],
+            if self.ring.visible:
+                # Visibility is driven by the ring wrapper; keep the video opaque.
+                keyframes.append(
+                    _keyframes(
+                        name,
+                        [
+                            (0.0, "opacity:1;"),
+                            (100.0, "opacity:1;"),
+                        ],
+                    )
                 )
-            )
+            else:
+                keyframes.append(
+                    _keyframes(
+                        name,
+                        [
+                            (0.0, "opacity:0;transform:translateY(40px);"),
+                            (p0, "opacity:0;transform:translateY(40px);"),
+                            (p1, "opacity:1;transform:translateY(0);"),
+                            (p2, "opacity:1;transform:translateY(0);"),
+                            (p3, "opacity:0;transform:translateY(20px);"),
+                            (100.0, "opacity:0;"),
+                        ],
+                    )
+                )
         else:
             enter, exit_ = _entrance_for(element)
             keyframes.append(
@@ -390,6 +429,12 @@ class CompositionWriter:
         return "\n".join(blocks)
 
     def _avatar_css(self, element: Element) -> str:
+        if self.ring.visible:
+            # Positioning lives on the wrapper; the video fills the clipped circle.
+            return (
+                "position:absolute;inset:0;width:100%;height:100%;"
+                "object-fit:cover;border-radius:50%;"
+            )
         layout = element.props.get("layout", {})
         scale = float(layout.get("scale", 0.34))
         width = int(self.timeline.width * scale)
@@ -412,6 +457,18 @@ class CompositionWriter:
             else f"left:{layout.get('left', SAFE_MARGIN)}px;"
         )
         return base + vertical + horizontal
+
+    def _copy_brand_fonts(self) -> None:
+        """Copy local woff2 files into media/ so the composition stays offline."""
+        fonts_dir = Path(__file__).resolve().parents[3] / "brand" / "fonts"
+        if not fonts_dir.is_dir():
+            return
+        for path in fonts_dir.glob("*.woff2"):
+            self._media_src(path)
+        css = Path(__file__).resolve().parents[3] / "brand" / "fonts.css"
+        if css.exists():
+            # Rewrite urls already point at media/; just note presence in DESIGN.
+            pass
 
     def _logo_css(self, element: Element) -> str:
         position = element.props.get("position", "top_left")
@@ -567,6 +624,58 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   font-weight: 800;
   box-shadow: 0 18px 60px rgba(0,0,0,.45);
 }}
+"""
+
+_RING_BASE_CSS = """\
+.pulse-ring-wrap {
+  position: absolute;
+  z-index: 30;
+  pointer-events: none;
+}
+.pulse-ring-breath {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.pulse-ring-svg {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.avatar-clip {
+  position: absolute;
+  inset: 6%;
+  border-radius: 50%;
+  overflow: hidden;
+  z-index: 1;
+  background: #0A0C10;
+}
+.avatar-clip video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ring-network {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+}
+.pulse-ring-wrap[data-state="transition"] .ring-network,
+.pulse-ring-wrap.is-transition .ring-network {
+  opacity: 1;
+}
+.net-line {
+  stroke-dasharray: 240;
+  stroke-dashoffset: 240;
+  animation: net_draw 0.55s ease-out forwards;
+}
+@keyframes net_draw {
+  to { stroke-dashoffset: 0; }
+}
 """
 
 _SCRIPT = """\

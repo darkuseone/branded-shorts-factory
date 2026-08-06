@@ -25,6 +25,7 @@ from .qa.gate import QAReport
 from .render.audio_mix import build_mix
 from .render.composition import CompositionWriter
 from .render.hyperframes import HyperFramesRunner, RenderResult
+from .render.ring import RingConfig, RingPlan, plan_ring
 from .render.timeline import Timeline, build_timeline, use_mixed_audio
 from .resolver import ResolvedVisual, VisualResolver
 from .spec import Spec, SpecIssue
@@ -130,7 +131,10 @@ class Pipeline:
         # the generated index.html in a browser to see the layout before
         # spending a single voice or render credit.
         composition = CompositionWriter(
-            spec, result.timeline, self.settings.paths.composition / spec.id
+            spec,
+            result.timeline,
+            self.settings.paths.composition / spec.id,
+            ring=_ring_plan(spec),
         ).write()
         result.composition_dir = composition.directory
 
@@ -181,7 +185,7 @@ class Pipeline:
 
         with stage("compose", log) as info:
             composition_dir = self.settings.paths.composition / spec.id
-            writer = CompositionWriter(spec, result.timeline, composition_dir)
+            writer = CompositionWriter(spec, result.timeline, composition_dir, ring=_ring_plan(spec))
             composition = writer.write()
             result.composition_dir = composition.directory
             info["media"] = composition.media_files
@@ -358,3 +362,16 @@ class Pipeline:
         path.write_text(json.dumps(result.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
         result.report_path = path
         log.info("report written to %s", path, extra={"stage": "report"})
+
+
+def _ring_plan(spec: Spec) -> RingPlan:
+    """Load ring geometry from the brandbook when present, else use defaults."""
+    book = Brandbook.load(Path(__file__).resolve().parents[2] / "brand")
+    raw = None
+    if book is not None:
+        extra = book.extra if isinstance(book.extra, dict) else {}
+        # Brandbook.load puts the whole file into extra sans colors/typography,
+        # so the `ring` block is available there.
+        candidate = extra.get("ring")
+        raw = candidate if isinstance(candidate, dict) else None
+    return plan_ring(spec, RingConfig.from_brandbook(raw))
