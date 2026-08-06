@@ -73,7 +73,7 @@
     "motion_prompt": "Seated at a desk in a dark neon-lit room, chest-up framing, slight high camera angle, speaking into a studio condenser microphone, natural hand gestures visible, serious expert tone, looking into camera"
   },
   "voice": {
-    "voice_id": "",
+    "voice_id": "14NozJq5eoBmDc1FXFDq",
     "model": "eleven_v3",
     "stability": 47,
     "similarity_boost": 0.82,
