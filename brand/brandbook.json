@@ -93,20 +93,15 @@
     "tone": "meta_irony"
   },
   "avatar": {
-    "look_id": "bbcc4667fbb14ec69a73b34f455cda54",
-    "look_id_prev_studio": "54172d7a5b2946ed8a592dee955fb0c7",
+    "look_id": "37fa8301e2dd46b2a8d11d4b766a6a50",
     "look_id_edit": "48f0bd5e217548ed8bbdfb67e5c1efc9",
     "look_id_edit_studio": "eca97e9fe55f40799b25943fdc1a1599",
-    "_comment_looks": "Pending user pick among D1/D2/D3 (+ earlier C). look_id stays current until chosen.",
+    "look_id_prev_studio": "54172d7a5b2946ed8a592dee955fb0c7",
+    "look_id_neon_desk_host": "bbcc4667fbb14ec69a73b34f455cda54",
+    "_comment_looks": "SELECTED: D1 Tattooed studio (option A). Pulse Ring circle crop. Avatar V + NIKITA2.",
     "group_id": "d0573be250724c23bed61037f1c7490d",
     "engine": "avatar_v",
-    "motion_prompt": "Lively sci-pop host talking to camera with energy. Natural eyebrow raises on the question, slight forward lean on the punchline, small expressive head tilts, soft smiles when saying something ironic, hands occasionally gesture near the desk. Keep the neon studio and microphone stable. Feel curious and sharp, not stiff.",
-    "look_candidates": {
-      "D1_tattooed_studio": "37fa8301e2dd46b2a8d11d4b766a6a50",
-      "D2_grey_hoodie": "b02a2a247ee5496f98d8bdd516c17448",
-      "D3_behind_mic": "af7c0cce1b0a4adea39c47f17815fef3",
-      "C_neon_desk_host": "bbcc4667fbb14ec69a73b34f455cda54"
-    }
+    "motion_prompt": "Lively sci-pop host talking to camera with energy. Natural eyebrow raises on the question, slight forward lean on the punchline, small expressive head tilts, soft ironic smile, occasional hand gesture near the desk. Keep neon studio and microphone stable. Curious and sharp, not stiff."
   },
   "voice": {
     "voice_id": "14NozJq5eoBmDc1FXFDq",
@@ -119,7 +114,7 @@
     "style": 0.65,
     "speed": 1.08,
     "language": "ru",
-    "_comment": "Always NIKITA2 on HeyGen. Prefer lively delivery: stability 0.5 + higher style. Pipeline primary still ElevenLabs TTS + lipsync."
+    "_comment": "Always NIKITA2 on HeyGen. Livelier delivery: stability 0.5 + style 0.65."
   },
   "magnific_prompt_skeleton": "[SUBJECT], cinematic sci-fi realism, dark graphite background (#0A0C10), subtle red rim light accent (#FF2A3C), cool cyan ambient glow (#37E4FF), volumetric fog, high detail, shallow depth of field, 8k, photorealistic, tech-documentary lighting, no text, no watermark"
 }
