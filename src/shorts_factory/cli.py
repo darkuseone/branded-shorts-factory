@@ -201,6 +201,7 @@ def _doctor(settings: Settings) -> int:
         ("Pexels", bool(credentials.pexels), "PEXELS_API_KEY"),
         ("Pixabay", bool(credentials.pixabay), "PIXABAY_API_KEY"),
         ("Pond5", bool(credentials.pond5), "POND5_API_KEY"),
+        ("Freesound (sfx fill)", bool(credentials.freesound), "FREESOUND_API_KEY"),
     ]
     for label, present, env_name in rows:
         log.info("%s %s (%s)", "✓" if present else "✗", label, env_name)

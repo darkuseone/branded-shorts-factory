@@ -35,6 +35,7 @@ from .assets.meme_policy import (
 from .config import Settings
 from .errors import RenderError
 from .generative.budget import TokenBudget
+from .http import HttpClient
 from .logging_utils import get_logger, stage
 from .qa.gate import QAReport
 from .render.audio_mix import build_mix
@@ -43,11 +44,18 @@ from .render.hyperframes import HyperFramesRunner, RenderResult
 from .render.ring import RingConfig, RingPlan, plan_ring
 from .render.timeline import Timeline, build_timeline, use_mixed_audio
 from .resolver import ResolvedVisual, VisualResolver
+from .search.providers.freesound import (
+    FreesoundClient,
+    fill_from_freesound,
+    fill_from_pixabay_catalog,
+    load_pixabay_catalog,
+)
 from .spec import Spec, SpecIssue
 from .voice.audio_design import resolve_from_library, suggest_audio_fx
 from .voice.captions import CaptionCue, build_cues
 from .voice.elevenlabs import ElevenLabsClient, SfxClip, VoiceClip
 from .voice.heygen import AvatarClip, HeyGenClient
+from .voice.sfx_analysis import analyze, write_index
 
 log = get_logger("pipeline")
 
@@ -403,25 +411,91 @@ class Pipeline:
         ]
 
     def _resolve_sound_design(self, spec: Spec, result: RunResult) -> None:
-        """Your own sounds first; generate only what the bank cannot cover."""
+        """Bank → Freesound → Pixabay catalog → ElevenLabs generation."""
         effects = spec.audio_fx or suggest_audio_fx(spec)
         if not effects:
             return
 
         from_library, missing = resolve_from_library(effects, self.sfx_library)
-        generated: list[SfxClip] = []
-        if missing:
-            if self.voice_client.is_available:
-                generated = self.voice_client.generate_all_fx(missing)
-                for clip in generated:
-                    self.voice_client.cache_fx_to_bank(clip, self.settings.paths.sfx_library)
-            elif self.sfx_library.items:
-                result.warnings.append(
-                    f"{len(missing)} effect(s) have no match in {self.settings.paths.sfx_library} "
-                    f"and could not be generated: {self.voice_client.unavailable_reason()}"
+        filled_online: list[SfxClip] = []
+        still_missing: list = []
+
+        if missing and not self.settings.offline:
+            bank = self.settings.paths.sfx_library
+            catalog_path = self.settings.paths.root / "assets" / "catalogs" / "pixabay-sfx.json"
+            catalog = load_pixabay_catalog(catalog_path)
+            freesound = FreesoundClient(self.settings)
+            http = HttpClient(provider="pixabay-sfx", timeout=45.0, min_interval=0.2)
+            accepted_paths: list[Path] = []
+
+            for fx in missing:
+                path = None
+                if freesound.is_available():
+                    path = fill_from_freesound(
+                        fx.type,
+                        client=freesound,
+                        bank_dir=bank,
+                        ffmpeg=self.settings.ffmpeg_cmd,
+                    )
+                if path is None and catalog:
+                    path = fill_from_pixabay_catalog(
+                        fx.type,
+                        catalog=catalog,
+                        bank_dir=bank,
+                        http=http,
+                        ffmpeg=self.settings.ffmpeg_cmd,
+                    )
+                if path is None:
+                    still_missing.append(fx)
+                    continue
+                accepted_paths.append(path)
+                # Peak-align the freshly cached file the same way as the bank.
+                profile = analyze(path, ffmpeg=self.settings.ffmpeg_cmd)
+                peak_at = float(getattr(profile, "peak_at", 0.0) or 0.0) if profile else 0.0
+                duration = float(getattr(profile, "duration", fx.duration) or fx.duration) if profile else fx.duration
+                from .voice.audio_design import align_start, fx_volume
+
+                filled_online.append(
+                    SfxClip(
+                        fx_id=fx.id,
+                        path=path,
+                        start=align_start(fx.at, peak_at),
+                        duration=min(duration, max(fx.duration, 0.3)),
+                        volume=fx_volume(fx.intensity),
+                        source="freesound" if "freesound" in path.name else "pixabay",
+                    )
                 )
 
-        result.sfx_clips = sorted(from_library + generated, key=lambda clip: clip.start)
+            if accepted_paths:
+                # Refresh bank index so the next pick sees the new files.
+                self.sfx_library.invalidate()
+                try:
+                    from .voice.sfx_analysis import scan
+
+                    profiles = scan(bank, ffmpeg=self.settings.ffmpeg_cmd)
+                    write_index(bank, profiles)
+                    self.sfx_library.invalidate()
+                except Exception as exc:  # noqa: BLE001
+                    result.warnings.append(f"sfx index refresh after online fill failed: {exc}")
+        else:
+            still_missing = list(missing)
+
+        generated: list[SfxClip] = []
+        if still_missing:
+            if self.voice_client.is_available:
+                generated = self.voice_client.generate_all_fx(still_missing)
+                for clip in generated:
+                    self.voice_client.cache_fx_to_bank(clip, self.settings.paths.sfx_library)
+                self.sfx_library.invalidate()
+            elif self.sfx_library.items:
+                result.warnings.append(
+                    f"{len(still_missing)} effect(s) have no match in {self.settings.paths.sfx_library} "
+                    f"and could not be filled online/generated: {self.voice_client.unavailable_reason()}"
+                )
+
+        result.sfx_clips = sorted(
+            from_library + filled_online + generated, key=lambda clip: clip.start
+        )
 
     def _generate_avatar(self, spec: Spec, result: RunResult) -> None:
         """Load or render the presenter for the window it is supposed to speak in."""

@@ -228,17 +228,25 @@ def layout_box(
 def ring_svg(config: RingConfig, size: int | None = None) -> str:
     """Inline SVG for the crisp neon rim.
 
+    Two concentric strokes: Deep Red shadow ring + Signal Red primary.
     Glow is intentionally *not* an SVG filter — HyperFrames/Puppeteer screenshot
     capture often drops ``feGaussianBlur``, leaving a flat matte stroke. Neon
     bloom is applied via CSS ``box-shadow`` on ``.avatar-clip`` instead.
     """
     px = size or config.diameter_px
     stroke = config.stroke
+    deep = "#B4001E"
+    cx = px / 2
+    r = px * 0.46
+    outer_w = max(8, px * 0.032)
+    inner_w = max(6, px * 0.024)
     return (
         f'<svg class="pulse-ring-svg" viewBox="0 0 {px} {px}" width="{px}" height="{px}" '
         f'aria-hidden="true">'
-        f'<circle class="pulse-ring-stroke" cx="{px / 2}" cy="{px / 2}" r="{px * 0.46:.1f}" '
-        f'fill="none" stroke="{stroke}" stroke-width="{max(6, px * 0.024):.1f}"/>'
+        f'<circle class="pulse-ring-shadow" cx="{cx}" cy="{cx}" r="{r:.1f}" '
+        f'fill="none" stroke="{deep}" stroke-width="{outer_w:.1f}" opacity="0.55"/>'
+        f'<circle class="pulse-ring-stroke" cx="{cx}" cy="{cx}" r="{r:.1f}" '
+        f'fill="none" stroke="{stroke}" stroke-width="{inner_w:.1f}"/>'
         f"</svg>"
     )
 

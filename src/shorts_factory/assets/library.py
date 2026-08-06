@@ -98,6 +98,10 @@ class _FolderLibrary:
         self.directory = directory
         self._items: list[LibraryItem] | None = None
 
+    def invalidate(self) -> None:
+        """Drop the cached listing so the next read re-scans the folder."""
+        self._items = None
+
     @property
     def items(self) -> list[LibraryItem]:
         if self._items is None:

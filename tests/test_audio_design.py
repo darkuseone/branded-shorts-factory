@@ -22,6 +22,7 @@ from shorts_factory.spec import (
 )
 from shorts_factory.voice.audio_design import (
     align_start,
+    apply_voice_guard,
     collect_beats,
     enforce_density,
     library_volume,
@@ -108,7 +109,7 @@ def test_hook_gets_exactly_one_impact():
     beats = collect_beats(_spec())
     impacts = [beat for beat in beats if beat.role == "impact"]
     assert len(impacts) == 1
-    assert impacts[0].reason == "hook"
+    assert impacts[0].reason == "hook_hit"
 
 
 def test_whooshes_only_on_topic_changes_not_every_cut():
@@ -117,7 +118,7 @@ def test_whooshes_only_on_topic_changes_not_every_cut():
     whooshes = [beat for beat in beats if beat.role == "whoosh"]
     # v2→v3 (motion_graphics) and v4→v5 (infographic) — not the plain footage cuts.
     assert 1 <= len(whooshes) <= 3
-    assert all("cut" in beat.reason for beat in whooshes)
+    assert all("ring_transition" in beat.reason or "meme_" in beat.reason for beat in whooshes)
 
 
 def test_emphasis_marks_earn_a_soft_thump():
@@ -237,3 +238,43 @@ def test_resolve_aligns_library_hits_by_peak(tmp_path):
     assert not missing
     assert clips[0].start == pytest.approx(7.2)
     assert clips[0].source == "library"
+
+
+def test_voice_guard_pushes_beats_past_segment_open():
+    from shorts_factory.voice.audio_design import Beat
+
+    spec = _spec()
+    beats = [Beat(at=3.1, role="whoosh", reason="early")]  # s1 starts at 3.0
+    guarded = apply_voice_guard(beats, spec, guard=0.4)
+    assert guarded[0].at == pytest.approx(3.4)
+
+
+def test_slow_attack_is_trimmed_from_the_head():
+    item = LibraryItem(
+        path=Path("swell.mp3"),
+        duration=2.5,
+        analysis={"peak_at": 1.6, "attack": 1.5, "tail": 0.4, "lufs": -18.0, "peak_dbtp": -3.0},
+    )
+    start, play = trim_plan(item, role="whoosh", requested=0.8)
+    assert start > 0.0
+    assert start <= item.peak_at
+    assert play <= item.duration - start
+
+
+def test_meme_visual_earns_branded_whoosh_in_and_out():
+    spec = _spec()
+    spec.visuals.append(
+        Visual(
+            id="meme-auto",
+            type="meme",
+            query="later",
+            keywords=["later"],
+            start=8.8,
+            duration=1.2,
+            position="fullscreen",
+        )
+    )
+    beats = collect_beats(spec)
+    meme_whooshes = [beat for beat in beats if beat.reason.startswith("meme_")]
+    assert len(meme_whooshes) == 2
+

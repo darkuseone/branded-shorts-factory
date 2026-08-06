@@ -116,7 +116,9 @@ def test_layout_box_respects_safe_margins():
 def test_svg_contains_signal_red_stroke():
     svg = ring_svg(RingConfig(stroke="#FF2A3C"), size=200)
     assert "#FF2A3C" in svg
+    assert "#B4001E" in svg  # Deep Red shadow rim
     assert "pulse-ring-stroke" in svg
+    assert "pulse-ring-shadow" in svg
     # Neon bloom is CSS box-shadow — SVG filters drop out in HF capture.
     assert "feGaussianBlur" not in svg
     assert "ringGlow" not in svg

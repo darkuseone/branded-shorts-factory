@@ -1,4 +1,4 @@
-"""Meme policy: frequency, forbidden rubrics, irony beats."""
+"""Meme policy: frequency ~1/10, forbidden science+medicine, seam-only beats."""
 
 from __future__ import annotations
 
@@ -77,26 +77,18 @@ def test_medicine_rubric_forbids_memes():
     assert "forbids" in decision.reason
 
 
-def test_science_rubric_allows_irony_memes():
+def test_science_rubric_forbids_memes_by_default():
     spec = _spec(rubric="наука")
     policy = MemePolicyConfig(frequency=1)
-    history = MemeHistory(videos=["x"] * 5, meme_at=[])
+    history = MemeHistory(videos=["x"] * 20, meme_at=[])
     decision = decide_meme(spec, policy, history)
-    assert decision.allowed
-    assert decision.beat in {
-        "hook_punch",
-        "misconception",
-        "absurd_scale",
-        "deadpan_accept",
-        "reveal_twist",
-        "context_end",
-        "core1_to_core2",
-    }
+    assert not decision.allowed
+    assert "forbids" in decision.reason
 
 
 def test_frequency_gate_blocks_until_enough_videos_pass():
     spec = _spec()
-    policy = MemePolicyConfig(frequency=4)
+    policy = MemePolicyConfig(frequency=10)
     history = MemeHistory(videos=["v1", "v2"], meme_at=["v1"])
     decision = decide_meme(spec, policy, history)
     assert not decision.allowed
@@ -105,37 +97,38 @@ def test_frequency_gate_blocks_until_enough_videos_pass():
 
 def test_frequency_gate_allows_after_gap():
     spec = _spec()
-    policy = MemePolicyConfig(frequency=4)
+    policy = MemePolicyConfig(frequency=10)
     history = MemeHistory(
-        videos=["old"] + [f"v{i}" for i in range(3)],
+        videos=["old"] + [f"v{i}" for i in range(9)],
         meme_at=["old"],
     )
     decision = decide_meme(spec, policy, history)
     assert decision.allowed
 
 
-def test_hook_punch_is_preferred_for_question_hooks():
+def test_only_context_or_core_seam_beats():
     spec = _spec()
     policy = MemePolicyConfig(frequency=1)
     ranked = rank_beats(spec, policy)
     assert ranked
-    assert ranked[0][0] == "hook_punch"
+    assert ranked[0][0] in {"context_end", "core1_to_core2"}
     assert ranked[0][1] >= (spec.hook.end if spec.hook else 0)
 
 
-def test_meme_never_lands_in_climax():
+def test_meme_never_lands_in_hook_or_climax():
     spec = _spec()
     policy = MemePolicyConfig()
     window = find_meme_window(spec, policy)
     assert window is not None
     beat, start, duration = window
+    assert start >= (spec.hook.end if spec.hook else 0)
     assert start + duration <= spec.cta.start
 
 
 def test_ensure_meme_visual_inserts_once():
     spec = _spec()
     policy = MemePolicyConfig(frequency=1)
-    history = MemeHistory(videos=["x"] * 5, meme_at=[])
+    history = MemeHistory(videos=["x"] * 20, meme_at=[])
     decision = decide_meme(spec, policy, history)
     assert decision.allowed
     visual = ensure_meme_visual(spec, decision)
@@ -154,6 +147,6 @@ def test_disabled_scenario_memes_are_skipped():
 
 def test_cold_start_allows_meme_on_empty_history():
     spec = _spec()
-    decision = decide_meme(spec, MemePolicyConfig(frequency=4), MemeHistory())
+    decision = decide_meme(spec, MemePolicyConfig(frequency=10), MemeHistory())
     assert decision.allowed
-    assert decision.beat == "hook_punch"
+    assert decision.beat in {"context_end", "core1_to_core2"}

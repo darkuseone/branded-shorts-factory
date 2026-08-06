@@ -42,6 +42,8 @@ RISER_LEAD = 2.4
 MAX_TAIL = 2.5
 #: Soft headroom so a peak that starts slightly before t=0 still plays.
 EARLY_START_SLACK = 0.05
+#: Attacks longer than this are trimmed so the hit is not buried under a slow swell.
+MAX_ATTACK = 1.2
 
 
 @dataclass(frozen=True)
@@ -74,8 +76,9 @@ def suggest_audio_fx(spec: Spec) -> list[AudioFx]:
 
     beats = collect_beats(spec)
     policy = spec.sfx_policy
+    guarded = apply_voice_guard(beats, spec, guard=policy.voice_guard)
     trimmed = enforce_density(
-        beats,
+        guarded,
         duration=spec.duration_target,
         max_effects=policy.max_effects,
         min_gap=policy.min_gap,
@@ -96,7 +99,12 @@ def suggest_audio_fx(spec: Spec) -> list[AudioFx]:
 
 
 def collect_beats(spec: Spec) -> list[Beat]:
-    """Map brand-book ring states and montage structure onto sound anchors."""
+    """Map brand-book ring states and montage structure onto sound anchors.
+
+    Plan names → engine roles: hook_hit→impact, ring_transition→whoosh,
+    ring_exit/return→power_down/up, emphasis_thump→thump, data_chip→ui,
+    pre_climax_riser→riser, cta_pop→pop.
+    """
     beats: list[Beat] = []
 
     if spec.hook:
@@ -106,7 +114,7 @@ def collect_beats(spec: Spec) -> list[Beat]:
                 role="impact",
                 intensity=0.75,
                 duration=1.0,
-                reason="hook",
+                reason="hook_hit",
             )
         )
 
@@ -122,16 +130,17 @@ def collect_beats(spec: Spec) -> list[Beat]:
                 role="whoosh",
                 intensity=0.55,
                 duration=0.8,
-                reason=f"cut {previous.id}→{current.id}",
+                reason=f"ring_transition {previous.id}→{current.id}",
             )
         )
 
-    guard = spec.sfx_policy.voice_guard
     for segment in spec.all_segments:
         if segment.emphasis != "high":
             continue
-        at = segment.start + min(0.35, max(guard, segment.duration * 0.12))
-        beats.append(Beat(at=at, role="thump", intensity=0.45, duration=0.5, reason=f"emphasis {segment.id}"))
+        at = segment.start + min(0.35, max(0.15, segment.duration * 0.12))
+        beats.append(
+            Beat(at=at, role="thump", intensity=0.45, duration=0.5, reason=f"emphasis_thump {segment.id}")
+        )
 
     # Ring exit / return from avatar.segments gaps (brand book EXIT / RETURN).
     if spec.avatar.enabled and spec.avatar.segments:
@@ -142,11 +151,45 @@ def collect_beats(spec: Spec) -> list[Beat]:
             if gap < 1.2:
                 continue
             beats.append(
-                Beat(at=left.end, role="power_down", intensity=0.4, duration=0.25, reason="ring exit")
+                Beat(at=left.end, role="power_down", intensity=0.4, duration=0.25, reason="ring_exit")
             )
             beats.append(
-                Beat(at=right.start, role="power_up", intensity=0.4, duration=0.25, reason="ring return")
+                Beat(at=right.start, role="power_up", intensity=0.4, duration=0.25, reason="ring_return")
             )
+
+    # Data chips → UI blip (plan: data_chip)
+    try:
+        from ..render.data_chips import extract_chips
+
+        for chip in extract_chips(spec):
+            beats.append(
+                Beat(at=chip.start, role="ui", intensity=0.4, duration=0.35, reason="data_chip")
+            )
+    except Exception:  # noqa: BLE001 — chips are optional punctuation
+        pass
+
+    # Meme in/out — branded whoosh at the insert seam (brand book §11).
+    for visual in spec.visuals:
+        if visual.type != "meme":
+            continue
+        beats.append(
+            Beat(
+                at=max(0.0, visual.start - 0.05),
+                role="whoosh",
+                intensity=0.5,
+                duration=0.7,
+                reason=f"meme_in {visual.id}",
+            )
+        )
+        beats.append(
+            Beat(
+                at=max(0.0, visual.end - 0.05),
+                role="whoosh",
+                intensity=0.45,
+                duration=0.6,
+                reason=f"meme_out {visual.id}",
+            )
+        )
 
     climax = _climax_at(spec)
     if climax is not None and climax > RISER_LEAD:
@@ -156,14 +199,33 @@ def collect_beats(spec: Spec) -> list[Beat]:
                 role="riser",
                 intensity=0.6,
                 duration=RISER_LEAD,
-                reason="pre-climax",
+                reason="pre_climax_riser",
             )
         )
 
     if spec.cta and spec.cta.text:
-        beats.append(Beat(at=spec.cta.start, role="pop", intensity=0.55, duration=0.6, reason="cta"))
+        beats.append(Beat(at=spec.cta.start, role="pop", intensity=0.55, duration=0.6, reason="cta_pop"))
 
     return sorted(beats, key=lambda beat: beat.at)
+
+
+def apply_voice_guard(beats: list[Beat], spec: Spec, *, guard: float = 0.4) -> list[Beat]:
+    """Push beats that land in the first ``guard`` seconds of a voice segment later.
+
+    Nothing is placed under the opening phonemes — ducking would smear the word.
+    """
+    if guard <= 0:
+        return beats
+    windows = [(segment.start, segment.start + guard) for segment in spec.all_segments]
+    out: list[Beat] = []
+    for beat in beats:
+        at = beat.at
+        for start, end in windows:
+            if start <= at < end:
+                at = end
+                break
+        out.append(Beat(at=at, role=beat.role, intensity=beat.intensity, duration=beat.duration, reason=beat.reason))
+    return out
 
 
 def enforce_density(
@@ -190,8 +252,18 @@ def enforce_density(
     # Priority: hook impact and climax riser first, then topic changes, then
     # the rest. Without this a dense script of emphasis marks would crowd out
     # the one sound the viewer is meant to notice.
-    priority = {"impact": 0, "riser": 1, "whoosh": 2, "transition": 2, "thump": 3, "pop": 4}
-    ordered = sorted(beats, key=lambda beat: (priority.get(beat.role, 5), beat.at))
+    priority = {
+        "impact": 0,
+        "riser": 1,
+        "whoosh": 2,
+        "transition": 2,
+        "power_down": 3,
+        "power_up": 3,
+        "thump": 4,
+        "ui": 5,
+        "pop": 6,
+    }
+    ordered = sorted(beats, key=lambda beat: (priority.get(beat.role, 6), beat.at))
 
     accepted: list[Beat] = []
     for beat in ordered:
@@ -293,11 +365,19 @@ def trim_plan(item: LibraryItem, *, role: str, requested: float) -> tuple[float,
         end = min(duration, item.peak_at + 0.35)
         return start, max(0.3, end - start)
 
+    # Slow attacks bury the hit — start reading closer to the peak.
+    attack_trim = 0.0
+    if item.attack > MAX_ATTACK:
+        attack_trim = max(0.0, item.peak_at - MAX_ATTACK)
+
     if item.tail > MAX_TAIL or duration > requested + 1.5:
         # Keep the attack and a controlled tail past the peak.
-        start = max(0.0, item.peak_at - max(item.attack, 0.15))
+        start = max(attack_trim, item.peak_at - max(min(item.attack, MAX_ATTACK), 0.15))
         end = min(duration, item.peak_at + min(MAX_TAIL, max(requested, 0.6)))
         return start, max(0.2, end - start)
+
+    if attack_trim > 0:
+        return attack_trim, max(0.2, duration - attack_trim)
 
     return 0.0, duration
 

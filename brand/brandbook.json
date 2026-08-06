@@ -75,20 +75,17 @@
   },
   "memes": {
     "enabled": true,
-    "frequency": 4,
+    "frequency": 10,
     "max_duration": 1.4,
     "max_per_video": 1,
     "prefer_safe_for_science": true,
     "forbidden_rubrics": [
       "медицина",
-      "medicine"
+      "medicine",
+      "наука",
+      "science"
     ],
     "allowed_beats": [
-      "hook_punch",
-      "misconception",
-      "absurd_scale",
-      "deadpan_accept",
-      "reveal_twist",
       "context_end",
       "core1_to_core2"
     ],

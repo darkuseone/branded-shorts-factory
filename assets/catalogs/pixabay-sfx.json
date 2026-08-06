@@ -1,0 +1,29 @@
+{
+  "_comment": "Manual Pixabay sound links — Pixabay has no public SFX API. Paste a download URL + roles; the pipeline caches accepted files into assets/sfx/ after envelope QA.",
+  "items": [
+    {
+      "id": "ui-blip-placeholder",
+      "title": "UI blip (replace with Pixabay URL)",
+      "url": "",
+      "roles": ["ui", "click", "pop"],
+      "license": "Pixabay License",
+      "tags": ["ui", "click", "interface"]
+    },
+    {
+      "id": "soft-thump-placeholder",
+      "title": "Soft thump (replace with Pixabay URL)",
+      "url": "",
+      "roles": ["thump", "impact"],
+      "license": "Pixabay License",
+      "tags": ["thump", "soft", "hit"]
+    },
+    {
+      "id": "power-tick-placeholder",
+      "title": "Power tick (replace with Pixabay URL)",
+      "url": "",
+      "roles": ["power_down", "power_up"],
+      "license": "Pixabay License",
+      "tags": ["power", "tick", "soft"]
+    }
+  ]
+}

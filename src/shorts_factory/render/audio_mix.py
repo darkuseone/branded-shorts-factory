@@ -28,6 +28,8 @@ DUCK_THRESHOLD = 0.03
 DUCK_RATIO = 9
 DUCK_ATTACK_MS = 15
 DUCK_RELEASE_MS = 350
+#: Effects step back under narration so punctuation never covers a word.
+SFX_DUCK_DB = -6.0
 
 
 @dataclass
@@ -116,20 +118,27 @@ def build_mix(
             f"{''.join(f'[{label}]' for label in voice_labels)}"
             f"amix=inputs={len(voice_labels)}:normalize=0:dropout_transition=0[voiceraw]"
         )
-        if music_label and music.ducking:
-            # One copy feeds the mix, the other is the sidechain key.
-            filters.append("[voiceraw]asplit=2[voice][voicekey]")
+        # Split voice once per sidechain consumer — FFmpeg labels are single-use.
+        duck_music = bool(music_label and music.ducking)
+        duck_sfx = bool(sfx_labels)
+        if duck_music and duck_sfx:
+            filters.append("[voiceraw]asplit=3[voice][voicekey_m][voicekey_s]")
+        elif duck_music or duck_sfx:
+            key = "voicekey_m" if duck_music else "voicekey_s"
+            filters.append(f"[voiceraw]asplit=2[voice][{key}]")
+        else:
+            filters.append("[voiceraw]anull[voice]")
+
+        if duck_music:
             filters.append(
-                f"[{music_label}][voicekey]sidechaincompress="
+                f"[{music_label}][voicekey_m]sidechaincompress="
                 f"threshold={DUCK_THRESHOLD}:ratio={DUCK_RATIO}:"
                 f"attack={DUCK_ATTACK_MS}:release={DUCK_RELEASE_MS}[ducked]"
             )
             stems += ["voice", "ducked"]
         elif music_label:
-            filters.append("[voiceraw]anull[voice]")
             stems += ["voice", music_label]
         else:
-            filters.append("[voiceraw]anull[voice]")
             stems.append("voice")
     elif music_label:
         stems.append(music_label)
@@ -137,8 +146,18 @@ def build_mix(
     if sfx_labels:
         filters.append(
             f"{''.join(f'[{label}]' for label in sfx_labels)}"
-            f"amix=inputs={len(sfx_labels)}:normalize=0:dropout_transition=0[sfx]"
+            f"amix=inputs={len(sfx_labels)}:normalize=0:dropout_transition=0[sfxraw]"
         )
+        if voice_labels:
+            # −6 dB under voice: soft sidechain so hits still read but never bury words.
+            filters.append(
+                f"[sfxraw][voicekey_s]sidechaincompress="
+                f"threshold={DUCK_THRESHOLD}:ratio={DUCK_RATIO}:"
+                f"attack={DUCK_ATTACK_MS}:release={DUCK_RELEASE_MS},"
+                f"volume={10 ** (SFX_DUCK_DB / 20.0):.4f}[sfx]"
+            )
+        else:
+            filters.append("[sfxraw]anull[sfx]")
         stems.append("sfx")
 
     if not stems:
