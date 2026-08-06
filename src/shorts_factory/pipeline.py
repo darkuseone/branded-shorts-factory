@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
@@ -330,9 +331,76 @@ class Pipeline:
                     "were rendered"
                 )
         else:
-            result.warnings.append(f"narration skipped: {self.voice_client.unavailable_reason()}")
+            fallback = self._load_avatar_voice(spec)
+            if fallback:
+                result.voice_clips = fallback
+                result.warnings.append(
+                    "narration loaded from jobs/<id>/voice_from_avatar.mp3 "
+                    f"(ElevenLabs unavailable: {self.voice_client.unavailable_reason()})"
+                )
+            else:
+                result.warnings.append(f"narration skipped: {self.voice_client.unavailable_reason()}")
 
         self._resolve_sound_design(spec, result)
+
+    def _load_avatar_voice(self, spec: Spec) -> list[VoiceClip]:
+        """Reuse HeyGen/MCP avatar audio when ElevenLabs is not configured.
+
+        Looks for ``jobs/<id>/voice_from_avatar.mp3``, or extracts audio from
+        ``jobs/<id>/avatar.mp4``. Returns one continuous clip at t=0 so the mix
+        stays in sync with the muted avatar video; captions fall back to estimates.
+        """
+        job_dir = self.settings.paths.root / "jobs" / spec.id
+        voice_path = job_dir / "voice_from_avatar.mp3"
+        if not voice_path.exists():
+            avatar_path = job_dir / "avatar.mp4"
+            if not avatar_path.exists():
+                return []
+            voice_path.parent.mkdir(parents=True, exist_ok=True)
+            target = self.settings.paths.voice / f"{spec.id}_from_avatar.mp3"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            cmd = [
+                self.settings.ffmpeg_cmd,
+                "-y",
+                "-i",
+                str(avatar_path),
+                "-vn",
+                "-acodec",
+                "libmp3lame",
+                "-q:a",
+                "2",
+                str(target),
+            ]
+            try:
+                subprocess.run(cmd, check=True, capture_output=True, timeout=120)
+            except (OSError, subprocess.SubprocessError) as exc:
+                log.warning("could not extract avatar audio: %s", exc, extra={"stage": "voice"})
+                return []
+            voice_path = target
+            try:
+                shutil.copy2(target, job_dir / "voice_from_avatar.mp3")
+            except OSError:
+                pass
+        else:
+            target = self.settings.paths.voice / f"{spec.id}_from_avatar.mp3"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(voice_path, target)
+            voice_path = target
+
+        duration = float(spec.spoken_duration or spec.duration_target)
+        first = spec.all_segments[0] if spec.all_segments else None
+        if first is None:
+            return []
+        return [
+            VoiceClip(
+                segment_id=first.id,
+                path=voice_path,
+                start=0.0,
+                duration=duration,
+                text=" ".join(segment.text for segment in spec.all_segments),
+                words=[],
+            )
+        ]
 
     def _resolve_sound_design(self, spec: Spec, result: RunResult) -> None:
         """Your own sounds first; generate only what the bank cannot cover."""

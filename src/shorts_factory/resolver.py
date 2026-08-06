@@ -98,6 +98,10 @@ class VisualResolver:
         if visual.type == "meme":
             return ResolvedVisual(visual=visual, qa=self._resolve_meme(spec, visual), search=None)
 
+        local = self._resolve_local_broll(spec, visual)
+        if local is not None:
+            return ResolvedVisual(visual=visual, qa=local, search=None)
+
         outcome = self.aggregator.search_visual(visual, spec)
         decision = decide(
             visual,
@@ -293,6 +297,56 @@ class VisualResolver:
 
         result.notes.append(f"all {result.attempts} candidate(s) failed quality checks")
         return result
+
+    # -- local overrides ----------------------------------------------------
+
+    def _resolve_local_broll(self, spec: Spec, visual: Visual) -> VisualQA | None:
+        """Accept ``jobs/<id>/broll/<visual_id>.*`` when an agent pre-staged stock.
+
+        Used when Pexels/Pixabay keys are missing but Magnific MCP (or another
+        source) already dropped files into the job folder.
+        """
+        folder = self.settings.paths.root / "jobs" / spec.id / "broll"
+        if not folder.is_dir():
+            return None
+        extensions = (".mp4", ".webm", ".mov", ".jpg", ".jpeg", ".png", ".webp")
+        matches = sorted(
+            path
+            for path in folder.iterdir()
+            if path.is_file()
+            and path.stem == visual.id
+            and path.suffix.lower() in extensions
+        )
+        if not matches:
+            return None
+        path = matches[0]
+        media_type = "video" if path.suffix.lower() in {".mp4", ".webm", ".mov"} else "image"
+        tags = [visual.query, *visual.keywords, *visual.must_include, "tech", "cyber", "ai"]
+        candidate = Candidate(
+            source="local_broll",
+            external_id=path.name,
+            media_type=media_type,
+            download_url="",
+            title=f"{visual.id} local b-roll",
+            tags=[tag for tag in tags if tag],
+            license="pre-staged",
+        )
+        from .media.ffmpeg import probe
+
+        info = probe(path, self.settings.ffprobe_cmd)
+        if info and info.width and info.height:
+            candidate.width, candidate.height = info.width, info.height
+            if info.duration:
+                candidate.duration = info.duration
+        asset = LocalAsset(candidate=candidate, path=path, info=info)
+        log.info("%s: using local b-roll %s", visual.id, path.name, extra={"stage": "resolve"})
+        return VisualQA(
+            visual_id=visual.id,
+            outcome="accepted",
+            asset=asset,
+            attempts=1,
+            notes=[f"local b-roll override: {path.relative_to(self.settings.paths.root)}"],
+        )
 
     # -- memes --------------------------------------------------------------
 

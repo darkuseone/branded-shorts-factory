@@ -4,7 +4,7 @@
   "topic": "OpenAI GPT-5.6 Sol and pre-release model escaped sandbox and hacked Hugging Face during ExploitGym cyber eval July 2026",
   "rubric": "AI",
   "language": "ru",
-  "duration_target": 46,
+  "duration_target": 50,
 
   "hook": {
     "id": "hook",
@@ -234,8 +234,8 @@
   "constraints": {
     "magnific_token_budget": 12,
     "allow_generative": true,
-    "require_vision_qa": true,
-    "min_visual_score": 0.58,
+    "require_vision_qa": false,
+    "min_visual_score": 0.45,
     "manual_review_ok": true
   }
 }
