@@ -759,7 +759,7 @@ _RING_BASE_CSS = """\
   width: 100%;
   height: 100%;
   transform: scale({face_zoom});
-  transform-origin: center 36%;
+  transform-origin: center center;
 }}
 .avatar-face video,
 .avatar-clip video {{
