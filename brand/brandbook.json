@@ -27,16 +27,28 @@
   "outro_card": true,
   "safe_area_margin": 96,
   "ring": {
-    "diameter_ratio": 0.30,
+    "diameter_ratio": 0.3,
     "default_anchor": "bottom_right",
     "cta_anchor": "bottom_center",
     "stroke": "#FF2A3C",
     "glow": "#B4001E",
     "states": {
-      "idle": { "pulse": 0.05, "cycle_s": 2.4 },
-      "emphasis": { "pulse": 0.18, "duration_s": 0.25, "repeats": 2 },
-      "transition": { "expand": 1.4, "duration_s": 0.35 },
-      "exit": { "duration_s": 0.25 }
+      "idle": {
+        "pulse": 0.05,
+        "cycle_s": 2.4
+      },
+      "emphasis": {
+        "pulse": 0.18,
+        "duration_s": 0.25,
+        "repeats": 2
+      },
+      "transition": {
+        "expand": 1.4,
+        "duration_s": 0.35
+      },
+      "exit": {
+        "duration_s": 0.25
+      }
     }
   },
   "sfx_kit": {
@@ -65,7 +77,10 @@
     "max_duration": 1.4,
     "max_per_video": 1,
     "prefer_safe_for_science": true,
-    "forbidden_rubrics": ["медицина", "medicine"],
+    "forbidden_rubrics": [
+      "медицина",
+      "medicine"
+    ],
     "allowed_beats": [
       "hook_punch",
       "misconception",
@@ -82,10 +97,16 @@
     "look_id_prev_studio": "54172d7a5b2946ed8a592dee955fb0c7",
     "look_id_edit": "48f0bd5e217548ed8bbdfb67e5c1efc9",
     "look_id_edit_studio": "eca97e9fe55f40799b25943fdc1a1599",
-    "_comment_looks": "look_id = current candidate Neon Desk Host. look_id_edit = digital twin for regenerations. look_id_edit_studio = older prompt regen. look_id_prev_studio = earlier studio mic photo.",
+    "_comment_looks": "Pending user pick among D1/D2/D3 (+ earlier C). look_id stays current until chosen.",
     "group_id": "d0573be250724c23bed61037f1c7490d",
     "engine": "avatar_v",
-    "motion_prompt": "Lively sci-pop host talking to camera with energy. Natural eyebrow raises on the question, slight forward lean on the punchline, small expressive head tilts, soft smiles when saying something ironic, hands occasionally gesture near the desk. Keep the neon studio and microphone stable. Feel curious and sharp, not stiff."
+    "motion_prompt": "Lively sci-pop host talking to camera with energy. Natural eyebrow raises on the question, slight forward lean on the punchline, small expressive head tilts, soft smiles when saying something ironic, hands occasionally gesture near the desk. Keep the neon studio and microphone stable. Feel curious and sharp, not stiff.",
+    "look_candidates": {
+      "D1_tattooed_studio": "37fa8301e2dd46b2a8d11d4b766a6a50",
+      "D2_grey_hoodie": "b02a2a247ee5496f98d8bdd516c17448",
+      "D3_behind_mic": "af7c0cce1b0a4adea39c47f17815fef3",
+      "C_neon_desk_host": "bbcc4667fbb14ec69a73b34f455cda54"
+    }
   },
   "voice": {
     "voice_id": "14NozJq5eoBmDc1FXFDq",
