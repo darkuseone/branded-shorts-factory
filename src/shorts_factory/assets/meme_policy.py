@@ -195,9 +195,7 @@ def decide_meme(spec: Spec, policy: MemePolicyConfig, history: MemeHistory) -> M
     )
 
 
-def rank_beats(
-    spec: Spec, policy: MemePolicyConfig
-) -> list[tuple[str, float, float, list[str], str]]:
+def rank_beats(spec: Spec, policy: MemePolicyConfig) -> list[tuple[str, float, float, list[str], str]]:
     """Score possible insert moments; highest priority first."""
     segments = spec.all_segments
     if len(segments) < 2:

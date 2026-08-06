@@ -355,7 +355,5 @@ class VisualResolver:
             f"trim={item.trim_start:g}s use={usable:g}s"
         )
         # Stash trim on the visual notes for the timeline writer.
-        visual.notes = (
-            f"{visual.notes}|trim_start={item.trim_start:g}|max_use={usable:g}|humor={item.humor}"
-        )
+        visual.notes = f"{visual.notes}|trim_start={item.trim_start:g}|max_use={usable:g}|humor={item.humor}"
         return result
