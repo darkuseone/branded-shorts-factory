@@ -96,9 +96,8 @@ def verify_composition_css(composition_dir: Path) -> list[str]:
         errors.append("composition still uses SVG glow filters (drop in HF capture)")
     if "object-position" not in html:
         errors.append("composition missing object-position for face crop")
-    if "ring-network" in html and "display: none" in html:
-        # Prefer not mounting the network SVG at all when idle.
-        pass
+    if "ring-network" in html:
+        errors.append("composition still mounts ring-network SVG (causes left red ghost in HF)")
     return errors
 
 

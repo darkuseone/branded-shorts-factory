@@ -25,7 +25,7 @@ from typing import Any
 
 from ..logging_utils import get_logger
 from ..spec import Spec
-from .ring import RingConfig, RingPlan, layout_box, network_overlay_svg, plan_ring, ring_css, ring_svg
+from .ring import RingConfig, RingPlan, layout_box, plan_ring, ring_css, ring_svg
 from .timeline import (
     BOTTOM_UI_RESERVE,
     SAFE_MARGIN,
@@ -229,11 +229,8 @@ class CompositionWriter:
         cfg = self.ring.config
         box = layout_box(cfg, anchor=cfg.default_anchor)
         size = box["size"]
-        network = ""
-        if any(event.state == "transition" for event in self.ring.events):
-            # Only mount the network SVG when a transition fires — a permanent
-            # display:none SVG still painted a tall red ghost arc in HF capture.
-            network = network_overlay_svg(cfg, size)
+        # Never mount ring-network SVG: even with display:none, HyperFrames
+        # capture painted a persistent tall red ellipse on the left edge.
         return (
             f'<div id="pulse_ring" class="pulse-ring-wrap" '
             f'style="left:{box["left"]}px;top:{box["top"]}px;width:{size}px;height:{size}px;">'
@@ -241,7 +238,6 @@ class CompositionWriter:
             f'<div class="pulse-ring-halo" aria-hidden="true"></div>'
             f'<div class="pulse-ring-neon" aria-hidden="true"></div>'
             f"{ring_svg(cfg, size)}"
-            f"{network}"
             f'<div class="avatar-clip">'
             f'<div class="avatar-face">'
             f'<video {attrs} src="{src}" muted playsinline preload="auto"{loop}></video>'
@@ -745,8 +741,7 @@ _RING_BASE_CSS = """\
   z-index: 3;
   pointer-events: none;
   opacity: 0.95;
-  /* Keep drop-shadow tight — large stacked blurs painted a tall ghost arc in HF. */
-  filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 6px {glow}) drop-shadow(0 0 12px {stroke});
+  /* No CSS filter — stacked drop-shadows leaked a tall left ghost in HF capture. */
 }}
 .avatar-clip {{
   position: absolute;
@@ -772,23 +767,7 @@ _RING_BASE_CSS = """\
   /* no transform here — HF composites <video> without element transforms */
 }}
 .ring-network {{
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 4;
-  pointer-events: none;
-  display: none;
-  opacity: 0;
-}}
-.pulse-ring-wrap[data-state="transition"] .ring-network,
-.pulse-ring-wrap.is-transition .ring-network {{
-  display: block;
-  opacity: 1;
-}}
-.net-line {{
-  stroke-dasharray: 240;
-  stroke-dashoffset: 240;
-  animation: net_draw 0.55s ease-out forwards;
+  display: none !important;
 }}
 @keyframes net_draw {{
   to {{ stroke-dashoffset: 0; }}
