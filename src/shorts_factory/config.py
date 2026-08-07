@@ -70,6 +70,7 @@ class Credentials:
     pixabay: str | None = None
     pond5: str | None = None
     freesound: str | None = None
+    gemini: str | None = None
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> Credentials:
@@ -83,6 +84,7 @@ class Credentials:
             pixabay=_env(env, "PIXABAY_API_KEY"),
             pond5=_env(env, "POND5_API_KEY"),
             freesound=_env(env, "FREESOUND_API_KEY"),
+            gemini=_env(env, "GEMINI_API_KEY", "GOOGLE_API_KEY"),
         )
 
     def available_stock_sources(self) -> tuple[str, ...]:

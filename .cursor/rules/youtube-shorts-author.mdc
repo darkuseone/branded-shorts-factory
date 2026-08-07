@@ -1,0 +1,14 @@
+---
+description: When drafting or rewriting Shorts scenarios (jobs/*.json), follow YouTube Shorts retention craft and REDSHIFT brand voice.
+globs: jobs/**/*.json
+alwaysApply: false
+---
+
+# Shorts script craft (jobs)
+
+- Hook **0–3 s** (hard max 5 s): question / bold claim / news line. No greetings.
+- Structure: Hook → Intrigue → Climax → Abrupt resolution → short CTA.
+- Voice always ElevenLabs **eleven_v3** + brandbook Nikita / NIKITA2, language **ru**.
+- Visuals must track VO (`segment_ref`); no repeated assets across slots.
+- News: research first (`jobs/<id>/research.json`); avatar ~40–50% on-screen; top tablets for facts.
+- Full skill: `.cursor/skills/youtube-shorts-author/SKILL.md`

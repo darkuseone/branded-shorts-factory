@@ -38,7 +38,8 @@ DEFAULT_IDLE_CYCLE = 2.4
 DEFAULT_EMPHASIS_PULSE = 0.18
 DEFAULT_TRANSITION_EXPAND = 1.4
 DEFAULT_FACE_ZOOM = 1.0
-DEFAULT_FACE_POSITION = "center center"
+DEFAULT_FACE_POSITION = "center 72%"
+DEFAULT_SCALE_Y = 1.12  # slight vertical stretch (reference oval)
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,10 @@ class RingConfig:
     face_zoom: float = DEFAULT_FACE_ZOOM
     #: CSS object-position for the face crop inside the circle.
     face_position: str = DEFAULT_FACE_POSITION
+    #: Vertical stretch of the ring wrapper (>1 = taller oval).
+    scale_y: float = DEFAULT_SCALE_Y
+    #: Draw CSS lightning web rising from the ring top.
+    lightning: bool = True
     idle_pulse: float = 0.05
     idle_cycle_s: float = DEFAULT_IDLE_CYCLE
     emphasis_pulse: float = DEFAULT_EMPHASIS_PULSE
@@ -78,6 +83,8 @@ class RingConfig:
             glow=str(raw.get("glow") or DEFAULT_GLOW),
             face_zoom=float(raw.get("face_zoom") or DEFAULT_FACE_ZOOM),
             face_position=str(raw.get("face_position") or DEFAULT_FACE_POSITION),
+            scale_y=float(raw.get("scale_y") or DEFAULT_SCALE_Y),
+            lightning=bool(raw.get("lightning", True)),
             idle_pulse=float(idle.get("pulse") or 0.05),
             idle_cycle_s=float(idle.get("cycle_s") or DEFAULT_IDLE_CYCLE),
             emphasis_pulse=float(emphasis.get("pulse") or DEFAULT_EMPHASIS_PULSE),
@@ -309,41 +316,59 @@ def ring_css(plan: RingPlan, *, duration: float) -> str:
     )
 
 
-def network_overlay_svg(config: RingConfig, size: int) -> str:
-    """A sparse neural-net burst that grows out of the ring's top edge.
+def lightning_overlay_svg(config: RingConfig, size: int) -> str:
+    """Sparse neural bolts rising from the ring — CSS-animated, HF-safe.
 
-    Used as a TRANSITION accent. Stroke-dasharray is animated from CSS so the
-    lines appear to draw themselves out of the circle.
+    Uses class ``ring-lightning`` (never ``ring-network`` — that ghosted left).
+    Masked from the ring rim upward so lines read as emitted energy.
     """
+    if not config.lightning:
+        return ""
     cx = size / 2
-    top = size * 0.04
+    top = size * 0.08
     nodes = [
         (cx, top),
-        (cx - size * 0.18, top - size * 0.22),
-        (cx + size * 0.16, top - size * 0.28),
-        (cx - size * 0.32, top - size * 0.12),
-        (cx + size * 0.30, top - size * 0.15),
-        (cx - size * 0.08, top - size * 0.42),
-        (cx + size * 0.05, top - size * 0.48),
+        (cx - size * 0.14, top - size * 0.18),
+        (cx + size * 0.12, top - size * 0.22),
+        (cx - size * 0.26, top - size * 0.08),
+        (cx + size * 0.24, top - size * 0.10),
+        (cx - size * 0.06, top - size * 0.34),
+        (cx + size * 0.04, top - size * 0.38),
+        (cx - size * 0.18, top - size * 0.42),
+        (cx + size * 0.16, top - size * 0.46),
     ]
     lines = []
     for index, (x, y) in enumerate(nodes[1:], start=1):
-        parent = nodes[0] if index < 4 else nodes[(index % 3) + 1]
+        parent = nodes[0] if index < 4 else nodes[min(index - 1, 3)]
         lines.append(
-            f'<line class="net-line" x1="{parent[0]:.1f}" y1="{parent[1]:.1f}" '
+            f'<line class="bolt-line" x1="{parent[0]:.1f}" y1="{parent[1]:.1f}" '
             f'x2="{x:.1f}" y2="{y:.1f}" stroke="{config.stroke}" '
-            f'stroke-width="{max(1.5, size * 0.006):.1f}" opacity="0.85"/>'
+            f'stroke-width="{max(1.2, size * 0.0045):.1f}" opacity="0.75"/>'
         )
     dots = "".join(
-        f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{max(2, size * 0.012):.1f}" fill="{config.stroke}"/>'
+        f'<circle class="bolt-node" cx="{x:.1f}" cy="{y:.1f}" '
+        f'r="{max(1.8, size * 0.01):.1f}" fill="{config.glow}"/>'
         for x, y in nodes
     )
-    view = f"{-size * 0.2:.0f} {-size * 0.55:.0f} {size * 1.4:.0f} {size * 1.2:.0f}"
-    return (
-        f'<svg class="ring-network" viewBox="{view}" '
-        f'width="{size}" height="{size}" aria-hidden="true">'
-        f"{''.join(lines)}{dots}</svg>"
+    orbs = "".join(
+        f'<circle class="bolt-orb" cx="{x:.1f}" cy="{y:.1f}" '
+        f'r="{max(3.0, size * 0.018):.1f}" fill="{config.stroke}" opacity="0.25"/>'
+        for x, y in nodes[5:]
     )
+    view = f"{-size * 0.15:.0f} {-size * 0.55:.0f} {size * 1.3:.0f} {size * 0.85:.0f}"
+    return (
+        f'<svg class="ring-lightning" viewBox="{view}" width="{size}" height="{int(size * 0.7)}" '
+        f'aria-hidden="true" style="position:absolute;left:0;top:{-int(size * 0.42)}px;'
+        f'pointer-events:none;overflow:visible;'
+        f'mask-image:radial-gradient(ellipse 70% 90% at 50% 100%,#000 18%,#fff 55%);'
+        f'-webkit-mask-image:radial-gradient(ellipse 70% 90% at 50% 100%,#000 18%,#fff 55%);">'
+        f"{''.join(lines)}{dots}{orbs}</svg>"
+    )
+
+
+def network_overlay_svg(config: RingConfig, size: int) -> str:
+    """Deprecated alias — use ``lightning_overlay_svg``. Kept for tests."""
+    return lightning_overlay_svg(config, size)
 
 
 # --------------------------------------------------------------------------- #

@@ -52,7 +52,9 @@ Neon recipe:
 
 ## Do not mount
 
-- `ring-network` SVG — even with `display:none` HF still painted a tall left ghost arc. Skip the node entirely.
+- **`ring-network` SVG** — HF left ghost. Use **`ring-lightning`** (masked upward bolts) instead.
+- Put oval stretch on `.pulse-ring-oval`, not on the animated `.pulse-ring-wrap`.
+- Default face: `center 72%`, `scale_y ≈ 1.12`.
 
 ## Verify
 

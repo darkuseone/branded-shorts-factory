@@ -144,10 +144,23 @@ def test_brandbook_config_overrides_defaults():
             "stroke": "#FF2A3C",
             "face_zoom": 1.25,
             "face_position": "center 28%",
+            "scale_y": 1.15,
+            "lightning": True,
             "states": {"idle": {"cycle_s": 2.2}},
         }
     )
     assert cfg.diameter_ratio == 0.32
     assert cfg.face_zoom == 1.25
     assert cfg.face_position == "center 28%"
+    assert cfg.scale_y == 1.15
+    assert cfg.lightning is True
     assert cfg.idle_cycle_s == 2.2
+
+
+def test_lightning_overlay_uses_safe_class():
+    from shorts_factory.render.ring import lightning_overlay_svg
+
+    svg = lightning_overlay_svg(RingConfig(lightning=True), size=200)
+    assert "ring-lightning" in svg
+    assert "ring-network" not in svg
+    assert "#FF2A3C" in svg

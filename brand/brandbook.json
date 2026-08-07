@@ -33,7 +33,9 @@
     "stroke": "#FF2A3C",
     "glow": "#FF4D63",
     "face_zoom": 1.0,
-    "face_position": "center center",
+    "face_position": "center 72%",
+    "scale_y": 1.12,
+    "lightning": true,
     "states": {
       "idle": {
         "pulse": 0.05,

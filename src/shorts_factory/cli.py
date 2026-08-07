@@ -64,6 +64,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="report the bank without writing index.json (exit 1 if a role has no sound)",
     )
 
+    research = sub.add_parser("research", help="deepen a news/topic pack into jobs/<id>/research.json")
+    research.add_argument("topic", help="topic or headline to research")
+    research.add_argument("--id", dest="spec_id", help="job id (default: slug of topic)")
+    research.add_argument("--max-claims", type=int, default=12)
+
     sub.add_parser("doctor", help="check credentials and external tooling")
     return parser
 
@@ -83,6 +88,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _doctor(settings)
         if args.command == "sfxscan":
             return _sfxscan(settings, check_only=args.check)
+        if args.command == "research":
+            return _research(settings, topic=args.topic, spec_id=args.spec_id, max_claims=args.max_claims)
 
         spec, issues = load_spec(args.spec)
         for issue in issues:
@@ -190,6 +197,27 @@ def _sfxscan(settings: Settings, *, check_only: bool) -> int:
     return EXIT_OK
 
 
+def _research(settings: Settings, *, topic: str, spec_id: str | None, max_claims: int) -> int:
+    from .author.research import research_topic, save_research
+
+    log = get_logger("research")
+    slug = spec_id or _slug(topic)
+    destination = settings.paths.root / "jobs" / slug / "research.json"
+    pack = research_topic(topic, settings=settings, max_claims=max_claims)
+    save_research(pack, destination)
+    log.info("wrote %s (%d claim(s))", destination, len(pack.claims))
+    for claim in pack.claims[:8]:
+        log.info("• %s — %s", claim.source or "?", claim.title[:100])
+    return EXIT_OK if pack.claims else EXIT_FAILED
+
+
+def _slug(topic: str) -> str:
+    import re
+
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", topic.lower()).strip("-")
+    return (slug or "research")[:48]
+
+
 def _doctor(settings: Settings) -> int:
     log = get_logger("doctor")
     credentials = settings.credentials
@@ -197,7 +225,8 @@ def _doctor(settings: Settings) -> int:
         ("HeyGen (avatar)", bool(credentials.heygen), "HEYGEN_API_KEY"),
         ("ElevenLabs (voice + sfx)", bool(credentials.elevenlabs), "ELEVENLABS_API_KEY"),
         ("Magnific (premium visuals)", bool(credentials.magnific), "MAGNIFIC_API_KEY"),
-        ("Grok (vision QA + reserve)", bool(credentials.grok), "GROK_API_KEY"),
+        ("Grok (vision QA fallback)", bool(credentials.grok), "GROK_API_KEY"),
+        ("Gemini Vision (primary QA)", bool(credentials.gemini), "GEMINI_API_KEY"),
         ("Pexels", bool(credentials.pexels), "PEXELS_API_KEY"),
         ("Pixabay", bool(credentials.pixabay), "PIXABAY_API_KEY"),
         ("Pond5", bool(credentials.pond5), "POND5_API_KEY"),

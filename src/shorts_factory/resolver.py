@@ -24,6 +24,7 @@ from .generative.policy import after_library_miss, decide
 from .logging_utils import get_logger
 from .media.download import Downloader, LocalAsset
 from .qa.gate import VisualQA, combine
+from .qa.gemini_vision import CompositeVisionGate
 from .qa.native import check_native
 from .qa.vision import GrokVisionGate
 from .search.aggregator import SearchAggregator, SearchOutcome, media_type_for
@@ -35,7 +36,9 @@ from .spec import Spec, Visual
 log = get_logger("resolver")
 
 #: How many candidates one visual may burn before we give up on it.
-MAX_ATTEMPTS = 4
+#: Smart early-stop: quality over quantity (plan: 6–10, not 100).
+MAX_ATTEMPTS = 8
+MAX_QUEUE = 10
 
 _STYLE_HINTS = {
     "motion_graphics": "premium motion graphics, smooth animation, brand-clean",
@@ -74,7 +77,7 @@ class VisualResolver:
         downloader: Downloader | None = None,
         magnific: MagnificClient | None = None,
         grok_imagine: GrokImagineClient | None = None,
-        vision: GrokVisionGate | None = None,
+        vision: GrokVisionGate | CompositeVisionGate | None = None,
         budget: TokenBudget | None = None,
         memes: MemeLibrary | None = None,
     ):
@@ -83,14 +86,25 @@ class VisualResolver:
         self.downloader = downloader or Downloader(settings)
         self.magnific = magnific or MagnificClient(settings)
         self.grok_imagine = grok_imagine or GrokImagineClient(settings)
-        self.vision = vision or GrokVisionGate(settings)
+        self.vision = vision or CompositeVisionGate(settings)
         self.budget = budget or TokenBudget.from_budgets(settings.budgets)
         self.memes = memes or MemeLibrary(settings.paths.meme_library)
+        self._used_keys: set[str] = set()
 
     # -- public API ---------------------------------------------------------
 
     def resolve_all(self, spec: Spec) -> list[ResolvedVisual]:
-        return [self.resolve(spec, visual) for visual in spec.visuals]
+        self._used_keys.clear()
+        resolved: list[ResolvedVisual] = []
+        for visual in spec.visuals:
+            item = self.resolve(spec, visual)
+            if item.asset is not None:
+                if item.asset.candidate is not None:
+                    self._used_keys.add(item.asset.candidate.key)
+                    self._used_keys.add(item.asset.candidate.fingerprint)
+                self._used_keys.add(item.asset.path.stem.lower())
+            resolved.append(item)
+        return resolved
 
     def resolve(self, spec: Spec, visual: Visual) -> ResolvedVisual:
         context = spec.context_for(visual)
@@ -133,7 +147,7 @@ class VisualResolver:
         escalated = False
 
         if decision.action == "accept_free" or decision.action == "manual_review":
-            return free, escalated
+            return self._dedupe_queue(free)[:MAX_QUEUE], escalated
 
         premium: list[Candidate] = []
         media_type = media_type_for(visual)
@@ -176,12 +190,23 @@ class VisualResolver:
                 premium.append(generated)
 
         if not premium:
-            return free, escalated
+            return self._dedupe_queue(free)[:MAX_QUEUE], escalated
 
         # Re-rank the premium options against the same plan so the comparison
         # with free stock is apples to apples, then put them first.
         ranked_premium = rank_candidates(premium, visual, outcome.plan, limit=4)
-        return ranked_premium + free, escalated
+        return self._dedupe_queue(ranked_premium + free)[:MAX_QUEUE], escalated
+
+    def _dedupe_queue(self, queue: list[RankedCandidate]) -> list[RankedCandidate]:
+        """Drop assets already accepted for another slot in this run."""
+        out: list[RankedCandidate] = []
+        for ranked in queue:
+            key = ranked.candidate.key
+            fingerprint = ranked.candidate.fingerprint
+            if key in self._used_keys or fingerprint in self._used_keys:
+                continue
+            out.append(ranked)
+        return out
 
     def _prompt(self, spec: Spec, visual: Visual, plan: QueryPlan) -> str:
         return prompt_for(

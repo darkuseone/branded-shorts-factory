@@ -1,8 +1,8 @@
 """The escalation policy: when is free stock good enough?
 
-This is the single place that decides how project money is spent. The rule set
-is intentionally boring and readable, because "why did this run burn twelve
-tokens?" must always have a one-line answer.
+Illustration / motion / generated slots prefer Magnific (library → unlimited)
+before burning a huge free-stock fan-out. Literal news / footage still tries
+free stock first, then escalates.
 """
 
 from __future__ import annotations
@@ -15,7 +15,17 @@ from ..search.aggregator import SearchOutcome
 from ..spec import Visual
 from .budget import TokenBudget
 
-Action = Literal["accept_free", "magnific_library", "magnific_generate", "grok_fallback", "manual_review"]
+Action = Literal[
+    "accept_free",
+    "magnific_library",
+    "magnific_generate",
+    "magnific_first",
+    "grok_fallback",
+    "manual_review",
+]
+
+#: Types that should start on Magnific (library/unlimited) instead of 100 stock hits.
+MAGNIFIC_FIRST_TYPES = frozenset({"motion_graphics", "infographic", "generated", "image"})
 
 
 @dataclass
@@ -43,12 +53,21 @@ def decide(
     best = outcome.best_score
     accept_at = max(budgets.accept_above_score, visual.quality_floor)
     escalate_below = min_score if min_score is not None else budgets.escalate_below_score
+    magnific_first = visual.type in MAGNIFIC_FIRST_TYPES and visual.allow_magnific
+
+    # Illustration slots: skip "accept mediocre stock" — go Magnific library/unlimited.
+    if magnific_first and magnific_available:
+        if best >= accept_at and not hero and visual.type == "image":
+            return Decision("accept_free", f"free stock scored {best:.2f} ≥ {accept_at:.2f}", hero)
+        return Decision(
+            "magnific_library",
+            f"magnific-first type={visual.type}; free best {best:.2f}",
+            hero,
+        )
 
     if best >= accept_at:
         return Decision("accept_free", f"free stock scored {best:.2f} ≥ {accept_at:.2f}", hero)
 
-    # Types that free stock is structurally bad at — motion design and custom
-    # infographics are exactly what the premium tier exists for.
     premium_native = visual.type in {"motion_graphics", "infographic", "generated"}
 
     if best >= escalate_below and not premium_native and not hero:
@@ -64,7 +83,6 @@ def decide(
         return Decision("manual_review", "magnific disabled and free search found nothing", hero)
 
     if magnific_available:
-        # The library is free, so always try it before spending anything.
         return Decision(
             "magnific_library",
             (

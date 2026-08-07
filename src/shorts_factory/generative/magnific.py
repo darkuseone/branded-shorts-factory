@@ -68,7 +68,9 @@ class MagnificClient:
             default_headers=self._headers(),
         )
         self.unlimited_image_model = os.environ.get("MAGNIFIC_UNLIMITED_IMAGE_MODEL", "flux-schnell")
-        self.unlimited_video_model = os.environ.get("MAGNIFIC_UNLIMITED_VIDEO_MODEL", "")
+        self.unlimited_video_model = os.environ.get(
+            "MAGNIFIC_UNLIMITED_VIDEO_MODEL", "kling-1.0-standard"
+        )
         self.premium_image_model = os.environ.get("MAGNIFIC_PREMIUM_IMAGE_MODEL", "magnific-illusion-v2")
         self.premium_video_model = os.environ.get("MAGNIFIC_PREMIUM_VIDEO_MODEL", "magnific-motion-v1")
 

@@ -25,7 +25,7 @@ from typing import Any
 
 from ..logging_utils import get_logger
 from ..spec import Spec
-from .ring import RingConfig, RingPlan, layout_box, plan_ring, ring_css, ring_svg
+from .ring import RingConfig, RingPlan, layout_box, lightning_overlay_svg, plan_ring, ring_css, ring_svg
 from .timeline import (
     BOTTOM_UI_RESERVE,
     SAFE_MARGIN,
@@ -186,9 +186,13 @@ class CompositionWriter:
             if not src:
                 return ""
             loop = " loop" if element.props.get("loop") else ""
+            trim = float(element.props.get("trim_start") or 0.0)
+            trim_attr = f' data-trim-start="{trim:.3f}"' if trim > 0 else ""
             if element.kind == "avatar" and self.ring.visible:
-                return self._avatar_with_ring(attrs, src, loop)
-            return f'<video {attrs} src="{src}" muted playsinline preload="auto"{loop}></video>'
+                return self._avatar_with_ring(attrs + trim_attr, src, loop)
+            return (
+                f'<video {attrs}{trim_attr} src="{src}" muted playsinline preload="auto"{loop}></video>'
+            )
 
         if element.kind == "image":
             src = self._media_src(element.src)
@@ -229,11 +233,14 @@ class CompositionWriter:
         cfg = self.ring.config
         box = layout_box(cfg, anchor=cfg.default_anchor)
         size = box["size"]
-        # Never mount ring-network SVG: even with display:none, HyperFrames
-        # capture painted a persistent tall red ellipse on the left edge.
+        # Oval on inner shell so pulse_ring_life transform on the wrap still works.
+        # Lightning uses class ring-lightning (never ring-network — HF left ghost).
+        scale_y = cfg.scale_y
         return (
             f'<div id="pulse_ring" class="pulse-ring-wrap" '
             f'style="left:{box["left"]}px;top:{box["top"]}px;width:{size}px;height:{size}px;">'
+            f"{lightning_overlay_svg(cfg, size)}"
+            f'<div class="pulse-ring-oval" style="transform:scaleY({scale_y:.3f});transform-origin:center bottom;">'
             f'<div class="pulse-ring-breath">'
             f'<div class="pulse-ring-halo" aria-hidden="true"></div>'
             f'<div class="pulse-ring-neon" aria-hidden="true"></div>'
@@ -241,7 +248,7 @@ class CompositionWriter:
             f'<div class="avatar-clip">'
             f'<div class="avatar-face">'
             f'<video {attrs} src="{src}" muted playsinline preload="auto"{loop}></video>'
-            f"</div></div></div></div>"
+            f"</div></div></div></div></div>"
         )
 
     def _caption_inner(self, element: Element) -> str:
@@ -663,12 +670,12 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 22px;
+  padding: 16px 24px;
   background: #14171C;
-  border: 1px solid color-mix(in srgb, var(--primary) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
   border-left: 3px solid var(--primary);
-  border-radius: 4px;
-  box-shadow: 0 12px 40px rgba(0,0,0,.45);
+  border-radius: 6px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.45), inset 0 0 0 1px rgba(55, 228, 255, 0.08);
 }}
 .data-chip-label {{
   font-family: "JetBrains Mono", "Space Grotesk", ui-monospace, monospace;
@@ -677,6 +684,12 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   letter-spacing: 0.02em;
   color: #F5F7FA;
   white-space: nowrap;
+}}
+/* Top-band tablet look for overlay infographics sitting above the ring. */
+.clip.image[data-track-index="2"],
+.clip.video[data-track-index="2"] {{
+  border-radius: 12px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(55, 228, 255, 0.18);
 }}
 .cta-inner {{
   display: inline-block;
@@ -699,6 +712,12 @@ _RING_BASE_CSS = """\
   isolation: isolate;
   contain: layout style;
 }}
+.pulse-ring-oval {{
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}}
 .pulse-ring-breath {{
   position: relative;
   width: 100%;
@@ -708,34 +727,34 @@ _RING_BASE_CSS = """\
 /* Soft outer bloom — radial paint survives HF capture better than SVG blur. */
 .pulse-ring-halo {{
   position: absolute;
-  inset: -14%;
+  inset: -12%;
   z-index: 0;
   border-radius: 50%;
   background: radial-gradient(
     circle closest-side,
-    transparent 62%,
-    rgba(255, 42, 60, 0.75) 78%,
-    rgba(255, 90, 110, 0.4) 88%,
+    transparent 64%,
+    rgba(255, 42, 60, 0.55) 78%,
+    rgba(255, 90, 110, 0.28) 88%,
     transparent 100%
   );
   pointer-events: none;
 }}
-/* Neon tube rim — white-hot core + red corona via box-shadow (not SVG filters). */
+/* Neon tube rim — thinner / less carpet-red; white-hot core via box-shadow. */
 .pulse-ring-neon {{
   position: absolute;
   inset: 2.5%;
   z-index: 2;
   border-radius: 50%;
-  border: 6px solid {stroke};
+  border: 4px solid {stroke};
   box-shadow:
     0 0 1px 1px #fff,
-    0 0 4px 2px #FFE0E4,
-    0 0 10px 3px #FF8A96,
-    0 0 20px 7px {stroke},
-    0 0 40px 16px {glow},
-    0 0 64px 24px rgba(255, 42, 60, 0.55),
-    inset 0 0 8px 2px rgba(255, 255, 255, 0.75),
-    inset 0 0 18px 4px rgba(255, 140, 150, 0.7);
+    0 0 3px 1px #FFE0E4,
+    0 0 8px 2px #FF8A96,
+    0 0 16px 5px {stroke},
+    0 0 28px 10px {glow},
+    0 0 44px 16px rgba(255, 42, 60, 0.35),
+    inset 0 0 6px 1px rgba(255, 255, 255, 0.7),
+    inset 0 0 14px 3px rgba(255, 140, 150, 0.55);
   pointer-events: none;
 }}
 .pulse-ring-svg {{
@@ -744,7 +763,6 @@ _RING_BASE_CSS = """\
   z-index: 3;
   pointer-events: none;
   opacity: 0.95;
-  /* No CSS filter — stacked drop-shadows leaked a tall left ghost in HF capture. */
 }}
 .avatar-clip {{
   position: absolute;
@@ -754,12 +772,11 @@ _RING_BASE_CSS = """\
   z-index: 1;
   background: #0A0C10;
 }}
-/* Zoom the face on a WRAPPER — CSS transform on <video> is ignored by HF capture. */
 .avatar-face {{
   width: 100%;
   height: 100%;
   transform: scale({face_zoom});
-  transform-origin: center center;
+  transform-origin: center 70%;
 }}
 .avatar-face video,
 .avatar-clip video {{
@@ -767,10 +784,33 @@ _RING_BASE_CSS = """\
   height: 100%;
   object-fit: cover;
   object-position: {face_position};
-  /* no transform here — HF composites <video> without element transforms */
 }}
+/* Legacy class — never paint. */
 .ring-network {{
   display: none !important;
+}}
+.ring-lightning {{
+  z-index: 4;
+  overflow: visible;
+  opacity: 0.9;
+}}
+.ring-lightning .bolt-line {{
+  stroke-dasharray: 180;
+  stroke-dashoffset: 180;
+  animation: bolt_draw 2.4s ease-in-out infinite alternate;
+}}
+.ring-lightning .bolt-line:nth-child(2) {{ animation-delay: 0.15s; }}
+.ring-lightning .bolt-line:nth-child(3) {{ animation-delay: 0.3s; }}
+.ring-lightning .bolt-line:nth-child(4) {{ animation-delay: 0.45s; }}
+.ring-lightning .bolt-orb {{
+  animation: bolt_pulse 1.8s ease-in-out infinite alternate;
+}}
+@keyframes bolt_draw {{
+  to {{ stroke-dashoffset: 0; }}
+}}
+@keyframes bolt_pulse {{
+  from {{ opacity: 0.15; }}
+  to {{ opacity: 0.45; }}
 }}
 @keyframes net_draw {{
   to {{ stroke-dashoffset: 0; }}
@@ -794,11 +834,13 @@ _SCRIPT = """\
     }});
     stage.querySelectorAll('video, audio').forEach((media) => {{
       const start = parseFloat(media.dataset.start || '0');
+      const trim = parseFloat(media.dataset.trimStart || '0');
       const local = seconds - start;
       const length = parseFloat(media.dataset.duration || '0');
       if (local < 0 || local > length) {{ media.pause(); return; }}
       if (media.readyState > 0) {{
-        const target = media.loop && media.duration ? local % media.duration : local;
+        const base = media.loop && media.duration ? local % media.duration : local;
+        const target = Math.min((media.duration || base + trim) - 0.01, base + trim);
         if (Math.abs(media.currentTime - target) > 0.05) media.currentTime = target;
       }}
     }});

@@ -1,0 +1,54 @@
+{
+  "_comment": "Curated news / primary sources for REDSHIFT research stage. Agents expand claims via live search + these homes.",
+  "sources": [
+    {
+      "id": "openai-blog",
+      "name": "OpenAI",
+      "home": "https://openai.com/",
+      "search": "https://openai.com/index/",
+      "tags": ["openai", "ai", "models", "safety"]
+    },
+    {
+      "id": "huggingface-blog",
+      "name": "Hugging Face Blog",
+      "home": "https://huggingface.co/blog",
+      "search": "https://huggingface.co/blog",
+      "tags": ["huggingface", "ml", "datasets", "security"]
+    },
+    {
+      "id": "techcrunch",
+      "name": "TechCrunch",
+      "home": "https://techcrunch.com/",
+      "search": "https://techcrunch.com/search/",
+      "tags": ["tech", "startups", "ai"]
+    },
+    {
+      "id": "theverge",
+      "name": "The Verge",
+      "home": "https://www.theverge.com/",
+      "search": "https://www.theverge.com/search",
+      "tags": ["tech", "consumer", "ai"]
+    },
+    {
+      "id": "arstechnica",
+      "name": "Ars Technica",
+      "home": "https://arstechnica.com/",
+      "search": "https://arstechnica.com/search/",
+      "tags": ["tech", "science", "security"]
+    },
+    {
+      "id": "reuters-tech",
+      "name": "Reuters Technology",
+      "home": "https://www.reuters.com/technology/",
+      "search": "https://www.reuters.com/site-search/?query=",
+      "tags": ["news", "tech", "business"]
+    },
+    {
+      "id": "hackernews",
+      "name": "Hacker News",
+      "home": "https://news.ycombinator.com/",
+      "search": "https://hn.algolia.com/",
+      "tags": ["discussion", "tech"]
+    }
+  ]
+}

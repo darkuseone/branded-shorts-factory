@@ -78,6 +78,13 @@ class LibraryItem:
         shape = self.shape
         if shape in {"drone", "bed"}:
             return False
+        blob = f"{self.name} {' '.join(self.tags)}".lower()
+        if any(token in blob for token in ("doppler", "passing-car", "train", "traffic")):
+            return False
+        # Hot real-world beds (e.g. −6 LUFS car pass) must not punch cuts.
+        if self.lufs > -12.0 and any(token in blob for token in ("car", "pass", "whoosh")):
+            if "doppler" in blob or "passing" in blob:
+                return False
         # Without a scan we cannot know — trust the tags and let the picker decide.
         return True if not shape else bool(self.tags)
 
@@ -203,6 +210,19 @@ SFX_SYNONYMS: dict[str, tuple[str, ...]] = {
 }
 
 
+#: Filenames / tags that must never be montage accents (real-world pass-bys).
+SFX_ACCENT_BLACKLIST = (
+    "doppler",
+    "passing-car",
+    "passing_car",
+    "train",
+    "traffic",
+    "highway",
+    "vehicle",
+    "automobile",
+)
+
+
 class SfxLibrary(_FolderLibrary):
     """Your own sound design, matched to `audio_fx` entries by type.
 
@@ -230,7 +250,11 @@ class SfxLibrary(_FolderLibrary):
         if extra_tags:
             wanted += [tag.lower() for tag in extra_tags]
 
-        scored = [(item.matches(wanted), item) for item in self.items if item.usable_as_accent]
+        scored = [
+            (item.matches(wanted), item)
+            for item in self.items
+            if item.usable_as_accent and not _sfx_blacklisted(item)
+        ]
         hits = [(score, item) for score, item in scored if score > 0]
         if not hits:
             return None
@@ -240,6 +264,11 @@ class SfxLibrary(_FolderLibrary):
         index = self._used.get(fx_type, 0)
         self._used[fx_type] = index + 1
         return pool[index % len(pool)]
+
+
+def _sfx_blacklisted(item: LibraryItem) -> bool:
+    blob = f"{item.name} {' '.join(item.tags)}".lower()
+    return any(token in blob for token in SFX_ACCENT_BLACKLIST)
 
 
 class MemeLibrary(_FolderLibrary):
