@@ -324,9 +324,8 @@ class CompositionWriter:
         if self.ring.visible:
             blocks.append(ring_css(self.ring, duration=self.timeline.duration))
             blocks.append(self._ring_base_css())
-            self._copy_brand_fonts()
-        elif any(el.props.get("role") == "data_chip" for el in self.timeline.elements):
-            self._copy_brand_fonts()
+        # Always stage local woff2 — Aleko / no-ring shorts still need Inter for captions.
+        self._copy_brand_fonts()
 
         return "\n".join(block for block in blocks if block)
 
