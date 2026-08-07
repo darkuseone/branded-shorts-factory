@@ -11,9 +11,10 @@ The presenter lives **inside** the Pulse Ring: circular clip + neon rim. The cir
 ## Layout
 
 - Canvas: **1080×1920**, safe margin 96px, YouTube bottom reserve **340px**
-- Default anchor: `bottom_right` (ring inset ~140px from right for bloom)
-- CTA beat may flip to `bottom_center`
-- Diameter ≈ `0.30 × 1920` → ~576px wrap; face clip inset ~4.5%
+- Default anchor: **`bottom_center`** (reference stage — host in lower third)
+- Action Stage owns everything **above** the oval; never put fullscreen b-roll under the host for news/AI
+- Diameter ≈ `0.34 × 1920` → ~653px wrap; face clip inset ~4.5%
+- News/AI: **continuous oval for the whole VO** (`continuous_on_vo` + rubric). EXIT only when explicitly sparse and continuous is off.
 
 ## Critical HyperFrames rule
 

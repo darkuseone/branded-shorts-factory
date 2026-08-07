@@ -18,10 +18,10 @@ def _outcome(score: float = 0.5) -> SearchOutcome:
     return SearchOutcome(visual_id="v1", plan=plan, ranked=[], total_found=0)
 
 
-def test_infographic_is_magnific_first():
+def test_motion_graphics_is_magnific_first():
     visual = Visual(
         id="v1",
-        type="infographic",
+        type="motion_graphics",
         query="sandbox escape diagram",
         keywords=[],
         start=0,
@@ -38,7 +38,31 @@ def test_infographic_is_magnific_first():
     )
     assert decision.action == "magnific_library"
     assert "magnific-first" in decision.reason
-    assert "infographic" in MAGNIFIC_FIRST_TYPES
+    assert "motion_graphics" in MAGNIFIC_FIRST_TYPES
+    assert "infographic" not in MAGNIFIC_FIRST_TYPES
+
+
+def test_infographic_is_not_magnific_first():
+    visual = Visual(
+        id="v1",
+        type="infographic",
+        query="sandbox escape diagram",
+        keywords=[],
+        start=0,
+        duration=4,
+        priority="high",
+    )
+    assert "infographic" not in MAGNIFIC_FIRST_TYPES
+    decision = decide(
+        visual,
+        _outcome(0.0),
+        TokenBudget.from_budgets(Budgets()),
+        Budgets(),
+        magnific_available=True,
+        grok_available=False,
+    )
+    # May still escalate to Magnific on a miss — but not via magnific-first short-circuit.
+    assert "magnific-first" not in decision.reason
 
 
 def test_doppler_file_blacklisted_from_accents(tmp_path: Path):

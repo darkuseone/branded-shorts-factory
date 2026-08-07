@@ -219,6 +219,13 @@ class CompositionWriter:
                 )
             elif role == "cta":
                 inner = f'<span class="cta-inner">{html.escape(element.text)}</span>'
+            elif role == "subscribe":
+                inner = (
+                    f'<span class="subscribe-inner">'
+                    f'<span class="subscribe-bell" aria-hidden="true"></span>'
+                    f'{html.escape(element.text)}'
+                    f"</span>"
+                )
             else:
                 inner = f'<span class="text-inner">{html.escape(element.text)}</span>'
             return f'<div {attrs} data-role="{role}">{inner}</div>'
@@ -353,11 +360,14 @@ class CompositionWriter:
         elif element.kind == "logo":
             rules.append(self._logo_css(element))
         elif element.kind == "shape" and element.props.get("role") == "backdrop":
+            # Reference stage: black lower third under the oval, soft tint upward.
             rules.append(
                 "position:absolute;inset:0;"
-                "background:radial-gradient(120% 90% at 50% 12%, "
-                f"{element.props.get('accent', '#0F62FE')}22 0%, "
-                f"{element.props.get('color', '#050608')} 62%);"
+                "background:"
+                "linear-gradient(180deg, "
+                f"{element.props.get('accent', '#37E4FF')}18 0%, "
+                f"{element.props.get('color', '#0A0C10')} 42%, "
+                "#000000 78%, #000000 100%);"
             )
 
         # Timing: a single full-length animation with percentage stops.
@@ -583,6 +593,8 @@ def _entrance_for(element: Element) -> tuple[str, str]:
     role = element.props.get("role", "")
     if role == "cta":
         return "translateY(60px) scale(.92)", "translateY(-20px) scale(.98)"
+    if role == "subscribe":
+        return "translateY(40px) scale(.9)", "translateY(8px) scale(1)"
     if role == "outro":
         return "scale(.94)", "scale(1.02)"
     if role == "data_chip":
@@ -646,6 +658,13 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   text-align: center;
 }}
 .text[data-role="cta"] {{ bottom: {bottom_reserve}px; }}
+.text[data-role="subscribe"] {{
+  bottom: calc({bottom_reserve}px + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: auto;
+  padding: 0;
+}}
 .text[data-role="lower_third"] {{ bottom: calc({bottom_reserve}px + 220px); text-align: left; }}
 .text[data-role="outro"] {{ top: 46%; }}
 .text[data-role="data_chip"] {{
@@ -685,11 +704,13 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   color: #F5F7FA;
   white-space: nowrap;
 }}
-/* Top-band tablet look for overlay infographics sitting above the ring. */
+/* Action Stage — soft plate above the oval, no fullscreen under the host. */
 .clip.image[data-track-index="2"],
 .clip.video[data-track-index="2"] {{
-  border-radius: 12px;
-  box-shadow: 0 18px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(55, 228, 255, 0.18);
+  border-radius: 0;
+  box-shadow: 0 24px 80px rgba(0,0,0,.55);
+  -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
 }}
 .cta-inner {{
   display: inline-block;
@@ -700,6 +721,38 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   font-size: 52px;
   font-weight: 800;
   box-shadow: 0 18px 60px rgba(0,0,0,.45);
+}}
+.subscribe-inner {{
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 36px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  box-shadow: 0 14px 40px rgba(255, 42, 60, 0.45), 0 0 0 1px rgba(255,255,255,0.12);
+}}
+.subscribe-bell {{
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: inset 0 -6px 0 rgba(0,0,0,.12);
+  position: relative;
+}}
+.subscribe-bell::after {{
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  width: 12px;
+  height: 14px;
+  margin-left: -6px;
+  border-radius: 6px 6px 4px 4px;
+  background: var(--primary);
 }}
 """
 

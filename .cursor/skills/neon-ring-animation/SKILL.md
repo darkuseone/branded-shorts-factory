@@ -14,9 +14,12 @@ The Pulse Ring is the REDSHIFT signature — not decoration. It frames the talki
 | --- | --- | --- |
 | `stroke` | `#FF2A3C` | Signal Red tube |
 | `glow` | `#FF4D63` | Soft corona |
-| `diameter_ratio` | `0.30` | ~576px on 1080×1920 |
-| `default_anchor` | `bottom_right` | Presenter pocket |
-| `cta_anchor` | `bottom_center` | CTA beat |
+| `diameter_ratio` | `0.34` | ~653px on 1080×1920 |
+| `default_anchor` | `bottom_center` | Lower-third host (reference) |
+| `cta_anchor` | `bottom_center` | CTA / subscribe beat |
+| `continuous_on_vo` | `true` | News/AI: oval stays for full VO |
+| `scale_y` | `1.10` | Slight oval |
+| `lightning` | `true` | Bolts upward from rim only |
 
 Keep ≥ **140px** right margin so stage `overflow:hidden` does not shear the bloom.
 

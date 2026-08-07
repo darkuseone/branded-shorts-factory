@@ -31,7 +31,7 @@ log = get_logger("ring")
 
 RingState = Literal["idle", "emphasis", "transition", "exit", "return_", "hidden"]
 
-DEFAULT_DIAMETER_RATIO = 0.30
+DEFAULT_DIAMETER_RATIO = 0.34
 DEFAULT_STROKE = "#FF2A3C"
 DEFAULT_GLOW = "#FF4D63"
 DEFAULT_IDLE_CYCLE = 2.4
@@ -39,13 +39,15 @@ DEFAULT_EMPHASIS_PULSE = 0.18
 DEFAULT_TRANSITION_EXPAND = 1.4
 DEFAULT_FACE_ZOOM = 1.0
 DEFAULT_FACE_POSITION = "center 72%"
-DEFAULT_SCALE_Y = 1.12  # slight vertical stretch (reference oval)
+DEFAULT_SCALE_Y = 1.10  # reference oval stretch
+#: Rubrics where the oval stays on for the whole VO (reference stage).
+CONTINUOUS_VO_RUBRICS = frozenset({"ai", "it", "tech", "news", "технологии", "наука"})
 
 
 @dataclass(frozen=True)
 class RingConfig:
     diameter_ratio: float = DEFAULT_DIAMETER_RATIO
-    default_anchor: str = "bottom_right"
+    default_anchor: str = "bottom_center"
     cta_anchor: str = "bottom_center"
     stroke: str = DEFAULT_STROKE
     glow: str = DEFAULT_GLOW
@@ -57,6 +59,8 @@ class RingConfig:
     scale_y: float = DEFAULT_SCALE_Y
     #: Draw CSS lightning web rising from the ring top.
     lightning: bool = True
+    #: Keep oval on for full spoken window (news/AI stage layout).
+    continuous_on_vo: bool = True
     idle_pulse: float = 0.05
     idle_cycle_s: float = DEFAULT_IDLE_CYCLE
     emphasis_pulse: float = DEFAULT_EMPHASIS_PULSE
@@ -77,7 +81,7 @@ class RingConfig:
         exit_ = states.get("exit") if isinstance(states.get("exit"), dict) else {}
         return cls(
             diameter_ratio=float(raw.get("diameter_ratio") or DEFAULT_DIAMETER_RATIO),
-            default_anchor=str(raw.get("default_anchor") or "bottom_right"),
+            default_anchor=str(raw.get("default_anchor") or "bottom_center"),
             cta_anchor=str(raw.get("cta_anchor") or "bottom_center"),
             stroke=str(raw.get("stroke") or DEFAULT_STROKE),
             glow=str(raw.get("glow") or DEFAULT_GLOW),
@@ -85,6 +89,7 @@ class RingConfig:
             face_position=str(raw.get("face_position") or DEFAULT_FACE_POSITION),
             scale_y=float(raw.get("scale_y") or DEFAULT_SCALE_Y),
             lightning=bool(raw.get("lightning", True)),
+            continuous_on_vo=bool(raw.get("continuous_on_vo", True)),
             idle_pulse=float(idle.get("pulse") or 0.05),
             idle_cycle_s=float(idle.get("cycle_s") or DEFAULT_IDLE_CYCLE),
             emphasis_pulse=float(emphasis.get("pulse") or DEFAULT_EMPHASIS_PULSE),
@@ -128,9 +133,10 @@ class RingPlan:
 def plan_ring(spec: Spec, config: RingConfig | None = None) -> RingPlan:
     """Derive ring state changes from the scenario.
 
-    The ring is on whenever the avatar is on. Gaps between `avatar.segments`
-    are EXIT → hidden → RETURN. High-emphasis segments get EMPHASIS pulses.
-    Topic-changing visuals get a TRANSITION expand.
+    Reference stage (news/AI): oval stays on for the full spoken window — action
+    lives above it. Explicit sparse ``avatar.segments`` still allow EXIT gaps
+    when ``continuous_on_vo`` is false. High-emphasis → EMPHASIS; topic cuts →
+    TRANSITION (only while visible).
     """
     cfg = config or RingConfig()
     if not spec.avatar.enabled:
@@ -140,28 +146,37 @@ def plan_ring(spec: Spec, config: RingConfig | None = None) -> RingPlan:
     windows: list[tuple[float, float]] = []
 
     wanted = set(spec.avatar.segments) if spec.avatar.segments else None
-    segments = [s for s in spec.all_segments if wanted is None or s.id in wanted]
-    if not segments:
-        # Avatar on for the whole video.
-        windows.append((0.0, spec.duration_target))
-        events.append(RingEvent(0.0, "idle", spec.duration_target, "full run"))
+    # Continuous stage: no segment filter, or news/AI rubric with continuous_on_vo.
+    continuous = wanted is None or (cfg.continuous_on_vo and _rubric_wants_continuous(spec))
+    if continuous:
+        spoken_end = max((s.end for s in spec.all_segments), default=spec.duration_target)
+        if spec.cta:
+            spoken_end = max(spoken_end, min(spec.cta.end, spec.duration_target))
+        windows.append((0.0, min(spoken_end, spec.duration_target)))
+        events.append(RingEvent(0.0, "idle", windows[0][1], "continuous VO stage"))
+        segments = list(spec.all_segments)
     else:
-        # Merge contiguous / near-contiguous segments into windows.
-        window_start = segments[0].start
-        window_end = segments[0].end
-        for previous, current in zip(segments, segments[1:], strict=False):
-            gap = current.start - previous.end
-            if gap > 1.2:
-                windows.append((window_start, window_end))
-                events.append(
-                    RingEvent(window_end, "exit", cfg.exit_duration_s, f"leave after {previous.id}")
-                )
-                events.append(
-                    RingEvent(current.start, "return_", cfg.exit_duration_s, f"return for {current.id}")
-                )
-                window_start = current.start
-            window_end = max(window_end, current.end)
-        windows.append((window_start, window_end))
+        segments = [s for s in spec.all_segments if wanted is None or s.id in wanted]
+        if not segments:
+            windows.append((0.0, spec.duration_target))
+            events.append(RingEvent(0.0, "idle", spec.duration_target, "full run"))
+        else:
+            # Merge contiguous / near-contiguous segments into windows.
+            window_start = segments[0].start
+            window_end = segments[0].end
+            for previous, current in zip(segments, segments[1:], strict=False):
+                gap = current.start - previous.end
+                if gap > 1.2:
+                    windows.append((window_start, window_end))
+                    events.append(
+                        RingEvent(window_end, "exit", cfg.exit_duration_s, f"leave after {previous.id}")
+                    )
+                    events.append(
+                        RingEvent(current.start, "return_", cfg.exit_duration_s, f"return for {current.id}")
+                    )
+                    window_start = current.start
+                window_end = max(window_end, current.end)
+            windows.append((window_start, window_end))
 
     for segment in spec.all_segments:
         if segment.emphasis != "high":
@@ -212,7 +227,11 @@ def layout_box(
     canvas_w: int = VIDEO_WIDTH,
     canvas_h: int = VIDEO_HEIGHT,
 ) -> dict[str, int]:
-    """Pixel box for the ring+avatar wrapper."""
+    """Pixel box for the ring+avatar wrapper.
+
+    Reference stage: bottom-center oval in the lower third so Action Stage
+    (top band) owns everything above the rim.
+    """
     size = config.diameter_px
     margin = 96
     bottom = 340  # YouTube UI reserve
@@ -220,19 +239,35 @@ def layout_box(
 
     if chosen == "bottom_center":
         left = (canvas_w - size) // 2
-        top = canvas_h - bottom - size + int(size * 0.08)
+        # Sit just above YT chrome; slight lift so oval top ≈ action-stage floor.
+        top = canvas_h - bottom - size + int(size * 0.04)
     elif chosen == "bottom_left":
         left = margin
-        top = canvas_h - bottom - size + int(size * 0.08)
+        top = canvas_h - bottom - size + int(size * 0.04)
     elif chosen == "center":
         left = (canvas_w - size) // 2
         top = (canvas_h - size) // 2
     else:  # bottom_right — leave extra room on the right so neon bloom isn't clipped
         right_margin = max(margin, 140)
         left = canvas_w - right_margin - size
-        top = canvas_h - bottom - size + int(size * 0.08)
+        top = canvas_h - bottom - size + int(size * 0.04)
 
     return {"left": left, "top": max(margin, top), "size": size}
+
+
+def action_stage_box(
+    config: RingConfig | None = None,
+    *,
+    canvas_w: int = VIDEO_WIDTH,
+    canvas_h: int = VIDEO_HEIGHT,
+) -> dict[str, int]:
+    """Pixel box for the Action Stage — everything above the oval + gap."""
+    cfg = config or RingConfig()
+    oval = layout_box(cfg, canvas_w=canvas_w, canvas_h=canvas_h)
+    gap = 48
+    top = 48
+    bottom = max(top + 400, oval["top"] - gap)
+    return {"top": top, "left": 0, "width": canvas_w, "height": bottom - top, "fit": "cover"}
 
 
 def ring_svg(config: RingConfig, size: int | None = None) -> str:
@@ -393,6 +428,13 @@ def network_overlay_svg(config: RingConfig, size: int) -> str:
 # --------------------------------------------------------------------------- #
 # Internals
 # --------------------------------------------------------------------------- #
+
+
+def _rubric_wants_continuous(spec: Spec) -> bool:
+    rubric = (spec.rubric or spec.topic or "").strip().lower()
+    if not rubric:
+        return False
+    return any(token in rubric for token in CONTINUOUS_VO_RUBRICS)
 
 
 def _inside_any(time: float, windows: list[tuple[float, float]]) -> bool:

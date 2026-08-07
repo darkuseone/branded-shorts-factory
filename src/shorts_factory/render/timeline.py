@@ -115,7 +115,8 @@ class Timeline:
 _POSITION_LAYOUT: dict[str, dict[str, Any]] = {
     "fullscreen": {"top": 0, "left": 0, "width": VIDEO_WIDTH, "height": VIDEO_HEIGHT, "fit": "cover"},
     "background": {"top": 0, "left": 0, "width": VIDEO_WIDTH, "height": VIDEO_HEIGHT, "fit": "cover"},
-    "top": {"top": 180, "left": 0, "width": VIDEO_WIDTH, "height": 760, "fit": "cover"},
+    # Action Stage — above the bottom-center oval (oval top ≈ 927 with ratio 0.34).
+    "top": {"top": 48, "left": 0, "width": VIDEO_WIDTH, "height": 820, "fit": "cover", "radius": 0},
     "center": {"top": 520, "left": 0, "width": VIDEO_WIDTH, "height": 880, "fit": "cover"},
     "bottom": {"top": 900, "left": 0, "width": VIDEO_WIDTH, "height": 700, "fit": "cover"},
     "left": {"top": 480, "left": 0, "width": 700, "height": 960, "fit": "cover"},
@@ -199,6 +200,12 @@ def _add_background(timeline: Timeline, spec: Spec) -> None:
 
 
 def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual]) -> None:
+    """Place resolved media. News/AI stage: force non-meme footage onto Action Stage."""
+    from .ring import RingConfig, action_stage_box
+
+    stage = action_stage_box(RingConfig())
+    force_top = _stage_layout_job(spec)
+
     for item in resolved:
         if not item.usable or item.asset is None:
             timeline.warnings.append(f"visual {item.visual.id} has no usable asset and was dropped")
@@ -206,10 +213,20 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
 
         visual = item.visual
         asset = item.asset
-        layout = dict(_POSITION_LAYOUT.get(visual.position, _POSITION_LAYOUT["fullscreen"]))
-        is_full = visual.position in {"fullscreen", "background"}
-        # Memes punch over b-roll on their own track so they never fight
-        # fullscreen footage or data chips (HyperFrames forbids same-track overlap).
+        position = visual.position or "top"
+        # Reference stage: fullscreen under the oval is forbidden except short memes.
+        if force_top and visual.type != "meme" and position in {"fullscreen", "background"}:
+            position = "top"
+        layout = dict(_POSITION_LAYOUT.get(position, _POSITION_LAYOUT["top"]))
+        if position == "top":
+            layout = {
+                "top": stage["top"],
+                "left": stage["left"],
+                "width": stage["width"],
+                "height": stage["height"],
+                "fit": "cover",
+            }
+        is_full = position in {"fullscreen", "background"}
         if visual.type == "meme":
             track = TRACK_MEME
         else:
@@ -222,14 +239,13 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
             "license": asset.candidate.license,
             "credit": asset.candidate.author,
             "review": item.qa.outcome == "manual_review",
+            "stage": "action" if position == "top" else position,
         }
         if asset.is_video:
-            # Loop or trim to the slot; the renderer honours playbackRate/loop.
             props["loop"] = bool(asset.duration and asset.duration + 0.2 < visual.duration)
             props["source_duration"] = round(asset.duration, 3)
         if visual.type == "meme":
             props["meme"] = True
-            # Punch trim from the catalog (resolver encodes it in visual.notes).
             for chunk in (visual.notes or "").split("|"):
                 if chunk.startswith("trim_start="):
                     with contextlib.suppress(ValueError):
@@ -251,14 +267,37 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
         )
 
 
+def _stage_layout_job(spec: Spec) -> bool:
+    """True when this Short uses the reference Action Stage (oval bottom, action top)."""
+    rubric = (getattr(spec, "rubric", None) or spec.topic or "").strip().lower()
+    tokens = ("ai", "it", "tech", "news", "технологии", "наука", "openai", "huggingface")
+    return any(token in rubric for token in tokens)
+
+
 def _add_avatar(timeline: Timeline, spec: Spec, avatar: AvatarClip | None, start: float = 0.0) -> None:
-    """Place the presenter at the start of the window it was rendered for."""
+    """Place the presenter for the VO window (continuous oval on news stage)."""
     if avatar is None or not spec.avatar.enabled:
         return
-    layout = dict(_AVATAR_LAYOUT.get(spec.avatar.position, _AVATAR_LAYOUT["bottom_right"]))
+    from .ring import plan_ring
+
+    plan = plan_ring(spec)
+    position = spec.avatar.position if spec.avatar.position != "bottom_right" else "bottom_center"
+    if _stage_layout_job(spec):
+        position = "bottom_center"
+    layout = dict(_AVATAR_LAYOUT.get(position, _AVATAR_LAYOUT["bottom_center"]))
     layout["scale"] = spec.avatar.scale
-    duration = avatar.duration or spec.spoken_duration or spec.duration_target
-    start = max(0.0, min(start, spec.duration_target))
+    if plan.windows:
+        win_start = plan.windows[0][0]
+        win_end = plan.windows[-1][1]
+        # Honor an explicit late start (partial avatar render) inside the window.
+        if start > win_start + 0.05 and start < win_end - 0.05:
+            duration = win_end - start
+        else:
+            start = win_start
+            duration = win_end - start
+    else:
+        duration = avatar.duration or spec.spoken_duration or spec.duration_target
+        start = max(0.0, min(start, spec.duration_target))
     timeline.add(
         Element(
             id="avatar",
@@ -270,8 +309,6 @@ def _add_avatar(timeline: Timeline, spec: Spec, avatar: AvatarClip | None, start
             props={
                 "layout": layout,
                 "transparent": avatar.transparent,
-                # The avatar clip carries its own audio only when we could not
-                # drive it from our own narration render.
                 "muted": True,
             },
         )
@@ -357,21 +394,48 @@ def _add_brand(timeline: Timeline, spec: Spec) -> None:
 
 
 def _add_cta(timeline: Timeline, spec: Spec) -> None:
-    if not spec.cta or not spec.cta.text:
-        return
+    """CTA text then a small subscribe badge in the last ~2s (no same-track overlap)."""
+    sub_start = max(0.0, spec.duration_target - 2.0)
+    if spec.cta and spec.cta.text:
+        cta_start = spec.cta.start
+        # Keep CTA off the subscribe window so HyperFrames does not see overlap.
+        cta_end = min(spec.cta.end, sub_start)
+        cta_duration = cta_end - cta_start
+        if cta_duration >= 0.5:
+            timeline.add(
+                Element(
+                    id="cta",
+                    kind="text",
+                    start=cta_start,
+                    duration=cta_duration,
+                    track=TRACK_CTA,
+                    text=spec.cta.text,
+                    props={
+                        "role": "cta",
+                        "style": spec.cta.style,
+                        "color": spec.brand.color_accent,
+                        "url": spec.cta.url,
+                    },
+                )
+            )
+        else:
+            # CTA lands in the last 2s — show only subscribe badge.
+            sub_start = min(sub_start, cta_start)
+
+    sub_duration = max(1.2, spec.duration_target - sub_start)
     timeline.add(
         Element(
-            id="cta",
+            id="subscribe",
             kind="text",
-            start=spec.cta.start,
-            duration=spec.cta.duration,
+            start=sub_start,
+            duration=sub_duration,
             track=TRACK_CTA,
-            text=spec.cta.text,
+            text="Подписаться",
             props={
-                "role": "cta",
-                "style": spec.cta.style,
-                "color": spec.brand.color_accent,
-                "url": spec.cta.url,
+                "role": "subscribe",
+                "style": "badge",
+                "color": spec.brand.color_primary,
+                "accent": spec.brand.color_accent,
             },
         )
     )

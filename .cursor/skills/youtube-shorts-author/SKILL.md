@@ -30,11 +30,14 @@ Rules:
 
 ### Hook patterns that work
 
+- Curiosity gap (preferred): «А что если ИИ сам взломал чужой датасет — и никто не заметил?»
 - Direct question: «Знаешь, почему…?»
-- Bold claim: «Модель OpenAI сама взломала Hugging Face.»
-- Mid-action news: lead with the shocking fact, then rewind.
+- Bold claim — only if the Intrigue Bridge still withholds the mechanism
+- Mid-action news: lead with the shocking fact, then rewind
 
-Forbidden: «Привет», «сегодня поговорим», logo cold-open, slow fades.
+Forbidden: «Привет», «сегодня поговорим», logo cold-open, slow fades, **spoiling the whole twist in the hook**.
+
+Last **2 seconds**: small «Подписаться» badge (pipeline adds it automatically).
 
 ## Voice (non-negotiable)
 

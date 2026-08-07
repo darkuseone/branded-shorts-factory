@@ -328,8 +328,8 @@ class VisualResolver:
     def _resolve_local_broll(self, spec: Spec, visual: Visual) -> VisualQA | None:
         """Accept ``jobs/<id>/broll/<visual_id>.*`` when an agent pre-staged stock.
 
-        Used when Pexels/Pixabay keys are missing but Magnific MCP (or another
-        source) already dropped files into the job folder.
+        Tiny placeholder PNGs (<32 KB) are ignored so news/stock search can run.
+        Prefer video over stills when both exist.
         """
         folder = self.settings.paths.root / "jobs" / spec.id / "broll"
         if not folder.is_dir():
@@ -341,10 +341,17 @@ class VisualResolver:
             if path.is_file()
             and path.stem == visual.id
             and path.suffix.lower() in extensions
+            and path.stat().st_size >= 32_768  # skip 5–7 KB tablet stubs
         )
         if not matches:
+            # Prefer any larger video in the folder named as visual id prefix.
             return None
-        path = matches[0]
+        # Prefer video over image when both staged.
+        video_first = sorted(
+            matches,
+            key=lambda p: (0 if p.suffix.lower() in {".mp4", ".webm", ".mov"} else 1, -p.stat().st_size),
+        )
+        path = video_first[0]
         media_type = "video" if path.suffix.lower() in {".mp4", ".webm", ".mov"} else "image"
         tags = [visual.query, *visual.keywords, *visual.must_include, "tech", "cyber", "ai"]
         candidate = Candidate(

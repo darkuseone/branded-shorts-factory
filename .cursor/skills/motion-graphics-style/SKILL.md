@@ -28,9 +28,14 @@ HyperFrames is DOM + CSS keyframes (full-duration absolute %). Emulate AE craft 
 2. **Ease with intent** — snappy emphasis (≤0.25s), smoother topic wipes (~0.35s), idle breath only on the ring
 3. **Anticipation → hit → settle** — especially for data chips and emphasis pulses
 4. **Layer hierarchy** (z / track order):
-   - 0 backdrop → 1 fullscreen b-roll → 2 overlays → 3 avatar/ring → 4 captions → 5 brand → 6 CTA → memes on their track
+   - 0 backdrop (black lower third) → 2 Action Stage (top, every 2–4s) → 3 avatar/ring (bottom-center, continuous on VO) → 4 captions → 5 brand → 6 CTA/subscribe → memes on their track
 5. **Motion from the ring** — particles/lines should feel emitted *from* the circle, not floating stickers on top
-6. **No card spam** — chips only when they carry a number/label the VO hits; no hero cards
+6. **No fullscreen under the host** for news/AI — Action Stage only above the oval
+7. **No card spam** — chips only when they carry a number/label the VO hits; no hero cards
+
+## Cut rate (news / AI)
+
+New Action Stage plate every **2–4 seconds**. A single 40s stock still behind the oval is a fail.
 
 ## Timing vocabulary
 

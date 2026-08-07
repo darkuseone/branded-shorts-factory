@@ -27,15 +27,16 @@
   "outro_card": true,
   "safe_area_margin": 96,
   "ring": {
-    "diameter_ratio": 0.3,
-    "default_anchor": "bottom_right",
+    "diameter_ratio": 0.34,
+    "default_anchor": "bottom_center",
     "cta_anchor": "bottom_center",
     "stroke": "#FF2A3C",
     "glow": "#FF4D63",
     "face_zoom": 1.0,
     "face_position": "center 72%",
-    "scale_y": 1.12,
+    "scale_y": 1.10,
     "lightning": true,
+    "continuous_on_vo": true,
     "states": {
       "idle": {
         "pulse": 0.05,

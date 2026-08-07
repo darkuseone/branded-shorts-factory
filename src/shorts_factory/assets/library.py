@@ -222,6 +222,23 @@ SFX_ACCENT_BLACKLIST = (
     "automobile",
 )
 
+#: Hard channel kit — only these files may be montage accents (plan: 5 sounds).
+CHANNEL_SFX_BY_ROLE: dict[str, tuple[str, ...]] = {
+    "impact": ("35920__altemark__rimshot",),
+    "whoosh": ("air-effect-single-sharp",),
+    "swoosh": ("air-effect-single-sharp",),
+    "transition": ("air-effect-single-sharp",),
+    "ui": ("35917__altemark__claves2",),
+    "click": ("35917__altemark__claves2",),
+    "thump": ("35926__altemark__tom1",),
+    "pop": ("35924__altemark__snare3",),
+    "riser": ("air-effect-single-sharp",),
+    "power_down": ("35917__altemark__claves2",),
+    "power_up": ("35917__altemark__claves2",),
+    "sub_drop": ("35926__altemark__tom1",),
+    "glitch": ("35917__altemark__claves2",),
+}
+
 
 class SfxLibrary(_FolderLibrary):
     """Your own sound design, matched to `audio_fx` entries by type.
@@ -239,21 +256,26 @@ class SfxLibrary(_FolderLibrary):
         self._used: dict[str, int] = {}
 
     def pick(self, fx_type: str, extra_tags: list[str] | None = None) -> LibraryItem | None:
-        """Best sound for one effect, rotating between equally good matches.
+        """Best sound for one effect from the fixed 5-sound channel kit."""
+        allow = CHANNEL_SFX_BY_ROLE.get(fx_type) or CHANNEL_SFX_BY_ROLE.get("ui")
+        if allow:
+            for name in allow:
+                for item in self.items:
+                    if item.name.lower() == name.lower() or name.lower() in item.name.lower():
+                        if not _sfx_blacklisted(item):
+                            return item
 
-        Rotation matters: six identical whooshes in one Short is exactly the
-        cheap-edit sound this project exists to avoid. Music beds and drones
-        are excluded even when their tags would otherwise match — they are
-        not accents, and placing one on a cut reads as a mistake.
-        """
         wanted = list(SFX_SYNONYMS.get(fx_type, (fx_type,)))
         if extra_tags:
             wanted += [tag.lower() for tag in extra_tags]
 
+        kit_present = any(_in_channel_kit(item) for item in self.items)
         scored = [
             (item.matches(wanted), item)
             for item in self.items
-            if item.usable_as_accent and not _sfx_blacklisted(item)
+            if item.usable_as_accent
+            and not _sfx_blacklisted(item)
+            and (not kit_present or _in_channel_kit(item))
         ]
         hits = [(score, item) for score, item in scored if score > 0]
         if not hits:
@@ -269,6 +291,12 @@ class SfxLibrary(_FolderLibrary):
 def _sfx_blacklisted(item: LibraryItem) -> bool:
     blob = f"{item.name} {' '.join(item.tags)}".lower()
     return any(token in blob for token in SFX_ACCENT_BLACKLIST)
+
+
+def _in_channel_kit(item: LibraryItem) -> bool:
+    names = {name.lower() for names in CHANNEL_SFX_BY_ROLE.values() for name in names}
+    stem = item.name.lower()
+    return any(name in stem for name in names)
 
 
 class MemeLibrary(_FolderLibrary):

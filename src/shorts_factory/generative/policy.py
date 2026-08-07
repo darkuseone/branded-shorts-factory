@@ -24,8 +24,8 @@ Action = Literal[
     "manual_review",
 ]
 
-#: Types that should start on Magnific (library/unlimited) instead of 100 stock hits.
-MAGNIFIC_FIRST_TYPES = frozenset({"motion_graphics", "infographic", "generated", "image"})
+#: Types that may start on Magnific — NOT news plates (footage/screen first).
+MAGNIFIC_FIRST_TYPES = frozenset({"motion_graphics", "generated"})
 
 
 @dataclass

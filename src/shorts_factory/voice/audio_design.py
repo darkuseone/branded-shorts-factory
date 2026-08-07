@@ -332,7 +332,7 @@ def library_volume(item: LibraryItem, role: str, intensity: float) -> float:
 
     Combines the role's target LUFS with the author's intensity (a soft ±3 dB
     around the target) and converts the result to a linear multiplier the
-    FFmpeg mix understands.
+    FFmpeg mix understands. Hard-capped so quiet bank files never explode.
     """
     from .sfx_analysis import AudioProfile
 
@@ -340,7 +340,9 @@ def library_volume(item: LibraryItem, role: str, intensity: float) -> float:
     base_db = gain_db_for(profile, role)
     intensity_db = (max(0.0, min(intensity, 1.0)) - 0.6) * 5.0  # ±2.0 dB around the default
     total_db = base_db + intensity_db
-    return round(10.0 ** (total_db / 20.0), 3)
+    linear = 10.0 ** (total_db / 20.0)
+    # Channel ceiling — thumbpiano-style ×7 boosts are banned.
+    return round(min(1.4, max(0.05, linear)), 3)
 
 
 def align_start(anchor: float, peak_at: float) -> float:
