@@ -704,13 +704,12 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   color: #F5F7FA;
   white-space: nowrap;
 }}
-/* Action Stage — soft plate above the oval, no fullscreen under the host. */
+/* Action Stage — soft plate above the oval, no fullscreen under the host.
+   Do NOT use CSS mask-image on <video> — HyperFrames capture often drops paint. */
 .clip.image[data-track-index="2"],
 .clip.video[data-track-index="2"] {{
   border-radius: 0;
   box-shadow: 0 24px 80px rgba(0,0,0,.55);
-  -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
-  mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
 }}
 .cta-inner {{
   display: inline-block;
