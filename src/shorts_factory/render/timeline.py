@@ -33,6 +33,8 @@ TRACK_CAPTIONS = 4
 TRACK_BRAND = 5
 TRACK_CTA = 6
 TRACK_MEME = 7
+#: Data chips share no track with top tablets — HyperFrames rejects same-track overlap.
+TRACK_CHIPS = 8
 TRACK_AUDIO_VOICE = 10
 TRACK_AUDIO_SFX = 11
 TRACK_AUDIO_MUSIC = 12

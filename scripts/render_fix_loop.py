@@ -79,6 +79,18 @@ DIAGNOSIS: list[tuple[str, str, str]] = [
         "Missing face crop CSS. Ensure .avatar-face + object-position in composition.",
     ),
     (
+        "overlapping_clips_same_track",
+        "timeline_overlap",
+        "HyperFrames forbids same-track overlap. Keep top tablets on TRACK_OVERLAY "
+        "and data chips on TRACK_CHIPS; memes stay on TRACK_MEME.",
+    ),
+    (
+        "SystemMemory",
+        "system_memory_noise",
+        "cgroup SystemMemory stderr alone is not a real lint failure — runner should "
+        "ignore it. If render still fails, look for overlapping_clips or real lint ✗.",
+    ),
+    (
         "near-black",
         "dead_broll",
         "B-roll not painting past first slot. Bake a single jobs/<id>/broll/broll.mp4 "

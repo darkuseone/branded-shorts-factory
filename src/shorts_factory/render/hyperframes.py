@@ -13,6 +13,7 @@ environment because CI and laptops disagree about all three.
 from __future__ import annotations
 
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -181,16 +182,43 @@ class HyperFramesRunner:
                 raise RenderError(message) from exc
             return StepResult(step, False, -1, stderr=message)
 
+        stdout = completed.stdout or ""
+        stderr = completed.stderr or ""
+        ok = completed.returncode == 0
+        # HyperFrames prints cgroup SystemMemory notes to stderr and sometimes
+        # exits non-zero even when lint/check found no real errors.
+        if not ok and step in {"lint", "check", "render"} and _only_system_memory_noise(stdout, stderr):
+            log.info("%s: ignoring SystemMemory cgroup note (exit %d)", step, completed.returncode, extra={"stage": "render"})
+            ok = True
         result = StepResult(
             step=step,
-            ok=completed.returncode == 0,
+            ok=ok,
             exit_code=completed.returncode,
-            stdout=completed.stdout or "",
-            stderr=completed.stderr or "",
+            stdout=stdout,
+            stderr=stderr,
         )
         if not result.ok:
             log.warning("%s exited %d: %s", step, result.exit_code, result.tail, extra={"stage": "render"})
         return result
+
+
+_SYSTEM_MEMORY_RE = re.compile(r"\[SystemMemory\]", re.IGNORECASE)
+
+
+def _only_system_memory_noise(stdout: str, stderr: str) -> bool:
+    """True when the only non-empty CLI output is the cgroup memory advisory."""
+    combined = "\n".join(part for part in (stdout, stderr) if part).strip()
+    if not combined:
+        return False
+    residual = []
+    for line in combined.splitlines():
+        text = line.strip()
+        if not text:
+            continue
+        if _SYSTEM_MEMORY_RE.search(text):
+            continue
+        residual.append(text)
+    return not residual
 
 
 def _find_output(project_dir: Path) -> Path | None:

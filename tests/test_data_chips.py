@@ -47,3 +47,7 @@ def test_timeline_includes_data_chip_elements(minimal_spec):
     chips = [el for el in timeline.elements if el.props.get("role") == "data_chip"]
     assert chips
     assert chips[0].kind == "text"
+    from shorts_factory.render.timeline import TRACK_CHIPS, TRACK_OVERLAY
+
+    assert chips[0].track == TRACK_CHIPS
+    assert chips[0].track != TRACK_OVERLAY

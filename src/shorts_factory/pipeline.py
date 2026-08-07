@@ -516,10 +516,12 @@ class Pipeline:
             (a.end, b.start) for a, b in zip(segments, segments[1:], strict=False) if b.start - a.end > 1.5
         ]
         if gaps:
+            # Pulse Ring EXIT→hidden→RETURN covers the silent windows; the
+            # avatar file may still span the full range for external tracks.
             result.warnings.append(
-                "avatar.segments are not contiguous ("
-                + ", ".join(f"{a:g}–{b:g}s silent" for a, b in gaps)
-                + "); the presenter stays on screen through the gaps"
+                "avatar.segments leave gaps ("
+                + ", ".join(f"{a:g}–{b:g}s" for a, b in gaps)
+                + "); ring EXIT hides the presenter for fullscreen payoff"
             )
 
         if self.avatar_client.prefers_external(spec.id, spec.avatar):
