@@ -381,7 +381,7 @@ def _add_brand(timeline: Timeline, spec: Spec) -> None:
         )
 
     if brand.outro_card:
-        # Reference stage: last ~2s are the subscribe badge on TRACK_CTA — skip title outro.
+        # Reference stage: last ~2s are the subscribe badge — skip title outro.
         pass
 
 
@@ -429,6 +429,7 @@ def _add_cta(timeline: Timeline, spec: Spec) -> None:
                 start=sub_start,
                 duration=sub_duration,
                 track=TRACK_SUBSCRIBE,
+                src=badge,
                 props={
                     "role": "subscribe",
                     "absolute_clock": True,
