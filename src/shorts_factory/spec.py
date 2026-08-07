@@ -22,7 +22,9 @@ Level = Literal["error", "warning", "info"]
 VISUAL_TYPES = frozenset(
     {"footage", "image", "motion_graphics", "infographic", "meme", "screen_record", "generated"}
 )
-POSITIONS = frozenset({"fullscreen", "top", "bottom", "center", "pip", "left", "right", "background"})
+POSITIONS = frozenset(
+    {"fullscreen", "top", "bottom", "center", "pip", "left", "right", "background", "split"}
+)
 MOTIONS = frozenset({"none", "kenburns", "parallax", "zoom_in", "zoom_out", "pan_left", "pan_right"})
 PRIORITIES = frozenset({"low", "normal", "high", "critical"})
 CAPTION_STYLES = frozenset({"karaoke", "word_pop", "line", "none"})

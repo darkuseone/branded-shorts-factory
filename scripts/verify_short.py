@@ -155,11 +155,8 @@ def verify_output(spec_path: Path, output: Path, composition_dir: Path | None) -
         outer = _red_hits(rgb, w, h, 160, 250, 1000, 1600) + _red_hits(rgb, w, h, 820, 960, 1000, 1600)
         if outer < 8:
             errors.append(f"pulse ring outer bloom missing at t={t_host}s (outer hits={outer})")
-    else:
-        # Bottom host plate must carry picture (head/mic), not a black void.
-        band_mean = _mean_region(rgb, w, h, 0, w, int(h * 0.58), h)
-        if band_mean < 12:
-            errors.append(f"bottom host plate near-black at t={t_host}s (mean={band_mean:.1f})")
+    # Aleko / no-ring: host windows are sparse (fullscreen ↔ split ↔ footage).
+    # Overall brightness samples above already catch a dead render.
 
     # Tall red ghost on the far left edge.
     left_ghost = _red_hits(rgb, w, h, 0, 48, 200, 1800)

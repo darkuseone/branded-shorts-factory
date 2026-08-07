@@ -117,6 +117,8 @@ class Timeline:
 _POSITION_LAYOUT: dict[str, dict[str, Any]] = {
     "fullscreen": {"top": 0, "left": 0, "width": VIDEO_WIDTH, "height": VIDEO_HEIGHT, "fit": "cover"},
     "background": {"top": 0, "left": 0, "width": VIDEO_WIDTH, "height": VIDEO_HEIGHT, "fit": "cover"},
+    # Hard 50/50 split (commentary Shorts): footage owns the top half only.
+    "split": {"top": 0, "left": 0, "width": VIDEO_WIDTH, "height": VIDEO_HEIGHT // 2, "fit": "cover"},
     # Action Stage — above the bottom-center oval (oval top ≈ 927 with ratio 0.34).
     "top": {"top": 48, "left": 0, "width": VIDEO_WIDTH, "height": 820, "fit": "cover", "radius": 0},
     "center": {"top": 520, "left": 0, "width": VIDEO_WIDTH, "height": 880, "fit": "cover"},
@@ -158,9 +160,11 @@ def build_timeline(
     _add_visuals(timeline, spec, resolved)
     _add_avatar(timeline, spec, avatar, avatar_start)
     _add_captions(timeline, spec, captions or [])
-    from .data_chips import add_data_chips  # lazy: avoid circular import with Element
+    # Aleko commentary style (no ring): skip data chips — reference has clean captions only.
+    if spec.ring.enabled:
+        from .data_chips import add_data_chips  # lazy: avoid circular import with Element
 
-    add_data_chips(timeline, spec)
+        add_data_chips(timeline, spec)
     _add_brand(timeline, spec)
     _add_cta(timeline, spec)
     _add_audio(timeline, spec, voice_clips or [], sfx_clips or [], music_path)
@@ -203,11 +207,12 @@ def _add_background(timeline: Timeline, spec: Spec) -> None:
 
 
 def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual]) -> None:
-    """Place resolved media. News/AI stage: force non-meme footage onto Action Stage."""
+    """Place resolved media. Ring-on stage forces top band; aleko mode honors fullscreen/split."""
     from .ring import RingConfig, action_stage_box
 
     stage = action_stage_box(RingConfig(), ring_enabled=spec.ring.enabled)
-    force_top = _stage_layout_job(spec)
+    # Only rewrite fullscreen→top when the Pulse Ring oval owns the lower third.
+    force_top = _stage_layout_job(spec) and bool(spec.ring.enabled)
 
     for item in resolved:
         if not item.usable or item.asset is None:
@@ -217,11 +222,11 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
         visual = item.visual
         asset = item.asset
         position = visual.position or "top"
-        # Reference stage: fullscreen under the oval is forbidden except short memes.
+        # Reference oval stage: fullscreen under the oval is forbidden except short memes.
         if force_top and visual.type != "meme" and position in {"fullscreen", "background"}:
             position = "top"
         layout = dict(_POSITION_LAYOUT.get(position, _POSITION_LAYOUT["top"]))
-        if position == "top":
+        if position == "top" and force_top:
             layout = {
                 "top": stage["top"],
                 "left": stage["left"],
@@ -229,6 +234,8 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
                 "height": stage["height"],
                 "fit": "cover",
             }
+        elif position == "split":
+            layout = dict(_POSITION_LAYOUT["split"])
         is_full = position in {"fullscreen", "background"}
         if visual.type == "meme":
             track = TRACK_MEME
@@ -242,7 +249,7 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
             "license": asset.candidate.license,
             "credit": asset.candidate.author,
             "review": item.qa.outcome == "manual_review",
-            "stage": "action" if position == "top" else position,
+            "stage": "action" if position in {"top", "split"} else position,
         }
         if asset.is_video:
             props["loop"] = bool(asset.duration and asset.duration + 0.2 < visual.duration)
@@ -278,12 +285,12 @@ def _stage_layout_job(spec: Spec) -> bool:
 
 
 def _add_avatar(timeline: Timeline, spec: Spec, avatar: AvatarClip | None, start: float = 0.0) -> None:
-    """Place the presenter — Pulse Ring circle, or bottom plate (head + mic) when ring is off."""
+    """Place the presenter — Pulse Ring, or aleko-style fullscreen / split windows."""
     if avatar is None or not spec.avatar.enabled:
         return
     from dataclasses import replace
 
-    from .ring import RingConfig, host_bottom_box, plan_ring
+    from .ring import RingConfig, host_bottom_box, host_fullscreen_box, plan_ring
 
     ring_on = bool(spec.ring.enabled)
     cfg = replace(RingConfig(), enabled=ring_on, continuous_on_vo=True)
@@ -291,6 +298,10 @@ def _add_avatar(timeline: Timeline, spec: Spec, avatar: AvatarClip | None, start
         cfg = replace(cfg, diameter_ratio=spec.ring.diameter_ratio)
     if spec.ring.anchor:
         cfg = replace(cfg, default_anchor=spec.ring.anchor)
+
+    if not ring_on:
+        _add_avatar_aleko_windows(timeline, spec, avatar, start)
+        return
 
     # Timing always uses a continuous VO window; geometry depends on ring_on.
     timing = plan_ring(spec, replace(cfg, enabled=True, continuous_on_vo=True))
@@ -305,27 +316,6 @@ def _add_avatar(timeline: Timeline, spec: Spec, avatar: AvatarClip | None, start
     else:
         duration = avatar.duration or spec.spoken_duration or spec.duration_target
         start = max(0.0, min(start, spec.duration_target))
-
-    if not ring_on:
-        layout = host_bottom_box()
-        layout["scale"] = spec.avatar.scale
-        timeline.add(
-            Element(
-                id="avatar",
-                kind="avatar",
-                start=start,
-                duration=min(duration, spec.duration_target - start),
-                track=TRACK_AVATAR,
-                src=avatar.path,
-                props={
-                    "layout": layout,
-                    "transparent": avatar.transparent,
-                    "muted": True,
-                    "no_ring": True,
-                },
-            )
-        )
-        return
 
     position = spec.avatar.position if spec.avatar.position != "bottom_right" else "bottom_center"
     if _stage_layout_job(spec):
@@ -347,6 +337,64 @@ def _add_avatar(timeline: Timeline, spec: Spec, avatar: AvatarClip | None, start
             },
         )
     )
+
+
+def _add_avatar_aleko_windows(
+    timeline: Timeline,
+    spec: Spec,
+    avatar: AvatarClip,
+    start: float,
+) -> None:
+    """One avatar clip per host beat: fullscreen or bottom-half split."""
+    wanted = set(spec.avatar.segments) if spec.avatar.segments else None
+    if wanted is not None:
+        host_segs = [s for s in spec.all_segments if s.id in wanted]
+    else:
+        on_cam = [s for s in spec.all_segments if s.on_camera]
+        host_segs = on_cam or list(spec.all_segments)
+
+    for index, segment in enumerate(host_segs):
+        seg_start = max(segment.start, start) if index == 0 else segment.start
+        seg_end = segment.end
+        if seg_end - seg_start < 0.35:
+            continue
+        layout = _aleko_host_layout(spec, segment)
+        timeline.add(
+            Element(
+                id=f"avatar_{segment.id}",
+                kind="avatar",
+                start=seg_start,
+                duration=min(seg_end - seg_start, spec.duration_target - seg_start),
+                track=TRACK_AVATAR,
+                src=avatar.path,
+                props={
+                    "layout": layout,
+                    "transparent": avatar.transparent,
+                    "muted": True,
+                    "no_ring": True,
+                    "trim_start": max(0.0, seg_start),  # keep VO lip-sync vs source timeline
+                },
+            )
+        )
+
+
+def _aleko_host_layout(spec: Spec, segment: Any) -> dict[str, Any]:
+    """Fullscreen host unless a split/top visual overlaps this beat."""
+    from .ring import host_bottom_box, host_fullscreen_box
+
+    overlapping = [
+        visual
+        for visual in spec.visuals
+        if visual.start < segment.end - 0.05
+        and (visual.start + visual.duration) > segment.start + 0.05
+        and visual.position in {"split", "top"}
+    ]
+    if overlapping:
+        layout = host_bottom_box()
+    else:
+        layout = host_fullscreen_box()
+    layout["scale"] = spec.avatar.scale
+    return layout
 
 
 def _add_captions(timeline: Timeline, spec: Spec, cues: list[CaptionCue]) -> None:

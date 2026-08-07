@@ -263,16 +263,33 @@ def host_bottom_box(
     canvas_w: int = VIDEO_WIDTH,
     canvas_h: int = VIDEO_HEIGHT,
 ) -> dict[str, Any]:
-    """Rectangular host plate at the bottom — head + mic visible, no circle crop."""
-    height = int(canvas_h * 0.42)
-    top = canvas_h - height
+    """Exact bottom half — head + mic, hard split like commentary Shorts."""
+    half = canvas_h // 2
     return {
-        "top": top,
+        "top": half,
         "left": 0,
         "width": canvas_w,
-        "height": height,
+        "height": half,
         "fit": "cover",
         "object_position": "center 18%",
+        "anchor": "box",
+        "radius": 0,
+    }
+
+
+def host_fullscreen_box(
+    *,
+    canvas_w: int = VIDEO_WIDTH,
+    canvas_h: int = VIDEO_HEIGHT,
+) -> dict[str, Any]:
+    """Presenter fills the whole 9:16 frame (head + mic visible)."""
+    return {
+        "top": 0,
+        "left": 0,
+        "width": canvas_w,
+        "height": canvas_h,
+        "fit": "cover",
+        "object_position": "center 22%",
         "anchor": "box",
         "radius": 0,
     }
@@ -288,13 +305,15 @@ def action_stage_box(
     """Pixel box for the Action Stage — everything above the host + gap."""
     cfg = config or RingConfig()
     enabled = cfg.enabled if ring_enabled is None else ring_enabled
-    gap = 40
-    top = 48
+    gap = 0
+    top = 0
     if not enabled:
-        host = host_bottom_box(canvas_w=canvas_w, canvas_h=canvas_h)
-        bottom = max(top + 400, int(host["top"]) - gap)
-        return {"top": top, "left": 0, "width": canvas_w, "height": bottom - top, "fit": "cover"}
+        # Aleko-style: hard 50/50 split — footage owns the top half.
+        half = canvas_h // 2
+        return {"top": 0, "left": 0, "width": canvas_w, "height": half, "fit": "cover"}
     oval = layout_box(cfg, canvas_w=canvas_w, canvas_h=canvas_h)
+    top = 48
+    gap = 40
     bottom = max(top + 400, oval["top"] - gap)
     return {"top": top, "left": 0, "width": canvas_w, "height": bottom - top, "fit": "cover"}
 
