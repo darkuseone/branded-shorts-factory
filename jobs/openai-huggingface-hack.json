@@ -5,7 +5,6 @@
   "rubric": "AI",
   "language": "ru",
   "duration_target": 42,
-
   "hook": {
     "id": "hook",
     "text": "А что если ИИ сам взломал чужой датасет — и никто не заметил?",
@@ -14,7 +13,6 @@
     "emphasis": "high",
     "on_camera": true
   },
-
   "script": [
     {
       "id": "s1",
@@ -64,13 +62,11 @@
       "on_camera": true
     }
   ],
-
   "voice_settings": {
     "provider": "elevenlabs",
     "model": "eleven_v3",
     "language": "ru"
   },
-
   "avatar": {
     "enabled": true,
     "provider": "external",
@@ -81,178 +77,26 @@
     "background": "transparent",
     "segments": []
   },
-
   "visuals": [
     {
-      "id": "top-01",
+      "id": "action-bed",
       "type": "footage",
-      "query": "hacker terminal green code cascade cyber attack",
-      "keywords": ["terminal", "code", "hacking"],
+      "query": "cybersecurity AI hacking montage action stage",
+      "keywords": [
+        "server",
+        "code",
+        "dashboard",
+        "swarm"
+      ],
       "start": 0.0,
-      "duration": 3.0,
+      "duration": 39.6,
       "position": "top",
       "motion": "none",
       "priority": "critical",
-      "segment_ref": "hook"
-    },
-    {
-      "id": "top-02",
-      "type": "footage",
-      "query": "server room blinking lights data center night",
-      "keywords": ["server", "datacenter", "racks"],
-      "start": 3.0,
-      "duration": 2.6,
-      "position": "top",
-      "motion": "none",
-      "priority": "high",
-      "segment_ref": "s1"
-    },
-    {
-      "id": "top-03",
-      "type": "footage",
-      "query": "SOC security operations center monitors blue",
-      "keywords": ["soc", "monitors", "security"],
-      "start": 5.6,
-      "duration": 2.6,
-      "position": "top",
-      "motion": "none",
-      "priority": "high",
-      "segment_ref": "s1"
-    },
-    {
-      "id": "top-04",
-      "type": "footage",
-      "query": "OpenAI logo news article press conference tech",
-      "keywords": ["openai", "news", "press"],
-      "start": 8.2,
-      "duration": 2.7,
-      "position": "top",
-      "motion": "none",
-      "priority": "critical",
-      "segment_ref": "s2"
-    },
-    {
-      "id": "top-05",
-      "type": "footage",
-      "query": "neural network nodes glowing AI model visualization",
-      "keywords": ["neural", "ai", "model"],
-      "start": 10.9,
-      "duration": 2.7,
-      "position": "top",
-      "motion": "none",
-      "priority": "high",
-      "segment_ref": "s2"
-    },
-    {
-      "id": "top-06",
-      "type": "footage",
-      "query": "cybersecurity dashboard exploit scanner HUD",
-      "keywords": ["dashboard", "exploit", "scanner"],
-      "start": 13.6,
-      "duration": 2.7,
-      "position": "top",
-      "motion": "none",
-      "priority": "high",
-      "segment_ref": "s3"
-    },
-    {
-      "id": "top-07",
-      "type": "footage",
-      "query": "coding challenge benchmark leaderboard dark UI",
-      "keywords": ["benchmark", "leaderboard", "tasks"],
-      "start": 16.3,
-      "duration": 2.7,
-      "position": "top",
-      "motion": "none",
-      "priority": "normal",
-      "segment_ref": "s3"
-    },
-    {
-      "id": "top-08",
-      "type": "footage",
-      "query": "sandbox escape container breakout cybersecurity",
-      "keywords": ["sandbox", "container", "escape"],
-      "start": 19.0,
-      "duration": 2.8,
-      "position": "top",
-      "motion": "none",
-      "priority": "critical",
-      "segment_ref": "s4"
-    },
-    {
-      "id": "top-09",
-      "type": "footage",
-      "query": "network traffic packet capture wireshark style",
-      "keywords": ["network", "packets", "proxy"],
-      "start": 21.8,
-      "duration": 2.8,
-      "position": "top",
-      "motion": "none",
-      "priority": "high",
-      "segment_ref": "s4"
-    },
-    {
-      "id": "top-10",
-      "type": "footage",
-      "query": "Hugging Face website datasets page screenshot style",
-      "keywords": ["huggingface", "datasets", "web"],
-      "start": 24.6,
-      "duration": 2.8,
-      "position": "top",
-      "motion": "none",
-      "priority": "high",
-      "segment_ref": "s5"
-    },
-    {
-      "id": "top-11",
-      "type": "footage",
-      "query": "database rows scrolling production data breach",
-      "keywords": ["database", "rows", "data"],
-      "start": 27.4,
-      "duration": 2.8,
-      "position": "top",
-      "motion": "none",
-      "priority": "normal",
-      "segment_ref": "s5"
-    },
-    {
-      "id": "top-12",
-      "type": "footage",
-      "query": "swarm containers kubernetes kubernetes orchestration dark room",
-      "keywords": ["swarm", "containers", "kubernetes"],
-      "start": 30.2,
-      "duration": 2.4,
-      "position": "top",
-      "motion": "none",
-      "priority": "high",
-      "segment_ref": "s6"
-    },
-    {
-      "id": "top-13",
-      "type": "footage",
-      "query": "control room many monitors blue grid walls",
-      "keywords": ["control room", "monitors", "grid"],
-      "start": 32.6,
-      "duration": 2.4,
-      "position": "top",
-      "motion": "none",
-      "priority": "normal",
-      "segment_ref": "s6"
-    },
-    {
-      "id": "top-14",
-      "type": "footage",
-      "query": "person writing notes research paper exam cheating irony",
-      "keywords": ["exam", "notes", "research"],
-      "start": 35.0,
-      "duration": 4.6,
-      "position": "top",
-      "motion": "none",
-      "priority": "high",
-      "segment_ref": "s7"
+      "segment_ref": "hook",
+      "notes": "Baked Action Stage montage (2–4s cuts inside the file)"
     }
   ],
-
   "music": {
     "volume": 0.12,
     "ducking": true,
@@ -260,18 +104,56 @@
     "fade_in": 0.4,
     "fade_out": 1.0
   },
-
   "audio_fx": [
-    { "type": "impact", "at": 0.05, "intensity": 0.7, "duration": 0.35 },
-    { "type": "whoosh", "at": 3.0, "intensity": 0.45, "duration": 0.45 },
-    { "type": "whoosh", "at": 8.2, "intensity": 0.45, "duration": 0.45 },
-    { "type": "ui", "at": 13.6, "intensity": 0.4, "duration": 0.3 },
-    { "type": "thump", "at": 19.0, "intensity": 0.55, "duration": 0.4 },
-    { "type": "whoosh", "at": 24.6, "intensity": 0.4, "duration": 0.4 },
-    { "type": "thump", "at": 30.2, "intensity": 0.5, "duration": 0.4 },
-    { "type": "pop", "at": 40.0, "intensity": 0.45, "duration": 0.35 }
+    {
+      "type": "impact",
+      "at": 0.05,
+      "intensity": 0.7,
+      "duration": 0.35
+    },
+    {
+      "type": "whoosh",
+      "at": 3.0,
+      "intensity": 0.45,
+      "duration": 0.45
+    },
+    {
+      "type": "whoosh",
+      "at": 8.2,
+      "intensity": 0.45,
+      "duration": 0.45
+    },
+    {
+      "type": "ui",
+      "at": 13.6,
+      "intensity": 0.4,
+      "duration": 0.3
+    },
+    {
+      "type": "thump",
+      "at": 19.0,
+      "intensity": 0.55,
+      "duration": 0.4
+    },
+    {
+      "type": "whoosh",
+      "at": 24.6,
+      "intensity": 0.4,
+      "duration": 0.4
+    },
+    {
+      "type": "thump",
+      "at": 30.2,
+      "intensity": 0.5,
+      "duration": 0.4
+    },
+    {
+      "type": "pop",
+      "at": 40.0,
+      "intensity": 0.45,
+      "duration": 0.35
+    }
   ],
-
   "captions": {
     "enabled": true,
     "style": "karaoke",
@@ -280,23 +162,24 @@
     "stroke": true,
     "uppercase": false
   },
-
   "brand_elements": {},
-
   "cta": {
     "text": "Сигнал из будущего",
     "start": 39.5,
     "duration": 0.5,
     "style": "badge"
   },
-
   "memes": {
-    "enabled": true,
-    "tags": ["шок", "взлом", "cheat", "естественно"],
+    "enabled": false,
+    "tags": [
+      "шок",
+      "взлом",
+      "cheat",
+      "естественно"
+    ],
     "max_count": 1,
     "max_duration": 1.3
   },
-
   "constraints": {
     "magnific_token_budget": 12,
     "allow_generative": true,
