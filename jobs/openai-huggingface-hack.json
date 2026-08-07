@@ -70,96 +70,35 @@
     "language": "ru"
   },
   "avatar": {
-    "enabled": true,
+    "enabled": false,
     "provider": "external",
     "avatar_id": "37fa8301e2dd46b2a8d11d4b766a6a50",
     "version": "avatar_5",
     "position": "bottom_center",
     "scale": 1.0,
     "background": "transparent",
-    "segments": ["hook", "s2", "s4", "s6", "s7"]
+    "segments": []
   },
   "ring": {
     "enabled": false
   },
   "visuals": [
     {
-      "id": "top-03",
+      "id": "aleko-master",
       "type": "footage",
-      "query": "server racks cybersecurity attack SOC",
-      "keywords": ["server", "datacenter", "attack"],
-      "start": 3.0,
-      "duration": 5.2,
+      "query": "aleko style master bake host footage split from cache",
+      "keywords": [
+        "openai",
+        "huggingface",
+        "exploit",
+        "sandbox"
+      ],
+      "start": 0.0,
+      "duration": 42.0,
       "position": "fullscreen",
       "motion": "none",
       "priority": "critical",
-      "segment_ref": "s1",
-      "notes": "Fullscreen: HF thinks external agent is attacking"
-    },
-    {
-      "id": "top-05",
-      "type": "footage",
-      "query": "AI neural network OpenAI models glow",
-      "keywords": ["AI", "neural", "models"],
-      "start": 8.2,
-      "duration": 5.4,
-      "position": "split",
-      "motion": "none",
-      "priority": "critical",
-      "segment_ref": "s2",
-      "notes": "Split: OpenAI admits — models including GPT-5.6 Sol"
-    },
-    {
-      "id": "top-01",
-      "type": "footage",
-      "query": "hacker terminal code exploit benchmark",
-      "keywords": ["code", "terminal", "exploit"],
-      "start": 13.6,
-      "duration": 5.4,
-      "position": "fullscreen",
-      "motion": "none",
-      "priority": "critical",
-      "segment_ref": "s3",
-      "notes": "Fullscreen: ExploitGym ~900 hack tasks"
-    },
-    {
-      "id": "top-09",
-      "type": "footage",
-      "query": "access denied sandbox escape zero-day",
-      "keywords": ["access denied", "breach", "escape"],
-      "start": 19.0,
-      "duration": 5.6,
-      "position": "split",
-      "motion": "none",
-      "priority": "critical",
-      "segment_ref": "s4",
-      "notes": "Split: zero-day proxy escape to internet"
-    },
-    {
-      "id": "top-07",
-      "type": "footage",
-      "query": "control room dashboard datasets production data",
-      "keywords": ["dashboard", "data", "ops"],
-      "start": 24.6,
-      "duration": 5.6,
-      "position": "fullscreen",
-      "motion": "none",
-      "priority": "critical",
-      "segment_ref": "s5",
-      "notes": "Fullscreen: cheating into HF prod datasets"
-    },
-    {
-      "id": "top-14",
-      "type": "footage",
-      "query": "swarm containers sandbox cluster defense",
-      "keywords": ["swarm", "containers", "cluster"],
-      "start": 30.2,
-      "duration": 4.8,
-      "position": "split",
-      "motion": "none",
-      "priority": "critical",
-      "segment_ref": "s6",
-      "notes": "Split: thousands of actions, sandbox swarm"
+      "notes": "Baked 9:16 master: fullscreen host / fullscreen footage / 50-50 split; no channel logo"
     }
   ],
   "music": {
@@ -170,14 +109,54 @@
     "fade_out": 1.0
   },
   "audio_fx": [
-    { "type": "impact", "at": 0.05, "intensity": 0.7, "duration": 0.35 },
-    { "type": "whoosh", "at": 3.0, "intensity": 0.45, "duration": 0.45 },
-    { "type": "whoosh", "at": 8.2, "intensity": 0.45, "duration": 0.45 },
-    { "type": "ui", "at": 13.6, "intensity": 0.4, "duration": 0.3 },
-    { "type": "thump", "at": 19.0, "intensity": 0.55, "duration": 0.4 },
-    { "type": "whoosh", "at": 24.6, "intensity": 0.4, "duration": 0.4 },
-    { "type": "thump", "at": 30.2, "intensity": 0.5, "duration": 0.4 },
-    { "type": "pop", "at": 40.0, "intensity": 0.45, "duration": 0.35 }
+    {
+      "type": "impact",
+      "at": 0.05,
+      "intensity": 0.7,
+      "duration": 0.35
+    },
+    {
+      "type": "whoosh",
+      "at": 3.0,
+      "intensity": 0.45,
+      "duration": 0.45
+    },
+    {
+      "type": "whoosh",
+      "at": 8.2,
+      "intensity": 0.45,
+      "duration": 0.45
+    },
+    {
+      "type": "ui",
+      "at": 13.6,
+      "intensity": 0.4,
+      "duration": 0.3
+    },
+    {
+      "type": "thump",
+      "at": 19.0,
+      "intensity": 0.55,
+      "duration": 0.4
+    },
+    {
+      "type": "whoosh",
+      "at": 24.6,
+      "intensity": 0.4,
+      "duration": 0.4
+    },
+    {
+      "type": "thump",
+      "at": 30.2,
+      "intensity": 0.5,
+      "duration": 0.4
+    },
+    {
+      "type": "pop",
+      "at": 40.0,
+      "intensity": 0.45,
+      "duration": 0.35
+    }
   ],
   "captions": {
     "enabled": true,
@@ -192,16 +171,13 @@
     "outro_card": false
   },
   "cta": {
-    "text": "Сигнал из будущего",
-    "start": 39.5,
-    "duration": 0.5,
+    "text": "Подпишись — разборы ИИ",
+    "start": 40.0,
+    "duration": 2.0,
     "style": "badge"
   },
   "memes": {
-    "enabled": false,
-    "tags": ["шок", "взлом", "cheat", "естественно"],
-    "max_count": 1,
-    "max_duration": 1.3
+    "enabled": false
   },
   "constraints": {
     "magnific_token_budget": 12,
