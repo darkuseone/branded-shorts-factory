@@ -433,8 +433,8 @@ class CompositionWriter:
         else:
             enter, exit_ = _entrance_for(element)
             role = element.props.get("role", "")
-            # Subscribe/CTA text chips must keep horizontal centering in every stop.
-            if role == "subscribe":
+            # left:50% chips (subscribe + captions) need translateX(-50%) on every stop.
+            if role == "subscribe" or element.kind == "caption":
                 hold = "translateX(-50%)"
                 keyframes.append(
                     _keyframes(
@@ -641,7 +641,11 @@ def _entrance_for(element: Element) -> tuple[str, str]:
     if role == "data_chip":
         return "translateY(28px) translateX(-50%)", "translateY(-8px) translateX(-50%)"
     if element.kind == "caption":
-        return "translateY(18px) scale(.98)", "translateY(-10px)"
+        # Preserve horizontal centering for left:50% caption chips.
+        return (
+            "translateX(-50%) translateY(18px) scale(.98)",
+            "translateX(-50%) translateY(-10px)",
+        )
     return "translateY(24px)", "translateY(-12px)"
 
 
@@ -688,6 +692,7 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   letter-spacing: -0.01em;
   color: var(--caption-color);
   text-shadow: 0 6px 28px rgba(0,0,0,.55);
+  z-index: 40;
   {caption_stroke}
 }}
 .caption .w {{ display: inline-block; }}

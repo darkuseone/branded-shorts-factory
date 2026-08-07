@@ -98,7 +98,7 @@
       "position": "fullscreen",
       "motion": "none",
       "priority": "critical",
-      "notes": "Baked 9:16 master: fullscreen host / fullscreen footage / 50-50 split; no channel logo"
+      "notes": "Dense Aleko master: Magnific stock + news cards + Ken Burns photos + short video plates"
     }
   ],
   "music": {
@@ -161,10 +161,13 @@
   "captions": {
     "enabled": true,
     "style": "karaoke",
-    "position": "center",
-    "max_chars_per_line": 24,
+    "position": "bottom",
+    "max_chars_per_line": 20,
+    "size": 64,
     "stroke": true,
-    "uppercase": false
+    "uppercase": false,
+    "text_color": "#FFFFFF",
+    "highlight_color": "#FFFFFF"
   },
   "brand_elements": {
     "logo_position": "none",
