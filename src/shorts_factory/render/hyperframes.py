@@ -41,7 +41,8 @@ class StepResult:
 
     @property
     def tail(self) -> str:
-        text = (self.stderr or self.stdout or "").strip()
+        # Prefer real lint/check findings on stdout over cgroup SystemMemory stderr.
+        text = (self.stdout or "").strip() or (self.stderr or "").strip()
         return text[-800:]
 
     def to_dict(self) -> dict[str, object]:

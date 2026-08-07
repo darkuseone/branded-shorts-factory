@@ -166,7 +166,8 @@ def build_timeline(
     covered = sum(
         element.duration
         for element in timeline.elements
-        if element.track in {TRACK_BACKGROUND, TRACK_BROLL} and element.kind in {"video", "image"}
+        if element.track in {TRACK_BACKGROUND, TRACK_BROLL, TRACK_OVERLAY}
+        and element.kind in {"video", "image"}
     )
     if covered < spec.duration_target * 0.9:
         timeline.warnings.append(
@@ -378,19 +379,8 @@ def _add_brand(timeline: Timeline, spec: Spec) -> None:
         )
 
     if brand.outro_card:
-        length = min(2.5, max(1.2, spec.duration_target * 0.08))
-        timeline.add(
-            Element(
-                id="outro",
-                kind="text",
-                start=max(0.0, spec.duration_target - length),
-                duration=length,
-                # CTA track — logo owns TRACK_BRAND for the full duration.
-                track=TRACK_CTA,
-                text=spec.title,
-                props={"role": "outro", "color": brand.color_primary, "accent": brand.color_accent},
-            )
-        )
+        # Reference stage: last ~2s are the subscribe badge on TRACK_CTA — skip title outro.
+        pass
 
 
 def _add_cta(timeline: Timeline, spec: Spec) -> None:
