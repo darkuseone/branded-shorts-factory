@@ -35,6 +35,8 @@ TRACK_CTA = 6
 TRACK_MEME = 7
 #: Data chips share no track with top tablets — HyperFrames rejects same-track overlap.
 TRACK_CHIPS = 8
+#: Subscribe badge — own track so absolute-clock presence never overlaps CTA text.
+TRACK_SUBSCRIBE = 9
 TRACK_AUDIO_VOICE = 10
 TRACK_AUDIO_SFX = 11
 TRACK_AUDIO_MUSIC = 12
@@ -384,7 +386,11 @@ def _add_brand(timeline: Timeline, spec: Spec) -> None:
 
 
 def _add_cta(timeline: Timeline, spec: Spec) -> None:
-    """CTA text then a small subscribe badge in the last ~2s (no same-track overlap)."""
+    """CTA text then a subscribe badge image in the last ~2s (no same-track overlap).
+
+    HyperFrames often drops late CSS-only text chips; a pre-baked PNG with an
+    explicit layout box paints reliably in the last two seconds.
+    """
     sub_start = max(0.0, spec.duration_target - 2.0)
     if spec.cta and spec.cta.text:
         cta_start = spec.cta.start
@@ -413,17 +419,43 @@ def _add_cta(timeline: Timeline, spec: Spec) -> None:
             sub_start = min(sub_start, cta_start)
 
     sub_duration = max(1.2, spec.duration_target - sub_start)
+    badge = Path(__file__).resolve().parents[3] / "brand" / "subscribe-badge.png"
+    badge_w, badge_h = 440, 100
+    if badge.is_file():
+        timeline.add(
+            Element(
+                id="subscribe",
+                kind="image",
+                start=sub_start,
+                duration=sub_duration,
+                track=TRACK_SUBSCRIBE,
+                props={
+                    "role": "subscribe",
+                    "absolute_clock": True,
+                    "layout": {
+                        "top": VIDEO_HEIGHT - BOTTOM_UI_RESERVE - badge_h - 28,
+                        "left": (VIDEO_WIDTH - badge_w) // 2,
+                        "width": badge_w,
+                        "height": badge_h,
+                        "fit": "contain",
+                    },
+                },
+            )
+        )
+        return
+
     timeline.add(
         Element(
             id="subscribe",
             kind="text",
             start=sub_start,
             duration=sub_duration,
-            track=TRACK_CTA,
+            track=TRACK_SUBSCRIBE,
             text="Подписаться",
             props={
                 "role": "subscribe",
                 "style": "badge",
+                "absolute_clock": True,
                 "color": spec.brand.color_primary,
                 "accent": spec.brand.color_accent,
             },

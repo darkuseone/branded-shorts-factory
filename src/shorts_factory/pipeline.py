@@ -571,6 +571,8 @@ class Pipeline:
             result.warnings.append("avatar track missing; the render continues without a presenter")
 
     def _resolve_visuals(self, spec: Spec, result: RunResult) -> None:
+        # Stage press/OG stills from research before free-stock / Magnific fan-out.
+        self._stage_news_shots(spec, result)
         result.resolved = self.resolver.resolve_all(spec)
         for item in result.resolved:
             result.qa.add(item.qa)
@@ -586,6 +588,24 @@ class Pipeline:
                     + (item.qa.vision.reason if item.qa.vision else "vision gate unavailable")
                 )
         log.info("%s", result.qa.summary(), extra={"stage": "visuals"})
+
+    def _stage_news_shots(self, spec: Spec, result: RunResult) -> None:
+        """Download article OG/press frames into jobs/<id>/broll/news-*.jpg when online."""
+        import os
+
+        if os.environ.get("SHORTS_OFFLINE", "").strip() in {"1", "true", "yes"}:
+            return
+        research = self.settings.paths.root / "jobs" / spec.id / "research.json"
+        broll = self.settings.paths.root / "jobs" / spec.id / "broll"
+        try:
+            from .search.news_shots import stage_research_shots
+
+            saved = stage_research_shots(research, broll)
+        except Exception as exc:  # noqa: BLE001 — best-effort pre-stage
+            result.warnings.append(f"news shot staging skipped: {exc}")
+            return
+        if saved:
+            log.info("staged %s news shot(s) into %s", len(saved), broll, extra={"stage": "visuals"})
 
     def _resolve_music(self, spec: Spec, result: RunResult) -> Path | None:
         if not spec.music.track and self._brandbook is not None:

@@ -175,9 +175,17 @@ class CompositionWriter:
         return "\n".join(rows)
 
     def _element_markup(self, element: Element) -> str:
+        # Absolute-clock overlays (subscribe/logo-style) stay mounted for the
+        # full composition so HF CSS animations are not restarted at data-start.
+        if element.props.get("absolute_clock"):
+            data_start = 0.0
+            data_duration = self.timeline.duration
+        else:
+            data_start = element.start
+            data_duration = element.duration
         attrs = (
             f'id="el_{element.id}" class="clip {element.kind}" '
-            f'data-start="{element.start:.3f}" data-duration="{element.duration:.3f}" '
+            f'data-start="{data_start:.3f}" data-duration="{data_duration:.3f}" '
             f'data-track-index="{element.track}"'
         )
 
@@ -425,19 +433,37 @@ class CompositionWriter:
                 )
         else:
             enter, exit_ = _entrance_for(element)
-            keyframes.append(
-                _keyframes(
-                    name,
-                    [
-                        (0.0, f"opacity:0;transform:{enter};"),
-                        (p0, f"opacity:0;transform:{enter};"),
-                        (p1, "opacity:1;transform:none;"),
-                        (p2, "opacity:1;transform:none;"),
-                        (p3, f"opacity:0;transform:{exit_};"),
-                        (100.0, "opacity:0;"),
-                    ],
+            role = element.props.get("role", "")
+            # Subscribe/CTA text chips must keep horizontal centering in every stop.
+            if role == "subscribe":
+                hold = "translateX(-50%)"
+                keyframes.append(
+                    _keyframes(
+                        name,
+                        [
+                            (0.0, f"opacity:0;transform:{enter};"),
+                            (p0, f"opacity:0;transform:{enter};"),
+                            (p1, f"opacity:1;transform:{hold};"),
+                            (p2, f"opacity:1;transform:{hold};"),
+                            (p3, f"opacity:0;transform:{exit_};"),
+                            (100.0, "opacity:0;"),
+                        ],
+                    )
                 )
-            )
+            else:
+                keyframes.append(
+                    _keyframes(
+                        name,
+                        [
+                            (0.0, f"opacity:0;transform:{enter};"),
+                            (p0, f"opacity:0;transform:{enter};"),
+                            (p1, "opacity:1;transform:none;"),
+                            (p2, "opacity:1;transform:none;"),
+                            (p3, f"opacity:0;transform:{exit_};"),
+                            (100.0, "opacity:0;"),
+                        ],
+                    )
+                )
 
         rules.append(f"animation:{name} {duration:.3f}s linear 0s 1 normal both;")
         css = [f"{selector}{{{''.join(rule for rule in rules if rule)}}}"]
@@ -594,7 +620,11 @@ def _entrance_for(element: Element) -> tuple[str, str]:
     if role == "cta":
         return "translateY(60px) scale(.92)", "translateY(-20px) scale(.98)"
     if role == "subscribe":
-        return "translateY(40px) scale(.9)", "translateY(8px) scale(1)"
+        # Keep translateX(-50%) so left:50% centering survives the opacity animation.
+        return (
+            "translateX(-50%) translateY(40px) scale(.9)",
+            "translateX(-50%) translateY(8px) scale(1)",
+        )
     if role == "outro":
         return "scale(.94)", "scale(1.02)"
     if role == "data_chip":

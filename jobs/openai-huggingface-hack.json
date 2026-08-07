@@ -89,12 +89,12 @@
         "swarm"
       ],
       "start": 0.0,
-      "duration": 39.6,
+      "duration": 42.0,
       "position": "top",
       "motion": "none",
       "priority": "critical",
       "segment_ref": "hook",
-      "notes": "Baked Action Stage montage (2–4s cuts inside the file)"
+      "notes": "Baked Action Stage montage (2–4s cuts inside the file); holds under subscribe"
     }
   ],
   "music": {
