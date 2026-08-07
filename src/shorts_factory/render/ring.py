@@ -166,14 +166,16 @@ def plan_ring(spec: Spec, config: RingConfig | None = None) -> RingPlan:
     for segment in spec.all_segments:
         if segment.emphasis != "high":
             continue
-        if not _inside_any(segment.start, windows):
-            continue
         at = segment.start + min(0.35, max(0.15, segment.duration * 0.12))
+        duration = cfg.emphasis_duration_s * cfg.emphasis_repeats
+        # Must finish before EXIT — otherwise keyframes re-show the ring in a gap.
+        if not _event_fits(at, duration, windows, margin=cfg.exit_duration_s):
+            continue
         events.append(
             RingEvent(
                 at,
                 "emphasis",
-                cfg.emphasis_duration_s * cfg.emphasis_repeats,
+                duration,
                 f"emphasis {segment.id}",
             )
         )
@@ -183,11 +185,12 @@ def plan_ring(spec: Spec, config: RingConfig | None = None) -> RingPlan:
             continue
         if not _is_topic_change(previous.type, previous.position, previous.priority, current):
             continue
-        if not _inside_any(current.start, windows):
+        at = max(0.0, current.start - 0.05)
+        if not _event_fits(at, cfg.transition_duration_s, windows, margin=cfg.exit_duration_s):
             continue
         events.append(
             RingEvent(
-                max(0.0, current.start - 0.05),
+                at,
                 "transition",
                 cfg.transition_duration_s,
                 f"cut {previous.id}→{current.id}",
@@ -268,19 +271,15 @@ def ring_css(plan: RingPlan, *, duration: float) -> str:
         return ""
 
     cfg = plan.config
+    # Start hidden unless a window opens at t=0 (window stops below override).
     stops: list[tuple[float, str]] = [(0.0, _transform(0.0, 0.0))]
 
-    # Hidden outside visible windows.
-    for start, end in plan.windows:
-        # Arrive.
-        stops.append((_pct(max(0.0, start - cfg.exit_duration_s), duration), _transform(0.0, 0.0)))
-        stops.append((_pct(start, duration), _transform(1.0, 1.0)))
-        # Leave.
-        stops.append((_pct(end, duration), _transform(1.0, 1.0)))
-        stops.append((_pct(min(duration, end + cfg.exit_duration_s), duration), _transform(0.0, 0.0)))
-
+    # Emphasis / transition first — window visibility is applied after and wins
+    # on same-timestamp dedupe so EXIT cannot be undone by a late pulse.
     for event in plan.events:
         if event.state == "emphasis":
+            if not _event_fits(event.at, event.duration, plan.windows, margin=cfg.exit_duration_s):
+                continue
             pulse = 1.0 + cfg.emphasis_pulse
             mid = event.at + event.duration / 2
             stops.append((_pct(event.at, duration), _transform(1.0, 1.0)))
@@ -289,11 +288,31 @@ def ring_css(plan: RingPlan, *, duration: float) -> str:
             stops.append((_pct(mid, duration), _transform(1.0, pulse)))
             stops.append((_pct(event.at + event.duration, duration), _transform(1.0, 1.0)))
         elif event.state == "transition":
+            if not _event_fits(event.at, event.duration, plan.windows, margin=cfg.exit_duration_s):
+                continue
             expand = cfg.transition_expand
             mid = event.at + event.duration / 2
             stops.append((_pct(event.at, duration), _transform(1.0, 1.0)))
             stops.append((_pct(mid, duration), _transform(1.0, expand)))
             stops.append((_pct(event.at + event.duration, duration), _transform(1.0, 1.0)))
+
+    # Authoritative visibility: on inside windows, off in gaps (with EXIT/RETURN).
+    for start, end in plan.windows:
+        stops.append((_pct(max(0.0, start - cfg.exit_duration_s), duration), _transform(0.0, 0.0)))
+        stops.append((_pct(start, duration), _transform(1.0, 1.0)))
+        stops.append((_pct(end, duration), _transform(1.0, 1.0)))
+        stops.append((_pct(min(duration, end + cfg.exit_duration_s), duration), _transform(0.0, 0.0)))
+
+    # Hold scale(0) through each gap so linear interpolation cannot bleed visibility.
+    for (_, end), (nxt, _) in zip(plan.windows, plan.windows[1:], strict=False):
+        hide_from = end + cfg.exit_duration_s
+        hide_to = max(hide_from, nxt - cfg.exit_duration_s)
+        if hide_to - hide_from < 0.05:
+            continue
+        mid = (hide_from + hide_to) / 2
+        stops.append((_pct(hide_from, duration), _transform(0.0, 0.0)))
+        stops.append((_pct(mid, duration), _transform(0.0, 0.0)))
+        stops.append((_pct(hide_to, duration), _transform(0.0, 0.0)))
 
     stops.append((100.0, _transform(0.0, 0.0)))
     stops = _dedupe_stops(stops)
@@ -378,6 +397,23 @@ def network_overlay_svg(config: RingConfig, size: int) -> str:
 
 def _inside_any(time: float, windows: list[tuple[float, float]]) -> bool:
     return any(start - 0.05 <= time <= end + 0.05 for start, end in windows)
+
+
+def _event_fits(
+    at: float,
+    duration: float,
+    windows: list[tuple[float, float]],
+    *,
+    margin: float,
+) -> bool:
+    """True when the pulse finishes inside a window, before EXIT begins."""
+    for start, end in windows:
+        if at < start - 0.05:
+            continue
+        if at > end + 0.05:
+            continue
+        return at + max(0.0, duration) <= end - margin + 1e-6
+    return False
 
 
 def _is_topic_change(prev_type: str, prev_position: str, prev_priority: str, current: Any) -> bool:

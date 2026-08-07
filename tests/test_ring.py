@@ -131,6 +131,40 @@ def test_css_keyframes_span_the_composition():
     assert "40.000s" in css
 
 
+def test_gap_keyframes_stay_hidden_after_exit():
+    """Transition/emphasis must not leave scale(1) across an avatar gap.
+
+    Regression: a topic-change transition at the EXIT boundary used to overwrite
+    the hide stop, so linear interpolation kept the ring visible for the gap.
+    """
+    plan = plan_ring(_spec(avatar_segments=["hook", "s4"]))
+    assert plan.windows == [(0.0, 3.0), (25.0, 30.0)]
+    css = ring_css(plan, duration=40.0)
+    import re
+
+    match = re.search(r"@keyframes pulse_ring_life\{(.*)\}\n\.pulse-ring-wrap", css, re.S)
+    assert match
+    stops = [(float(p), body) for p, body in re.findall(r"([\d.]+)%\{([^}]*)\}", match.group(1))]
+    # Mid-gap (~14s → 35%): must be fully hidden.
+    mid_pct = 35.0
+    before = [s for s in stops if s[0] <= mid_pct]
+    after = [s for s in stops if s[0] >= mid_pct]
+    assert before and after
+    assert "scale(0.000)" in before[-1][1]
+    assert "scale(0.000)" in after[0][1]
+    # No scale(1) stop strictly inside the gap (3.25s .. 24.75s → 8.125% .. 61.875%).
+    gap_stops = [body for pct, body in stops if 9.0 < pct < 61.0]
+    assert gap_stops
+    assert all("scale(0.000)" in body for body in gap_stops)
+
+
+def test_transition_skipped_when_it_would_spill_past_exit():
+    # Avatar only on hook; motion_graphics cut at 8s is in the gap → no transition.
+    plan = plan_ring(_spec(avatar_segments=["hook"]))
+    transitions = [event for event in plan.events if event.state == "transition"]
+    assert not transitions
+
+
 def test_disabled_avatar_yields_no_ring():
     spec = _spec()
     spec.avatar.enabled = False
