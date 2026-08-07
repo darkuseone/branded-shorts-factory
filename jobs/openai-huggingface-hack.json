@@ -73,9 +73,12 @@
     "avatar_id": "37fa8301e2dd46b2a8d11d4b766a6a50",
     "version": "avatar_5",
     "position": "bottom_center",
-    "scale": 0.34,
+    "scale": 1.0,
     "background": "transparent",
     "segments": []
+  },
+  "ring": {
+    "enabled": false
   },
   "visuals": [
     {

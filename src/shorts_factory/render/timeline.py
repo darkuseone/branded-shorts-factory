@@ -206,7 +206,7 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
     """Place resolved media. News/AI stage: force non-meme footage onto Action Stage."""
     from .ring import RingConfig, action_stage_box
 
-    stage = action_stage_box(RingConfig())
+    stage = action_stage_box(RingConfig(), ring_enabled=spec.ring.enabled)
     force_top = _stage_layout_job(spec)
 
     for item in resolved:
@@ -278,21 +278,25 @@ def _stage_layout_job(spec: Spec) -> bool:
 
 
 def _add_avatar(timeline: Timeline, spec: Spec, avatar: AvatarClip | None, start: float = 0.0) -> None:
-    """Place the presenter for the VO window (continuous oval on news stage)."""
+    """Place the presenter — Pulse Ring circle, or bottom plate (head + mic) when ring is off."""
     if avatar is None or not spec.avatar.enabled:
         return
-    from .ring import plan_ring
+    from dataclasses import replace
 
-    plan = plan_ring(spec)
-    position = spec.avatar.position if spec.avatar.position != "bottom_right" else "bottom_center"
-    if _stage_layout_job(spec):
-        position = "bottom_center"
-    layout = dict(_AVATAR_LAYOUT.get(position, _AVATAR_LAYOUT["bottom_center"]))
-    layout["scale"] = spec.avatar.scale
-    if plan.windows:
-        win_start = plan.windows[0][0]
-        win_end = plan.windows[-1][1]
-        # Honor an explicit late start (partial avatar render) inside the window.
+    from .ring import RingConfig, host_bottom_box, plan_ring
+
+    ring_on = bool(spec.ring.enabled)
+    cfg = replace(RingConfig(), enabled=ring_on, continuous_on_vo=True)
+    if spec.ring.diameter_ratio is not None:
+        cfg = replace(cfg, diameter_ratio=spec.ring.diameter_ratio)
+    if spec.ring.anchor:
+        cfg = replace(cfg, default_anchor=spec.ring.anchor)
+
+    # Timing always uses a continuous VO window; geometry depends on ring_on.
+    timing = plan_ring(spec, replace(cfg, enabled=True, continuous_on_vo=True))
+    if timing.windows:
+        win_start = timing.windows[0][0]
+        win_end = timing.windows[-1][1]
         if start > win_start + 0.05 and start < win_end - 0.05:
             duration = win_end - start
         else:
@@ -301,6 +305,33 @@ def _add_avatar(timeline: Timeline, spec: Spec, avatar: AvatarClip | None, start
     else:
         duration = avatar.duration or spec.spoken_duration or spec.duration_target
         start = max(0.0, min(start, spec.duration_target))
+
+    if not ring_on:
+        layout = host_bottom_box()
+        layout["scale"] = spec.avatar.scale
+        timeline.add(
+            Element(
+                id="avatar",
+                kind="avatar",
+                start=start,
+                duration=min(duration, spec.duration_target - start),
+                track=TRACK_AVATAR,
+                src=avatar.path,
+                props={
+                    "layout": layout,
+                    "transparent": avatar.transparent,
+                    "muted": True,
+                    "no_ring": True,
+                },
+            )
+        )
+        return
+
+    position = spec.avatar.position if spec.avatar.position != "bottom_right" else "bottom_center"
+    if _stage_layout_job(spec):
+        position = "bottom_center"
+    layout = dict(_AVATAR_LAYOUT.get(position, _AVATAR_LAYOUT["bottom_center"]))
+    layout["scale"] = spec.avatar.scale
     timeline.add(
         Element(
             id="avatar",

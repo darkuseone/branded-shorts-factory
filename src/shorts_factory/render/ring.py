@@ -46,6 +46,8 @@ CONTINUOUS_VO_RUBRICS = frozenset({"ai", "it", "tech", "news", "технолог
 
 @dataclass(frozen=True)
 class RingConfig:
+    #: When false, no Pulse Ring / circle crop — rectangular host at the bottom.
+    enabled: bool = True
     diameter_ratio: float = DEFAULT_DIAMETER_RATIO
     default_anchor: str = "bottom_center"
     cta_anchor: str = "bottom_center"
@@ -80,6 +82,7 @@ class RingConfig:
         transition = states.get("transition") if isinstance(states.get("transition"), dict) else {}
         exit_ = states.get("exit") if isinstance(states.get("exit"), dict) else {}
         return cls(
+            enabled=bool(raw.get("enabled", True)),
             diameter_ratio=float(raw.get("diameter_ratio") or DEFAULT_DIAMETER_RATIO),
             default_anchor=str(raw.get("default_anchor") or "bottom_center"),
             cta_anchor=str(raw.get("cta_anchor") or "bottom_center"),
@@ -139,7 +142,7 @@ def plan_ring(spec: Spec, config: RingConfig | None = None) -> RingPlan:
     TRANSITION (only while visible).
     """
     cfg = config or RingConfig()
-    if not spec.avatar.enabled:
+    if not spec.avatar.enabled or not cfg.enabled:
         return RingPlan(config=cfg)
 
     events: list[RingEvent] = []
@@ -255,17 +258,43 @@ def layout_box(
     return {"left": left, "top": max(margin, top), "size": size}
 
 
+def host_bottom_box(
+    *,
+    canvas_w: int = VIDEO_WIDTH,
+    canvas_h: int = VIDEO_HEIGHT,
+) -> dict[str, Any]:
+    """Rectangular host plate at the bottom — head + mic visible, no circle crop."""
+    height = int(canvas_h * 0.42)
+    top = canvas_h - height
+    return {
+        "top": top,
+        "left": 0,
+        "width": canvas_w,
+        "height": height,
+        "fit": "cover",
+        "object_position": "center 18%",
+        "anchor": "box",
+        "radius": 0,
+    }
+
+
 def action_stage_box(
     config: RingConfig | None = None,
     *,
     canvas_w: int = VIDEO_WIDTH,
     canvas_h: int = VIDEO_HEIGHT,
+    ring_enabled: bool | None = None,
 ) -> dict[str, int]:
-    """Pixel box for the Action Stage — everything above the oval + gap."""
+    """Pixel box for the Action Stage — everything above the host + gap."""
     cfg = config or RingConfig()
-    oval = layout_box(cfg, canvas_w=canvas_w, canvas_h=canvas_h)
-    gap = 48
+    enabled = cfg.enabled if ring_enabled is None else ring_enabled
+    gap = 40
     top = 48
+    if not enabled:
+        host = host_bottom_box(canvas_w=canvas_w, canvas_h=canvas_h)
+        bottom = max(top + 400, int(host["top"]) - gap)
+        return {"top": top, "left": 0, "width": canvas_w, "height": bottom - top, "fit": "cover"}
+    oval = layout_box(cfg, canvas_w=canvas_w, canvas_h=canvas_h)
     bottom = max(top + 400, oval["top"] - gap)
     return {"top": top, "left": 0, "width": canvas_w, "height": bottom - top, "fit": "cover"}
 

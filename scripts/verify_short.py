@@ -84,19 +84,27 @@ def _red_hits(rgb: bytes, width: int, height: int, x0: int, x1: int, y0: int, y1
     return hits
 
 
-def verify_composition_css(composition_dir: Path) -> list[str]:
+def verify_composition_css(composition_dir: Path, *, ring_enabled: bool = True) -> list[str]:
     html = (composition_dir / "index.html").read_text(encoding="utf-8")
     errors: list[str] = []
-    if "pulse-ring-neon" not in html or "pulse-ring-halo" not in html:
-        errors.append("composition missing dedicated neon/halo ring layers")
-    if "avatar-face" not in html:
-        errors.append("composition missing .avatar-face zoom wrapper (video transforms are ignored by HF)")
-    if "box-shadow" not in html:
+    if ring_enabled:
+        if "pulse-ring-neon" not in html or "pulse-ring-halo" not in html:
+            errors.append("composition missing dedicated neon/halo ring layers")
+        if "avatar-face" not in html:
+            errors.append("composition missing .avatar-face zoom wrapper (video transforms are ignored by HF)")
+        if "object-position" not in html:
+            errors.append("composition missing object-position for face crop")
+    else:
+        if 'id="pulse_ring"' in html or "pulse-ring-wrap" in html:
+            errors.append("ring disabled but composition still mounts pulse_ring")
+        if "border-radius:50%" in html and 'class="clip avatar"' in html:
+            # Avatar plate must not be circle-cropped when ring is off.
+            if "avatar-clip" in html:
+                errors.append("ring disabled but avatar still uses circular avatar-clip")
+    if "box-shadow" not in html and ring_enabled:
         errors.append("composition missing CSS neon box-shadow")
     if "feGaussianBlur" in html or "ringGlow" in html:
         errors.append("composition still uses SVG glow filters (drop in HF capture)")
-    if "object-position" not in html:
-        errors.append("composition missing object-position for face crop")
     if re.search(r"<svg[^>]*class=\"[^\"]*ring-network", html):
         errors.append("composition still mounts ring-network SVG (causes left red ghost in HF)")
     return errors
@@ -108,6 +116,7 @@ def verify_output(spec_path: Path, output: Path, composition_dir: Path | None) -
         return [f"missing output: {output}"]
 
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    ring_enabled = bool((spec.get("ring") or {}).get("enabled", True))
     target = float(spec.get("duration_target") or 0)
     info = _ffprobe(output)
     if info["width"] != 1080 or info["height"] != 1920:
@@ -134,28 +143,44 @@ def verify_output(spec_path: Path, output: Path, composition_dir: Path | None) -
                 f"mid/late b-roll looks dead (t1={by_t[1.0]:.1f}, t33={by_t[33.0]:.1f})"
             )
 
-    # Pulse Ring bloom — bottom-center oval (~left 213 top 953 size 653).
-    t_ring = 12.0 if info["duration"] > 13 else max(0.5, info["duration"] / 3)
-    rgb = _frame_rgb(output, t_ring)
+    t_host = 12.0 if info["duration"] > 13 else max(0.5, info["duration"] / 3)
+    rgb = _frame_rgb(output, t_host)
     w, h = int(info["width"]), int(info["height"])
-    hits = _red_hits(rgb, w, h, 180, 900, 900, 1700)
-    if hits < 55:
-        errors.append(f"pulse ring neon too weak at t={t_ring}s (red hits={hits})")
 
-    # Soft bloom just outside the stroke — flat matte rings fail this.
-    outer = _red_hits(rgb, w, h, 160, 250, 1000, 1600) + _red_hits(rgb, w, h, 820, 960, 1000, 1600)
-    if outer < 8:
-        errors.append(f"pulse ring outer bloom missing at t={t_ring}s (outer hits={outer})")
+    if ring_enabled:
+        # Pulse Ring bloom — bottom-center oval (~left 213 top 953 size 653).
+        hits = _red_hits(rgb, w, h, 180, 900, 900, 1700)
+        if hits < 55:
+            errors.append(f"pulse ring neon too weak at t={t_host}s (red hits={hits})")
+        outer = _red_hits(rgb, w, h, 160, 250, 1000, 1600) + _red_hits(rgb, w, h, 820, 960, 1000, 1600)
+        if outer < 8:
+            errors.append(f"pulse ring outer bloom missing at t={t_host}s (outer hits={outer})")
+    else:
+        # Bottom host plate must carry picture (head/mic), not a black void.
+        band_mean = _mean_region(rgb, w, h, 0, w, int(h * 0.58), h)
+        if band_mean < 12:
+            errors.append(f"bottom host plate near-black at t={t_host}s (mean={band_mean:.1f})")
 
-    # Tall red ghost on the far left edge only (oval sits center — do not scan into it).
+    # Tall red ghost on the far left edge.
     left_ghost = _red_hits(rgb, w, h, 0, 48, 200, 1800)
     if left_ghost > 120:
         errors.append(f"left-edge red ghost ellipse present (hits={left_ghost})")
 
     if composition_dir and composition_dir.exists():
-        errors.extend(verify_composition_css(composition_dir))
+        errors.extend(verify_composition_css(composition_dir, ring_enabled=ring_enabled))
 
     return errors
+
+
+def _mean_region(rgb: bytes, width: int, height: int, x0: int, x1: int, y0: int, y1: int) -> float:
+    total = 0
+    count = 0
+    for y in range(max(0, y0), min(height, y1), 4):
+        for x in range(max(0, x0), min(width, x1), 4):
+            i = (y * width + x) * 3
+            total += rgb[i] + rgb[i + 1] + rgb[i + 2]
+            count += 3
+    return total / max(count, 1)
 
 
 def maybe_render(spec_path: Path) -> int:

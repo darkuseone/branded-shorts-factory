@@ -727,6 +727,8 @@ def _ring_plan(spec: Spec, book: Brandbook | None = None) -> RingPlan:
         candidate = extra.get("ring")
         raw = candidate if isinstance(candidate, dict) else None
     config = RingConfig.from_brandbook(raw)
+    if not spec.ring.enabled:
+        config = replace(config, enabled=False)
     if spec.ring.diameter_ratio is not None:
         config = replace(config, diameter_ratio=spec.ring.diameter_ratio)
     if spec.ring.anchor:

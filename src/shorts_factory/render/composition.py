@@ -503,6 +503,18 @@ class CompositionWriter:
             # Positioning lives on the wrapper; the video fills the clipped circle.
             return "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;"
         layout = element.props.get("layout", {})
+        # Explicit bottom plate (no ring): pixel box with head+mic framing.
+        if layout.get("anchor") == "box" or (
+            "top" in layout and "width" in layout and "height" in layout and "left" in layout
+        ):
+            pos = layout.get("object_position", "center 18%")
+            radius = int(layout.get("radius") or 0)
+            return (
+                f"position:absolute;top:{int(layout['top'])}px;left:{int(layout['left'])}px;"
+                f"width:{int(layout['width'])}px;height:{int(layout['height'])}px;"
+                f"object-fit:{layout.get('fit', 'cover')};object-position:{pos};"
+                + (f"border-radius:{radius}px;" if radius else "")
+            )
         scale = float(layout.get("scale", 0.34))
         width = int(self.timeline.width * scale)
         anchor = layout.get("anchor", "bottom-right")
