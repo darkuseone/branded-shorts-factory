@@ -44,7 +44,8 @@ jobs:
       POND5_API_KEY: ${{ secrets.POND5_API_KEY }}
       MAGNIFIC_TOKEN_BUDGET: ${{ vars.MAGNIFIC_TOKEN_BUDGET || '40' }}
       MAGNIFIC_TOKEN_RESERVE: ${{ vars.MAGNIFIC_TOKEN_RESERVE || '10' }}
-      HYPERFRAMES_DOCKER: ${{ inputs.docker == false && '0' || '1' }}
+      # Push events have empty inputs — always Docker-render unless explicitly disabled.
+      HYPERFRAMES_DOCKER: ${{ github.event_name == 'workflow_dispatch' && inputs.docker == false && '0' || '1' }}
       PYTHONPATH: src
 
     steps:
@@ -125,6 +126,17 @@ jobs:
 
       - name: Install HyperFrames skills
         run: npx --yes skills add heygen-com/hyperframes
+
+      - name: Install chrome-headless-shell
+        run: |
+          npx --yes @puppeteer/browsers install chrome-headless-shell@stable
+          BIN=$(find "$HOME/.cache/puppeteer" -type f -name 'chrome-headless-shell' 2>/dev/null | head -n 1)
+          if [ -n "$BIN" ]; then
+            echo "HYPERFRAMES_BROWSER_PATH=$BIN" >> "$GITHUB_ENV"
+            echo "Using chrome-headless-shell at $BIN"
+          else
+            echo "::warning::chrome-headless-shell binary not found; HyperFrames will fall back to system Chrome"
+          fi
 
       - name: Environment check
         run: python -m shorts_factory doctor

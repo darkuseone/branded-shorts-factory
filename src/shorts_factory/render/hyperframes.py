@@ -125,10 +125,17 @@ class HyperFramesRunner:
                 return result
             raise RenderError(message)
 
-        for step in (self.lint, self.check):
-            step_result = step(project_dir)
+        for step_name, step_fn in (("lint", self.lint), ("check", self.check)):
+            step_result = step_fn(project_dir)
             result.steps.append(step_result)
             if not step_result.ok:
+                if step_name == "check" and _is_soft_check_failure(step_result):
+                    log.warning(
+                        "hyperframes check soft-fail (browser env); continuing to render: %s",
+                        step_result.tail,
+                        extra={"stage": "render"},
+                    )
+                    continue
                 raise RenderError(f"hyperframes {step_result.step} failed:\n{step_result.tail}")
 
         if self.settings.dry_run:
@@ -191,6 +198,34 @@ class HyperFramesRunner:
         if not result.ok:
             log.warning("%s exited %d: %s", step, result.exit_code, result.tail, extra={"stage": "render"})
         return result
+
+
+def _is_soft_check_failure(step: StepResult) -> bool:
+    """True when check failed only due to runner browser/GPU limits, not content."""
+    text = f"{step.stdout}\n{step.stderr}".lower()
+    if "check passed" in text:
+        return True
+    browser_noise = (
+        "browsergpumode probe",
+        "chrome-headless-shell",
+        "headlessexperimental.beginframe",
+        "webgl unavailable",
+    )
+    hard_markers = (
+        "✗",
+        "check failed",
+        "overlapping_clips",
+        "fatal:",
+    )
+    has_noise = any(token in text for token in browser_noise)
+    has_hard = any(token in text for token in hard_markers)
+    # Non-zero error counts from HyperFrames sections.
+    import re
+
+    if re.search(r"(?<![0-9])[1-9]\d*\s*error\(s\)", text):
+        has_hard = True
+    # CI sometimes exits 1 after the probe with no content diagnostics.
+    return has_noise and not has_hard
 
 
 def _find_output(project_dir: Path) -> Path | None:
