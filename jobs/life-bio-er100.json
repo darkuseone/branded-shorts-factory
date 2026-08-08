@@ -68,6 +68,20 @@
       "emphasis": "high",
       "mode": "full_host",
       "on_camera": true
+    },
+    {
+      "id": "s8",
+      "text": "Подпишись — сигнал из будущего.",
+      "start": 39.0,
+      "duration": 6.0,
+      "mode": "full_footage"
+    },
+    {
+      "id": "s9",
+      "text": "Сигнал из будущего. Не пропусти следующий взлом.",
+      "start": 45.0,
+      "duration": 7.0,
+      "mode": "split"
     }
   ],
   "voice_settings": {
@@ -161,7 +175,7 @@
     {
       "id": "v3a",
       "type": "infographic",
-      "query": "OSK transcription factors OCT4 SOX2 KLF4",
+      "query": "OSK transcription factors OCT4 SOX2 KLF4 badges",
       "keywords": [
         "yamanaka factors diagram",
         "three gene factors icons",
@@ -173,10 +187,7 @@
       "motion": "none",
       "priority": "critical",
       "segment_ref": "s2",
-      "allow_magnific": true,
-      "must_include": [
-        "factors"
-      ]
+      "allow_magnific": true
     },
     {
       "id": "v3b",
@@ -378,7 +389,7 @@
       "duration": 2.4,
       "position": "fullscreen",
       "motion": "kenburns",
-      "segment_ref": "s7",
+      "segment_ref": "s8",
       "allow_magnific": true
     },
     {
@@ -394,7 +405,7 @@
       "duration": 2.4,
       "position": "fullscreen",
       "motion": "zoom_out",
-      "segment_ref": "s7",
+      "segment_ref": "s8",
       "allow_magnific": true
     },
     {
@@ -410,7 +421,7 @@
       "duration": 2.4,
       "position": "fullscreen",
       "motion": "kenburns",
-      "segment_ref": "s7",
+      "segment_ref": "s8",
       "notes": "CTA bed",
       "allow_magnific": true
     },
@@ -423,9 +434,9 @@
       ],
       "start": 45.5,
       "duration": 3.2,
-      "position": "fullscreen",
+      "position": "auto",
       "motion": "kenburns",
-      "segment_ref": "s7",
+      "segment_ref": "s9",
       "allow_magnific": true
     },
     {
@@ -437,9 +448,9 @@
       ],
       "start": 48.7,
       "duration": 3.3,
-      "position": "fullscreen",
+      "position": "auto",
       "motion": "kenburns",
-      "segment_ref": "s7",
+      "segment_ref": "s9",
       "notes": "CTA bed",
       "allow_magnific": true
     }
@@ -528,5 +539,5 @@
     "manual_review_ok": true
   },
   "_pipeline_note": "studio avatar 54172d7a + Magnific infographics/stills as kenburns broll; 40/60 host; no logo/orbitals; strip avatar audio",
-  "_render_bump": "studio-avatar-52s-v1"
+  "_render_bump": "studio-hostwrap-fix-v3"
 }

@@ -139,54 +139,75 @@ def orbital_arcs_svg(*, primary: str = "#E11D48") -> str:
     )
 
 
-def host_visibility_css(plan: HostPlan, *, duration: float) -> str:
-    """Full-span keyframes: host opacity follows present windows."""
-    if duration <= 0 or not plan.present:
-        return (
-            "@keyframes host_presence{0%{opacity:0}100%{opacity:0}}\n"
-            ".host-wrap{animation:host_presence "
-            f"{max(duration, 0.001):.3f}s linear 0s 1 normal both;}}"
-        )
+def host_hidden_layout() -> dict[str, object]:
+    """Collapse the host box — HyperFrames often drops opacity alone."""
+    return {
+        "top": VIDEO_HEIGHT,
+        "left": 0,
+        "width": VIDEO_WIDTH,
+        "height": 0,
+        "fit": "cover",
+        "mode": "full_footage",
+    }
 
-    stops: list[tuple[float, str]] = [(0.0, "opacity:0;")]
-    for start, end in plan.present:
-        fade = min(FADE_S, max(0.12, (end - start) * 0.15))
-        stops.append((_pct(max(0.0, start - fade), duration), "opacity:0;"))
-        stops.append((_pct(start, duration), "opacity:1;"))
-        stops.append((_pct(end, duration), "opacity:1;"))
-        stops.append((_pct(min(duration, end + fade), duration), "opacity:0;"))
-    stops.append((100.0, "opacity:0;"))
-    stops = _dedupe(stops)
-    parts = [f"{p:.4f}%{{{body}}}" for p, body in stops]
-    return (
-        f"@keyframes host_presence{{{''.join(parts)}}}\n"
-        f".host-wrap{{animation:host_presence {duration:.3f}s linear 0s 1 normal both;}}"
-    )
+
+def host_visibility_css(plan: HostPlan, *, duration: float) -> str:
+    """Deprecated shim — prefer ``host_chrome_css`` (single animation)."""
+    return host_chrome_css(plan, duration=duration)
 
 
 def host_layout_css(plan: HostPlan, *, duration: float) -> str:
-    """Keyframe the host box between split lower-band and fullscreen."""
+    """Deprecated shim — layout is folded into ``host_chrome_css``."""
+    return ""
+
+
+def host_chrome_css(plan: HostPlan, *, duration: float) -> str:
+    """One animation for host geometry + opacity.
+
+    HyperFrames / Chrome capture keeps only a single ``animation`` on
+    ``.host-wrap``. Emitting ``host_presence`` then ``host_layout`` made the
+    second rule win, so FULL_FOOTAGE never hid the presenter. Fold both into
+    ``host_chrome`` and collapse the box (height:0) during FULL_FOOTAGE so
+    the host cannot paint over fullscreen B-roll even if opacity is dropped.
+    """
     if duration <= 0 or not plan.windows:
-        return ""
+        return (
+            "@keyframes host_chrome{0%{opacity:0;top:1920px;left:0px;width:1080px;height:0px}"
+            "100%{opacity:0;top:1920px;left:0px;width:1080px;height:0px}}\n"
+            ".host-wrap{animation:host_chrome "
+            f"{max(duration, 0.001):.3f}s linear 0s 1 normal both;}}"
+        )
 
     stops: list[tuple[float, str]] = []
     for window in plan.windows:
         if window.mode == "full_footage":
-            body = _layout_body(host_lower_layout())  # unused while opacity 0
+            layout = host_hidden_layout()
+            opacity = "opacity:0;"
         elif window.mode == "full_host":
-            body = _layout_body(host_fullscreen_layout())
+            layout = host_fullscreen_layout()
+            opacity = "opacity:1;"
         else:
-            body = _layout_body(host_lower_layout())
+            layout = host_lower_layout()
+            opacity = "opacity:1;"
+        body = opacity + _layout_body(layout)
         stops.append((_pct(window.start, duration), body))
         stops.append((_pct(max(window.start, window.end - 0.001), duration), body))
 
     if not stops:
         return ""
     stops = _dedupe(stops)
+    # Ensure 0% / 100% terminals exist for stable capture.
+    first_body = stops[0][1]
+    last_body = stops[-1][1]
+    if stops[0][0] > 0.0:
+        stops.insert(0, (0.0, first_body))
+    if stops[-1][0] < 100.0:
+        stops.append((100.0, last_body))
+    stops = _dedupe(stops)
     parts = [f"{p:.4f}%{{{body}}}" for p, body in stops]
     return (
-        f"@keyframes host_layout{{{''.join(parts)}}}\n"
-        f".host-frame{{animation:host_layout {duration:.3f}s linear 0s 1 normal both;}}"
+        f"@keyframes host_chrome{{{''.join(parts)}}}\n"
+        f".host-wrap{{animation:host_chrome {duration:.3f}s linear 0s 1 normal both;}}"
     )
 
 

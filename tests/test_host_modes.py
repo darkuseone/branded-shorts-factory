@@ -147,6 +147,10 @@ def test_composition_has_host_wrap_no_ornaments(tmp_path):
     result = writer.write()
     html = result.index_html.read_text(encoding="utf-8")
     assert "host-wrap" in html
+    assert "host_chrome" in html
+    assert "host_presence" not in html  # folded into host_chrome
+    assert "host_layout" not in html
+    assert "height:0px" in html  # FULL_FOOTAGE collapses the host box
     assert "host-orbitals" not in html
     assert "pulse-ring" not in html
     assert "pulse_ring" not in html

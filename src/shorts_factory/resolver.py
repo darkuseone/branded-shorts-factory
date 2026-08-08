@@ -340,7 +340,9 @@ class VisualResolver:
         from .media.ffmpeg import mean_luma
 
         luma = mean_luma(path, ffmpeg=self.settings.ffmpeg_cmd)
-        if luma is not None and luma < 18.0:
+        # Infographics are often dark-on-void by brand; don't reject staged plates.
+        dark_floor = 8.0 if visual.type in {"infographic", "motion_graphics"} else 18.0
+        if luma is not None and luma < dark_floor:
             log.warning(
                 "%s: local b-roll too dark (luma=%.1f); falling through to search",
                 visual.id,

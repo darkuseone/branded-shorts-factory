@@ -28,9 +28,8 @@ from ..media.ffmpeg import remux_without_audio
 from ..spec import Spec
 from .host_presence import (
     HostPlan,
-    host_layout_css,
+    host_chrome_css,
     host_lower_layout,
-    host_visibility_css,
     plan_host,
 )
 from .timeline import (
@@ -219,13 +218,24 @@ class CompositionWriter:
             loop = " loop" if element.props.get("loop") else ""
             if element.kind == "avatar" and self.host.visible:
                 return self._avatar_with_host(attrs, src, loop)
-            return f'<video {attrs} src="{src}" muted playsinline preload="auto"{loop}></video>'
+            # Animate a wrapper DIV — CSS opacity/transform on <video> itself
+            # is dropped by HyperFrames capture (avatar works because the
+            # parent .host-wrap is animated, not the video node).
+            return (
+                f'<div id="wrap_{element.id}" class="media-shell">'
+                f'<video {attrs} src="{src}" muted playsinline preload="auto"{loop}></video>'
+                f"</div>"
+            )
 
         if element.kind == "image":
             src = self._media_src(element.src)
             if not src:
                 return ""
-            return f'<img {attrs} src="{src}" alt="">'
+            return (
+                f'<div id="wrap_{element.id}" class="media-shell">'
+                f'<img {attrs} src="{src}" alt="">'
+                f"</div>"
+            )
 
         if element.kind == "logo":
             src = self._media_src(element.src)
@@ -256,18 +266,19 @@ class CompositionWriter:
         return ""
 
     def _avatar_with_host(self, attrs: str, src: str, loop: str) -> str:
-        """Rectangular host box — no logo ornaments / orbital semi-ovals.
+        """Host box only — wrap matches the host rectangle, never full-bleed.
 
-        Default layout is the lower 40% band; CSS keyframes expand to
-        fullscreen for FULL_HOST. Frame background is transparent so a studio
-        HeyGen plate shows through instead of a flat Deep Void fill.
+        A full-screen ``host-wrap`` overlay was compositing above b-roll in
+        HyperFrames and wiped the upper 60% to black even when opacity CSS
+        looked correct. Layout keyframes animate this wrap between SPLIT and
+        FULL_HOST; FULL_FOOTAGE collapses the wrap via host_chrome (layout+opacity).
         """
         layout = host_lower_layout()
         return (
-            f'<div id="host_wrap" class="host-wrap" style="z-index:30;">'
-            f'<div class="host-frame" style="position:absolute;'
+            f'<div id="host_wrap" class="host-wrap" style="z-index:30;'
             f"top:{layout['top']}px;left:{layout['left']}px;"
             f'width:{layout["width"]}px;height:{layout["height"]}px;">'
+            f'<div class="host-frame">'
             f'<div class="host-video">'
             f'<video {attrs} src="{src}" muted playsinline preload="auto"{loop}></video>'
             f"</div></div></div>"
@@ -330,8 +341,7 @@ class CompositionWriter:
             blocks.append(self._element_css(element))
 
         if self.host.visible:
-            blocks.append(host_visibility_css(self.host, duration=self.timeline.duration))
-            blocks.append(host_layout_css(self.host, duration=self.timeline.duration))
+            blocks.append(host_chrome_css(self.host, duration=self.timeline.duration))
             blocks.append(self._host_base_css())
             self._copy_brand_fonts()
         elif any(el.props.get("role") == "data_chip" for el in self.timeline.elements):
@@ -354,11 +364,17 @@ class CompositionWriter:
         if element.kind in {"video", "image"} and "layout" in element.props:
             layout = element.props["layout"]
             radius = layout.get("radius", 0)
+            # Animate the shell; the inner media fills it at opacity 1.
             rules.append(
                 f"position:absolute;top:{layout['top']}px;left:{layout['left']}px;"
                 f"width:{layout['width']}px;height:{layout['height']}px;"
-                f"object-fit:{layout.get('fit', 'cover')};"
-                + (f"border-radius:{radius}px;overflow:hidden;" if radius else "")
+                f"z-index:10;overflow:hidden;"
+                + (f"border-radius:{radius}px;" if radius else "")
+            )
+            # Inner clip fills the shell; object-fit lives on the media node.
+            keyframes.append(
+                f"#el_{element.id}{{width:100%;height:100%;object-fit:{layout.get('fit', 'cover')};"
+                f"display:block;opacity:1;}}"
             )
         elif element.kind == "avatar":
             rules.append(self._avatar_css(element))
@@ -449,7 +465,13 @@ class CompositionWriter:
             )
 
         rules.append(f"animation:{name} {duration:.3f}s linear 0s 1 normal both;")
-        css = [f"{selector}{{{''.join(rule for rule in rules if rule)}}}"]
+        # Video/image shells are animated; avatar/caption/text keep element id.
+        target = (
+            f"#wrap_{element.id}"
+            if element.kind in {"video", "image"} and "layout" in element.props
+            else selector
+        )
+        css = [f"{target}{{{''.join(rule for rule in rules if rule)}}}"]
         css.extend(keyframes)
 
         if element.kind == "caption" and self.spec.captions.style in {"karaoke", "word_pop"}:
@@ -712,13 +734,13 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
 _HOST_BASE_CSS = """\
 .host-wrap {{
   position: absolute;
-  inset: 0;
   z-index: 30;
   pointer-events: none;
   overflow: hidden;
 }}
 .host-frame {{
   position: absolute;
+  inset: 0;
   overflow: hidden;
   background: {background};
 }}
