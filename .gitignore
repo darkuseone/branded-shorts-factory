@@ -46,3 +46,8 @@ node_modules/
 # Per-slot stock before bake (master/broll.mp4 is the committed track)
 jobs/**/broll/v[0-9].mp4
 jobs/**/broll/v[0-9]_clip.mp4
+
+# Published preview renders for PR review
+!artifacts/renders/
+!artifacts/renders/**
+!artifacts/renders/*.mp4
