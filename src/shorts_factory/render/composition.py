@@ -24,13 +24,13 @@ from pathlib import Path
 from typing import Any
 
 from ..logging_utils import get_logger
+from ..media.ffmpeg import remux_without_audio
 from ..spec import Spec
 from .host_presence import (
     HostPlan,
     host_layout_css,
     host_lower_layout,
     host_visibility_css,
-    orbital_arcs_svg,
     plan_host,
 )
 from .timeline import (
@@ -89,7 +89,7 @@ class CompositionWriter:
         self.timeline = timeline
         self.directory = directory
         self.media_dir = directory / "media"
-        self._copied: dict[Path, str] = {}
+        self._copied: dict[tuple[Path, bool], str] = {}
         self.host = host or plan_host(spec)
 
     # -- entry point --------------------------------------------------------
@@ -136,27 +136,48 @@ class CompositionWriter:
 
     # -- media --------------------------------------------------------------
 
-    def _media_src(self, path: Path | None) -> str | None:
-        """Copy an asset into the project and return its relative URL."""
+    def _media_src(self, path: Path | None, *, strip_audio: bool = False) -> str | None:
+        """Copy an asset into the project and return its relative URL.
+
+        ``strip_audio=True`` remuxes video-only. Required for muted avatar /
+        b-roll clips: HTML ``muted`` alone does not stop HyperFrames from
+        muxing embedded AAC into the final Short (double VO with the mix).
+        """
         if path is None:
             return None
         source = Path(path)
         if not source.exists():
             log.warning("missing asset, skipping: %s", source, extra={"stage": "compose"})
             return None
-        if source in self._copied:
-            return self._copied[source]
+        cache_key = (source, strip_audio)
+        if cache_key in self._copied:
+            return self._copied[cache_key]
 
-        target = self.media_dir / source.name
-        counter = 1
-        while target.exists() and not _same_file(target, source):
-            target = self.media_dir / f"{source.stem}_{counter}{source.suffix}"
-            counter += 1
-        if not target.exists():
-            shutil.copy2(source, target)
+        if strip_audio:
+            target = self.media_dir / f"{source.stem}_silent{source.suffix}"
+            counter = 1
+            while target.exists() and target.stat().st_size == 0:
+                target = self.media_dir / f"{source.stem}_silent_{counter}{source.suffix}"
+                counter += 1
+            if not target.exists() and not remux_without_audio(source, target):
+                # Fall back to a plain copy — better a possible double than a hole.
+                shutil.copy2(source, target)
+                log.warning(
+                    "avatar/video audio strip failed; copied with audio: %s",
+                    source.name,
+                    extra={"stage": "compose"},
+                )
+        else:
+            target = self.media_dir / source.name
+            counter = 1
+            while target.exists() and not _same_file(target, source):
+                target = self.media_dir / f"{source.stem}_{counter}{source.suffix}"
+                counter += 1
+            if not target.exists():
+                shutil.copy2(source, target)
 
         relative = f"media/{target.name}"
-        self._copied[source] = relative
+        self._copied[cache_key] = relative
         return relative
 
     # -- markup -------------------------------------------------------------
@@ -189,7 +210,10 @@ class CompositionWriter:
         )
 
         if element.kind in {"video", "avatar"}:
-            src = self._media_src(element.src)
+            # Always strip embedded audio from muted visual clips — the mix
+            # track is the only soundtrack HyperFrames should hear.
+            strip = bool(element.props.get("muted", element.kind == "avatar"))
+            src = self._media_src(element.src, strip_audio=strip)
             if not src:
                 return ""
             loop = " loop" if element.props.get("loop") else ""
@@ -232,15 +256,18 @@ class CompositionWriter:
         return ""
 
     def _avatar_with_host(self, attrs: str, src: str, loop: str) -> str:
-        """Rectangular host with thin orbital arcs (no Pulse Ring)."""
+        """Rectangular host box — no logo ornaments / orbital semi-ovals.
+
+        Default layout is the lower 40% band; CSS keyframes expand to
+        fullscreen for FULL_HOST. Frame background is transparent so a studio
+        HeyGen plate shows through instead of a flat Deep Void fill.
+        """
         layout = host_lower_layout()
-        primary = self.spec.brand.color_primary
         return (
             f'<div id="host_wrap" class="host-wrap" style="z-index:30;">'
             f'<div class="host-frame" style="position:absolute;'
             f"top:{layout['top']}px;left:{layout['left']}px;"
             f'width:{layout["width"]}px;height:{layout["height"]}px;">'
-            f"{orbital_arcs_svg(primary=primary)}"
             f'<div class="host-video">'
             f'<video {attrs} src="{src}" muted playsinline preload="auto"{loop}></video>'
             f"</div></div></div>"
@@ -313,9 +340,8 @@ class CompositionWriter:
         return "\n".join(block for block in blocks if block)
 
     def _host_base_css(self) -> str:
-        """Rectangular host frame + thin orbitals. No neon bloom."""
-        primary = self.spec.brand.color_primary
-        return _HOST_BASE_CSS.format(primary=primary, background=self.spec.brand.color_background)
+        """Rectangular host frame. Transparent fill — studio avatar is the plate."""
+        return _HOST_BASE_CSS.format(background="transparent")
 
     def _element_css(self, element: Element) -> str:
         duration = max(self.timeline.duration, 0.001)
@@ -705,17 +731,6 @@ _HOST_BASE_CSS = """\
   height: 100%;
   object-fit: cover;
   object-position: center 28%;
-}}
-.host-orbitals {{
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: auto;
-  z-index: 2;
-  pointer-events: none;
-  opacity: 0.85;
 }}
 """
 

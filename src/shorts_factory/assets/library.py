@@ -216,13 +216,22 @@ class SfxLibrary(_FolderLibrary):
         super().__init__(directory)
         self._used: dict[str, int] = {}
 
-    def pick(self, fx_type: str, extra_tags: list[str] | None = None) -> LibraryItem | None:
+    def pick(
+        self,
+        fx_type: str,
+        extra_tags: list[str] | None = None,
+        *,
+        scorer: object | None = None,
+    ) -> LibraryItem | None:
         """Best sound for one effect, rotating between equally good matches.
 
         Rotation matters: six identical whooshes in one Short is exactly the
         cheap-edit sound this project exists to avoid. Music beds and drones
         are excluded even when their tags would otherwise match — they are
         not accents, and placing one on a cut reads as a mistake.
+
+        ``scorer(item) -> float`` (optional) re-ranks the tag-matched pool so
+        short oneshots beat long cinematic beds.
         """
         wanted = list(SFX_SYNONYMS.get(fx_type, (fx_type,)))
         if extra_tags:
@@ -234,7 +243,11 @@ class SfxLibrary(_FolderLibrary):
             return None
 
         best = max(score for score, _ in hits)
-        pool = sorted((item for score, item in hits if score == best), key=lambda item: item.name)
+        pool = [item for score, item in hits if score == best]
+        if callable(scorer):
+            pool = sorted(pool, key=lambda item: (-float(scorer(item)), item.name))
+        else:
+            pool = sorted(pool, key=lambda item: item.name)
         index = self._used.get(fx_type, 0)
         self._used[fx_type] = index + 1
         return pool[index % len(pool)]

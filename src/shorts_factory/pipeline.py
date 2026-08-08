@@ -45,7 +45,7 @@ from .render.hyperframes import HyperFramesRunner, RenderResult
 from .render.timeline import Timeline, build_timeline, use_mixed_audio
 from .resolver import ResolvedVisual, VisualResolver
 from .spec import Spec, SpecIssue
-from .voice.audio_design import resolve_from_library, suggest_audio_fx
+from .voice.audio_design import finalize_audio_fx, resolve_from_library, suggest_audio_fx
 from .voice.captions import CaptionCue, build_cues
 from .voice.elevenlabs import ElevenLabsClient, SfxClip, VoiceClip
 from .voice.heygen import AvatarClip, HeyGenClient
@@ -401,7 +401,7 @@ class Pipeline:
 
     def _resolve_sound_design(self, spec: Spec, result: RunResult) -> None:
         """Your own sounds first; generate only what the bank cannot cover."""
-        effects = spec.audio_fx or suggest_audio_fx(spec)
+        effects = finalize_audio_fx(spec.audio_fx, spec) if spec.audio_fx else suggest_audio_fx(spec)
         if not effects:
             return
 

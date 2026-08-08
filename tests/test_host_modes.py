@@ -5,6 +5,7 @@ from __future__ import annotations
 from shorts_factory.render.composition import CompositionWriter
 from shorts_factory.render.host_presence import (
     HOST_LOWER_HEIGHT,
+    HOST_LOWER_RATIO,
     HOST_LOWER_TOP,
     host_lower_layout,
     orbital_arcs_svg,
@@ -85,6 +86,7 @@ def _spec(**extra):
                 "position": "auto",
             },
         ],
+        "brand_elements": {"logo_position": "none", "outro_card": False},
     }
     base.update(extra)
     spec, _ = parse_spec(base)
@@ -107,26 +109,26 @@ def test_avatar_segments_autofilled_from_modes():
     assert "s3" in spec.avatar.segments
 
 
-def test_split_lower_band_geometry():
+def test_split_lower_band_is_forty_percent():
+    assert HOST_LOWER_RATIO == 0.40
     layout = host_lower_layout()
     assert layout["top"] == HOST_LOWER_TOP
     assert layout["height"] == HOST_LOWER_HEIGHT
     assert layout["width"] == 1080
+    assert HOST_LOWER_HEIGHT == 768
+    assert HOST_LOWER_TOP == 1152
 
 
-def test_orbitals_are_thin_not_neon_ring():
+def test_orbitals_helper_still_exists_but_is_unused():
     svg = orbital_arcs_svg(primary="#E11D48")
     assert "host-orbitals" in svg
     assert "pulse-ring" not in svg
-    assert 'stroke-width="1' in svg or 'stroke-width="1.5' in svg
 
 
-def test_composition_has_host_wrap_no_pulse_ring(tmp_path):
+def test_composition_has_host_wrap_no_ornaments(tmp_path):
     spec = _spec()
     timeline = Timeline(composition_id="t", title="t", duration=20.0)
-    # Minimal empty timeline still writes host CSS when plan is visible.
     writer = CompositionWriter(spec, timeline, tmp_path / "comp", host=plan_host(spec))
-    # Inject a fake avatar element so markup path is exercised via write body.
     from shorts_factory.render.timeline import TRACK_AVATAR, Element
 
     fake = tmp_path / "avatar.mp4"
@@ -139,16 +141,18 @@ def test_composition_has_host_wrap_no_pulse_ring(tmp_path):
             duration=20,
             track=TRACK_AVATAR,
             src=fake,
-            props={"layout": {"anchor": "split"}},
+            props={"layout": {"anchor": "split"}, "muted": True},
         )
     )
     result = writer.write()
     html = result.index_html.read_text(encoding="utf-8")
     assert "host-wrap" in html
-    assert "host-orbitals" in html
+    assert "host-orbitals" not in html
     assert "pulse-ring" not in html
     assert "pulse_ring" not in html
+    assert 'class="clip logo"' not in html
     assert "text-shadow" in html
+    assert "background: transparent" in html or "background:transparent" in html
 
 
 def test_mode_stretch_over_12s_errors():

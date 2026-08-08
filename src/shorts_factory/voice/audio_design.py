@@ -6,11 +6,12 @@ feels cheap. Two jobs live here:
 * **Placement** — if the author did not hand-place `audio_fx`, propose a
   restrained set keyed to the brand's montage language: one hero hit under
   the hook, whooshes only on real topic changes, a soft thump under an
-  emphasised number, a riser that finishes exactly on the climax, a tick as
-  the ring leaves and returns. Author-provided effects always win.
-* **Sourcing** — decide where each sound comes from. Your own `assets/sfx/`
-  bank is preferred and aligned by its measured peak so the audible hit lands
-  on the frame, not late. Generation only covers what the bank cannot answer.
+  emphasised number, a short riser into the climax, a tick as the host
+  leaves and returns. Author-provided effects always win (then get density-
+  capped and peak-trimmed).
+* **Scoring / indexing** — the SFX bank is ranked for *short accents*
+  (oneshot / ≤ ~1.5s useful body). Long cinematic beds and drones are
+  demoted so the Short gets a handful of sharp "burps", not a wall of FX.
 
 Nothing here invents drama the narration does not already carry. The effects
 are punctuation.
@@ -28,20 +29,22 @@ from .elevenlabs import SfxClip
 
 log = get_logger("audio_design")
 
-#: Ceiling on auto-placed effects. Past this it stops being design and starts
-#: being noise (and burns ElevenLabs credits for nothing when the bank gaps).
-MAX_AUTO_FX = 8
+#: Hard ceiling — past five accents a Short starts to sound like a trailer.
+MAX_AUTO_FX = 5
+#: Preferred useful body for an accent ("short burp").
+PREFERRED_ACCENT_S = 1.2
+#: Absolute play length after trim — never drag a 10s cinematic under VO.
+MAX_PLAY_S = 1.6
 #: Cuts closer together than this share one effect.
-MIN_GAP = 1.2
+MIN_GAP = 1.8
 #: Same type of effect may not land again within this window.
-SAME_TYPE_GAP = 4.0
+SAME_TYPE_GAP = 5.0
 #: How long a riser is allowed to run before the climax it is building to.
-RISER_LEAD = 2.4
-#: Tails longer than this get trimmed with a fade — otherwise a 10-second
-#: cinematic hit sits under three sentences of narration.
-MAX_TAIL = 2.5
+RISER_LEAD = 1.4
 #: Soft headroom so a peak that starts slightly before t=0 still plays.
 EARLY_START_SLACK = 0.05
+#: Tails longer than this get trimmed with a fade.
+MAX_TAIL = 1.0
 
 
 @dataclass(frozen=True)
@@ -51,7 +54,7 @@ class Beat:
     at: float
     role: str
     intensity: float = 0.6
-    duration: float = 0.8
+    duration: float = 0.55
     reason: str = ""
 
 
@@ -63,14 +66,12 @@ class Beat:
 def suggest_audio_fx(spec: Spec) -> list[AudioFx]:
     """Propose effects for a spec that has none.
 
-    Author-provided `audio_fx` always wins. The automatic set is a density-
-    capped reading of the montage: hook, topic changes, ring exit/return,
-    one climax build, CTA. It deliberately does *not* put a whoosh on every
-    visual cut — that is the cheapest edit sound in Shorts and the one this
-    project exists to avoid.
+    Author-provided `audio_fx` always wins, then passes through the same
+    density + short-accent gate as autosuggest so a hand-authored list of
+    twelve whooshes cannot flood the mix.
     """
     if spec.audio_fx:
-        return list(spec.audio_fx)
+        return finalize_audio_fx(list(spec.audio_fx), spec)
 
     beats = collect_beats(spec)
     policy = spec.sfx_policy
@@ -82,7 +83,12 @@ def suggest_audio_fx(spec: Spec) -> list[AudioFx]:
         type_cooldown=policy.type_cooldown,
     )
     suggestions = [
-        AudioFx(type=beat.role, at=round(beat.at, 3), intensity=beat.intensity, duration=beat.duration)
+        AudioFx(
+            type=beat.role,
+            at=round(beat.at, 3),
+            intensity=beat.intensity,
+            duration=min(beat.duration, PREFERRED_ACCENT_S),
+        )
         for beat in trimmed
     ]
     for item in suggestions:
@@ -95,8 +101,56 @@ def suggest_audio_fx(spec: Spec) -> list[AudioFx]:
     return suggestions
 
 
+def finalize_audio_fx(effects: list[AudioFx], spec: Spec) -> list[AudioFx]:
+    """Cap + shorten an author or auto list before library resolve."""
+    policy = spec.sfx_policy
+    beats = [
+        Beat(
+            at=fx.at,
+            role=fx.type,
+            intensity=fx.intensity,
+            duration=min(fx.duration or PREFERRED_ACCENT_S, PREFERRED_ACCENT_S),
+            reason="author",
+        )
+        for fx in effects
+    ]
+    trimmed = enforce_density(
+        beats,
+        duration=spec.duration_target,
+        max_effects=policy.max_effects if policy.max_effects is not None else MAX_AUTO_FX,
+        min_gap=policy.min_gap,
+        type_cooldown=policy.type_cooldown,
+    )
+    by_key = {(fx.type, round(fx.at, 3)): fx for fx in effects}
+    out: list[AudioFx] = []
+    for beat in trimmed:
+        source = by_key.get((beat.role, round(beat.at, 3)))
+        duration = min(
+            (source.duration if source else beat.duration) or PREFERRED_ACCENT_S,
+            PREFERRED_ACCENT_S if beat.role != "riser" else RISER_LEAD,
+            MAX_PLAY_S,
+        )
+        out.append(
+            AudioFx(
+                type=beat.role,
+                at=round(beat.at, 3),
+                intensity=beat.intensity,
+                duration=round(duration, 3),
+                prompt=source.prompt if source else "",
+            )
+        )
+    if len(effects) > len(out):
+        log.info(
+            "sfx density: kept %d of %d author effect(s)",
+            len(out),
+            len(effects),
+            extra={"stage": "audio"},
+        )
+    return out
+
+
 def collect_beats(spec: Spec) -> list[Beat]:
-    """Map brand-book ring states and montage structure onto sound anchors."""
+    """Map montage structure onto a sparse set of sound anchors."""
     beats: list[Beat] = []
 
     if spec.hook:
@@ -105,7 +159,7 @@ def collect_beats(spec: Spec) -> list[Beat]:
                 at=max(0.0, spec.hook.start + 0.05),
                 role="impact",
                 intensity=0.75,
-                duration=1.0,
+                duration=0.55,
                 reason="hook",
             )
         )
@@ -120,8 +174,8 @@ def collect_beats(spec: Spec) -> list[Beat]:
             Beat(
                 at=max(0.0, current.start - 0.05),
                 role="whoosh",
-                intensity=0.55,
-                duration=0.8,
+                intensity=0.5,
+                duration=0.45,
                 reason=f"cut {previous.id}→{current.id}",
             )
         )
@@ -131,7 +185,7 @@ def collect_beats(spec: Spec) -> list[Beat]:
         if segment.emphasis != "high":
             continue
         at = segment.start + min(0.35, max(guard, segment.duration * 0.12))
-        beats.append(Beat(at=at, role="thump", intensity=0.45, duration=0.5, reason=f"emphasis {segment.id}"))
+        beats.append(Beat(at=at, role="thump", intensity=0.4, duration=0.35, reason=f"emphasis {segment.id}"))
 
     # Host exit / enter from avatar.segments gaps (FULL_FOOTAGE windows).
     if spec.avatar.enabled and spec.avatar.segments:
@@ -142,10 +196,10 @@ def collect_beats(spec: Spec) -> list[Beat]:
             if gap < 1.2:
                 continue
             beats.append(
-                Beat(at=left.end, role="host_exit", intensity=0.4, duration=0.25, reason="host exit")
+                Beat(at=left.end, role="host_exit", intensity=0.35, duration=0.2, reason="host exit")
             )
             beats.append(
-                Beat(at=right.start, role="host_enter", intensity=0.4, duration=0.25, reason="host enter")
+                Beat(at=right.start, role="host_enter", intensity=0.35, duration=0.2, reason="host enter")
             )
 
     climax = _climax_at(spec)
@@ -154,14 +208,14 @@ def collect_beats(spec: Spec) -> list[Beat]:
             Beat(
                 at=max(0.0, climax - RISER_LEAD),
                 role="riser",
-                intensity=0.6,
+                intensity=0.55,
                 duration=RISER_LEAD,
                 reason="pre-climax",
             )
         )
 
     if spec.cta and spec.cta.text:
-        beats.append(Beat(at=spec.cta.start, role="pop", intensity=0.55, duration=0.6, reason="cta"))
+        beats.append(Beat(at=spec.cta.start, role="pop", intensity=0.5, duration=0.35, reason="cta"))
 
     return sorted(beats, key=lambda beat: beat.at)
 
@@ -177,12 +231,11 @@ def enforce_density(
     """Cap how many sounds a Short gets and keep them from stacking.
 
     Ceiling scales with length so a 20-second short stays sparse and a
-    55-second one still has room for a climax build. Same-type beats closer
-    than ``type_cooldown`` collapse into the first one.
+    55-second one still has room for a climax build — never above ``MAX_AUTO_FX``.
     """
-    derived = max(4, min(MAX_AUTO_FX, int(duration / 6) + 1))
+    derived = max(3, min(MAX_AUTO_FX, int(duration / 10) + 1))
     ceiling = max_effects if max_effects is not None else derived
-    ceiling = max(0, min(ceiling, MAX_AUTO_FX if max_effects is None else max(ceiling, 0)))
+    ceiling = max(0, min(ceiling, MAX_AUTO_FX))
     kept: list[Beat] = []
     last_at = -min_gap
     last_by_type: dict[str, float] = {}
@@ -190,8 +243,17 @@ def enforce_density(
     # Priority: hook impact and climax riser first, then topic changes, then
     # the rest. Without this a dense script of emphasis marks would crowd out
     # the one sound the viewer is meant to notice.
-    priority = {"impact": 0, "riser": 1, "whoosh": 2, "transition": 2, "thump": 3, "pop": 4}
-    ordered = sorted(beats, key=lambda beat: (priority.get(beat.role, 5), beat.at))
+    priority = {
+        "impact": 0,
+        "riser": 1,
+        "whoosh": 2,
+        "transition": 2,
+        "thump": 3,
+        "pop": 4,
+        "host_exit": 5,
+        "host_enter": 5,
+    }
+    ordered = sorted(beats, key=lambda beat: (priority.get(beat.role, 6), beat.at))
 
     accepted: list[Beat] = []
     for beat in ordered:
@@ -242,6 +304,64 @@ def _climax_at(spec: Spec) -> float | None:
 
 
 # --------------------------------------------------------------------------- #
+# Bank indexing / scoring
+# --------------------------------------------------------------------------- #
+
+
+def accent_score(item: LibraryItem, role: str) -> float:
+    """Rank a bank file for short-accent use. Higher = better burp.
+
+    Prefers oneshots and short measured bodies; demotes drones, beds and
+    multi-second cinematic hits that drown narration.
+    """
+    score = 0.0
+    shape = (item.shape or "").lower()
+    if shape in {"drone", "bed"}:
+        return -100.0
+    if shape in {"oneshot", "hit", "transient"}:
+        score += 4.0
+    elif shape == "whoosh":
+        score += 2.0
+    elif shape == "riser" and role == "riser":
+        score += 3.0
+
+    duration = item.duration or 0.0
+    if duration <= 0:
+        score += 0.5
+    elif duration <= 0.6:
+        score += 5.0
+    elif duration <= PREFERRED_ACCENT_S:
+        score += 3.5
+    elif duration <= MAX_PLAY_S:
+        score += 1.5
+    elif duration <= 3.0:
+        score -= 1.0
+    else:
+        score -= 4.0
+
+    if item.tail and item.tail > MAX_TAIL:
+        score -= min(3.0, item.tail - MAX_TAIL)
+
+    # Sharp attack is good punctuation; long soft attacks feel like beds.
+    if item.attack and item.attack < 0.15:
+        score += 1.5
+    elif item.attack and item.attack > 1.0 and role != "riser":
+        score -= 1.5
+
+    return score
+
+
+def index_short_accents(library: SfxLibrary, *, limit: int = 5) -> list[LibraryItem]:
+    """Return the top short accents in the bank (for diagnostics / kits)."""
+    ranked = sorted(
+        (item for item in library.items if item.usable_as_accent and accent_score(item, "impact") > 0),
+        key=lambda item: accent_score(item, "impact"),
+        reverse=True,
+    )
+    return ranked[: max(0, limit)]
+
+
+# --------------------------------------------------------------------------- #
 # Sourcing
 # --------------------------------------------------------------------------- #
 
@@ -279,47 +399,47 @@ def align_start(anchor: float, peak_at: float) -> float:
 def trim_plan(item: LibraryItem, *, role: str, requested: float) -> tuple[float, float]:
     """How much of the file to keep, and where to start reading it.
 
-    Long cinematic hits are cut to the useful part around the peak; risers are
+    Long cinematic hits are cut to a short burp around the peak; risers are
     cut so they finish on the climax rather than ringing past it. Returns
     ``(trim_start, play_duration)``.
     """
     duration = item.duration or requested
     if duration <= 0:
-        return 0.0, requested
+        return 0.0, min(requested, MAX_PLAY_S)
 
     if role == "riser":
-        # Keep the climb into the peak and a short ring after it.
         start = max(0.0, item.peak_at - RISER_LEAD)
-        end = min(duration, item.peak_at + 0.35)
-        return start, max(0.3, end - start)
+        end = min(duration, item.peak_at + 0.2)
+        return start, max(0.25, min(MAX_PLAY_S, end - start))
 
-    if item.tail > MAX_TAIL or duration > requested + 1.5:
-        # Keep the attack and a controlled tail past the peak.
-        start = max(0.0, item.peak_at - max(item.attack, 0.15))
-        end = min(duration, item.peak_at + min(MAX_TAIL, max(requested, 0.6)))
-        return start, max(0.2, end - start)
+    # Prefer a tight window around the peak — "short burp".
+    body = min(requested or PREFERRED_ACCENT_S, PREFERRED_ACCENT_S, MAX_PLAY_S)
+    if item.tail > MAX_TAIL or duration > body + 0.4:
+        start = max(0.0, item.peak_at - max(min(item.attack, 0.12), 0.04))
+        end = min(duration, start + body)
+        return start, max(0.15, end - start)
 
-    return 0.0, duration
+    return 0.0, min(duration, body)
 
 
 def resolve_from_library(effects: list[AudioFx], library: SfxLibrary) -> tuple[list[SfxClip], list[AudioFx]]:
     """Split effects into "your bank has this" and "this needs generating".
 
-    Returns ``(clips, still_needed)``. The second list is what a generator has
-    to cover; when it is empty the whole audio-design layer costs nothing and
-    works with no API key at all.
+    Picker uses accent scoring so long cinematic beds lose to short oneshots.
+    Returns ``(clips, still_needed)``.
     """
     clips: list[SfxClip] = []
     missing: list[AudioFx] = []
 
     for fx in effects:
         extra = [word for word in fx.prompt.lower().split() if len(word) > 2][:4]
-        item = library.pick(fx.type, extra)
+        item = library.pick(fx.type, extra, scorer=lambda it, role=fx.type: accent_score(it, role))
         if item is None:
             missing.append(fx)
             continue
 
         trim_start, play_duration = trim_plan(item, role=fx.type, requested=fx.duration)
+        play_duration = min(play_duration, MAX_PLAY_S)
         start = align_start(fx.at, item.peak_at - trim_start)
         volume = library_volume(item, fx.type, fx.intensity) if item.analysis else fx_volume(fx.intensity)
 

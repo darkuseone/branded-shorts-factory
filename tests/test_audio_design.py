@@ -98,10 +98,21 @@ def _spec(*, script=None, visuals=None, avatar_segments=None, duration=40.0) -> 
 # --------------------------------------------------------------------------- #
 
 
-def test_author_effects_are_never_overridden():
+def test_author_effects_pass_density_gate_but_keep_roles():
     spec = _spec()
-    spec.audio_fx = [AudioFx(type="whoosh", at=2.0)]
-    assert suggest_audio_fx(spec) == spec.audio_fx
+    spec.audio_fx = [
+        AudioFx(type="impact", at=0.1, duration=0.8),
+        AudioFx(type="whoosh", at=2.0, duration=0.8),
+        AudioFx(type="whoosh", at=2.5, duration=0.8),
+        AudioFx(type="thump", at=10.0, duration=0.8),
+        AudioFx(type="riser", at=16.0, duration=2.2),
+        AudioFx(type="pop", at=25.0, duration=0.8),
+        AudioFx(type="whoosh", at=30.0, duration=0.8),
+    ]
+    kept = suggest_audio_fx(spec)
+    assert len(kept) <= 5
+    assert kept[0].type == "impact"
+    assert all(fx.duration <= 1.6 for fx in kept)
 
 
 def test_hook_gets_exactly_one_impact():
@@ -154,11 +165,11 @@ def test_density_cap_scales_with_duration_and_never_exceeds_ceiling():
         for index in range(20)
     ]
     kept = enforce_density(beats, duration=30.0)
-    assert len(kept) <= 8
-    assert len(kept) <= int(30 / 6) + 1
+    assert len(kept) <= 5
+    assert len(kept) <= int(30 / 10) + 1
 
 
-def test_same_type_cannot_stack_within_four_seconds():
+def test_same_type_cannot_stack_within_cooldown():
     from shorts_factory.voice.audio_design import Beat
 
     beats = [
@@ -194,7 +205,7 @@ def test_long_tail_is_trimmed_around_the_peak():
     )
     start, play = trim_plan(item, role="whoosh", requested=0.8)
     assert start >= 0.0
-    assert play <= 3.5, "a 10s cinematic hit must not play in full under narration"
+    assert play <= 1.6, "a 10s cinematic hit must play as a short burp under narration"
     assert start + play <= item.duration
 
 
@@ -207,7 +218,23 @@ def test_riser_is_cut_so_it_finishes_on_the_climax():
     start, play = trim_plan(item, role="riser", requested=2.4)
     # Peak should sit near the end of the played window.
     assert start + play >= item.peak_at
-    assert play <= 3.0
+    assert play <= 1.6
+
+
+def test_accent_score_prefers_short_oneshots():
+    from shorts_factory.voice.audio_design import accent_score
+
+    short = LibraryItem(
+        path=Path("rimshot.wav"),
+        duration=0.05,
+        analysis={"shape": "oneshot", "attack": 0.01, "tail": 0.04, "peak_at": 0.01},
+    )
+    long = LibraryItem(
+        path=Path("cinematic.mp3"),
+        duration=10.4,
+        analysis={"shape": "whoosh", "attack": 1.6, "tail": 5.5, "peak_at": 1.8},
+    )
+    assert accent_score(short, "impact") > accent_score(long, "impact")
 
 
 def test_library_volume_normalises_a_hot_file_down():
@@ -235,5 +262,8 @@ def test_resolve_aligns_library_hits_by_peak(tmp_path):
         SfxLibrary(tmp_path),
     )
     assert not missing
-    assert clips[0].start == pytest.approx(7.2)
+    # Peak lands on the cut after short-burp trim.
+    peak_offset = 0.8 - clips[0].trim_start
+    assert clips[0].start + peak_offset == pytest.approx(8.0, abs=0.02)
+    assert clips[0].duration <= 1.6
     assert clips[0].source == "library"

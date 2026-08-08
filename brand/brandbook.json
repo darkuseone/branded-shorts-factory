@@ -22,16 +22,22 @@
     "display_weight": 600
   },
   "logo": "brand/logo.png",
-  "logo_position": "top_left",
+  "logo_position": "none",
   "watermark_opacity": 0.55,
   "lower_third": false,
-  "outro_card": true,
+  "outro_card": false,
   "safe_area_margin": 96,
   "host": {
     "modes": ["split", "full_host", "full_footage"],
-    "split_lower_ratio": 0.45,
-    "orbitals": true,
-    "_comment": "Pulse Ring removed. Host is rectangular lower-band SPLIT or fullscreen FULL_HOST."
+    "split_lower_ratio": 0.40,
+    "orbitals": false,
+    "_comment": "Pulse Ring + orbital semi-ovals removed. SPLIT = fixed 40% host / 60% footage."
+  },
+  "sfx_policy": {
+    "max_effects": 5,
+    "min_gap": 1.8,
+    "type_cooldown": 5.0,
+    "_comment": "Max 5 short accents per Short; long cinematic beds are demoted by accent_score."
   },
   "sfx_kit": {
     "whoosh": "transition",

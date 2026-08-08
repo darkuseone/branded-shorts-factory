@@ -111,17 +111,48 @@ class Timeline:
         }
 
 
-_POSITION_LAYOUT: dict[str, dict[str, Any]] = {
-    "fullscreen": {"top": 0, "left": 0, "width": VIDEO_WIDTH, "height": VIDEO_HEIGHT, "fit": "cover"},
-    "background": {"top": 0, "left": 0, "width": VIDEO_WIDTH, "height": VIDEO_HEIGHT, "fit": "cover"},
-    "top": {"top": 0, "left": 0, "width": VIDEO_WIDTH, "height": 1056, "fit": "cover"},
-    "split_upper": {"top": 0, "left": 0, "width": VIDEO_WIDTH, "height": 1056, "fit": "cover"},
-    "center": {"top": 520, "left": 0, "width": VIDEO_WIDTH, "height": 880, "fit": "cover"},
-    "bottom": {"top": 1056, "left": 0, "width": VIDEO_WIDTH, "height": 864, "fit": "cover"},
-    "left": {"top": 480, "left": 0, "width": 700, "height": 960, "fit": "cover"},
-    "right": {"top": 480, "left": 380, "width": 700, "height": 960, "fit": "cover"},
-    "pip": {"top": 220, "left": 620, "width": 380, "height": 380, "fit": "cover", "radius": 32},
-}
+def _position_layout() -> dict[str, dict[str, Any]]:
+    """Layouts derived from the 40/60 host split (see host_presence)."""
+    from .host_presence import HOST_LOWER_HEIGHT, HOST_LOWER_TOP, SPLIT_UPPER_HEIGHT
+
+    return {
+        "fullscreen": {
+            "top": 0,
+            "left": 0,
+            "width": VIDEO_WIDTH,
+            "height": VIDEO_HEIGHT,
+            "fit": "cover",
+        },
+        "background": {
+            "top": 0,
+            "left": 0,
+            "width": VIDEO_WIDTH,
+            "height": VIDEO_HEIGHT,
+            "fit": "cover",
+        },
+        "top": {"top": 0, "left": 0, "width": VIDEO_WIDTH, "height": SPLIT_UPPER_HEIGHT, "fit": "cover"},
+        "split_upper": {
+            "top": 0,
+            "left": 0,
+            "width": VIDEO_WIDTH,
+            "height": SPLIT_UPPER_HEIGHT,
+            "fit": "cover",
+        },
+        "center": {"top": 520, "left": 0, "width": VIDEO_WIDTH, "height": 880, "fit": "cover"},
+        "bottom": {
+            "top": HOST_LOWER_TOP,
+            "left": 0,
+            "width": VIDEO_WIDTH,
+            "height": HOST_LOWER_HEIGHT,
+            "fit": "cover",
+        },
+        "left": {"top": 480, "left": 0, "width": 700, "height": 960, "fit": "cover"},
+        "right": {"top": 480, "left": 380, "width": 700, "height": 960, "fit": "cover"},
+        "pip": {"top": 220, "left": 620, "width": 380, "height": 380, "fit": "cover", "radius": 32},
+    }
+
+
+_POSITION_LAYOUT: dict[str, dict[str, Any]] = _position_layout()
 
 _AVATAR_LAYOUT: dict[str, dict[str, Any]] = {
     "bottom_right": {"anchor": "split", "mode": "split"},
@@ -273,14 +304,18 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
 
 
 def _resolve_visual_position(spec: Spec, visual: Any) -> str:
-    """Map auto/fullscreen slots to split_upper when the spoken mode is SPLIT."""
+    """Map auto slots to the plane that matches the spoken host mode.
+
+    * ``split`` → upper 60% band (footage above the fixed 40% host)
+    * ``full_footage`` / ``full_host`` → fullscreen (host dims/hides b-roll itself)
+    """
     position = visual.position or "fullscreen"
     segment = spec.segment_by_id(visual.segment_ref) if visual.segment_ref else spec.segment_at(visual.start)
     mode = getattr(segment, "mode", None) if segment else None
-    if position in {"auto", "fullscreen", "background", "top"} and mode == "split":
+    if mode == "split" and position in {"auto", "fullscreen", "background", "top"}:
         return "split_upper"
     if position == "auto":
-        return "fullscreen" if mode == "full_footage" else "split_upper"
+        return "fullscreen" if mode in {"full_footage", "full_host", None} else "split_upper"
     return position
 
 

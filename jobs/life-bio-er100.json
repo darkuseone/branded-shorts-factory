@@ -89,7 +89,7 @@
     {
       "id": "v1a",
       "type": "footage",
-      "query": "epigenetic aging clock glowing in deep void",
+      "query": "epigenetic aging clock glowing crimson rim light",
       "keywords": [
         "cellular aging clock",
         "biological clock crimson light",
@@ -231,7 +231,7 @@
     {
       "id": "v5a",
       "type": "footage",
-      "query": "abstract information theory aging data stream deep void",
+      "query": "abstract information theory aging data stream crimson",
       "keywords": [
         "epigenetic information loss",
         "neural field crimson",
@@ -333,7 +333,7 @@
     {
       "id": "v8a",
       "type": "footage",
-      "query": "bug in biological code metaphor deep void crimson",
+      "query": "bug in biological code metaphor crimson laboratory",
       "keywords": [
         "code glitch biology",
         "rewrite aging metaphor",
@@ -384,7 +384,7 @@
     {
       "id": "v9b",
       "type": "footage",
-      "query": "deep space void particles",
+      "query": "biotech particles floating well lit",
       "keywords": [
         "dark particles floating",
         "cosmic dust crimson",
@@ -428,39 +428,38 @@
       "type": "impact",
       "at": 0.05,
       "intensity": 0.78,
-      "duration": 0.85
-    },
-    {
-      "type": "whoosh",
-      "at": 3.95,
-      "intensity": 0.55,
-      "duration": 0.65
+      "duration": 0.45
     },
     {
       "type": "whoosh",
       "at": 8.95,
       "intensity": 0.5,
-      "duration": 0.6
+      "duration": 0.4
     },
     {
       "type": "thump",
       "at": 19.3,
-      "intensity": 0.5,
-      "duration": 0.5
+      "intensity": 0.45,
+      "duration": 0.35
     },
     {
       "type": "riser",
-      "at": 32.0,
-      "intensity": 0.62,
-      "duration": 2.2
+      "at": 32.6,
+      "intensity": 0.55,
+      "duration": 1.2
     },
     {
       "type": "pop",
       "at": 39.5,
       "intensity": 0.5,
-      "duration": 0.5
+      "duration": 0.35
     }
   ],
+  "sfx_policy": {
+    "max_effects": 5,
+    "min_gap": 1.8,
+    "type_cooldown": 5.0
+  },
   "captions": {
     "enabled": true,
     "style": "karaoke",
@@ -469,7 +468,12 @@
     "stroke": true,
     "uppercase": false
   },
-  "brand_elements": {},
+  "brand_elements": {
+    "logo": "",
+    "logo_position": "none",
+    "outro_card": false,
+    "lower_third": false
+  },
   "cta": {
     "text": "Подпишись — сигнал из будущего",
     "start": 39.5,

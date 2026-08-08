@@ -3,12 +3,12 @@
 Replaces the old Pulse Ring. The presenter is a rectangular video layer whose
 layout and visibility follow per-segment ``mode`` values:
 
-* ``split`` — host in the lower ~45% band; B-roll fills the upper band
-* ``full_host`` — host covers the full frame
+* ``split`` — host fixed in the lower 40% band; B-roll owns the upper 60%
+* ``full_host`` — host covers the full frame (studio avatar, no brand ornaments)
 * ``full_footage`` — host hidden; B-roll is fullscreen
 
-Thin orbital arcs (not a neon pulse ring) sit around the host in SPLIT /
-FULL_HOST as a light brand accent.
+Brand ornaments (logo watermark, orbital semi-ovals) are off by default —
+they fought the footage and read as clutter on Shorts.
 """
 
 from __future__ import annotations
@@ -24,11 +24,11 @@ HostMode = Literal["split", "full_host", "full_footage"]
 HOST_MODES = frozenset({"split", "full_host", "full_footage"})
 HOST_ON_MODES = frozenset({"split", "full_host"})
 
-# Lower band ≈ 45% of the 9:16 frame.
-HOST_LOWER_RATIO = 0.45
-HOST_LOWER_HEIGHT = int(round(VIDEO_HEIGHT * HOST_LOWER_RATIO))  # 864
-HOST_LOWER_TOP = VIDEO_HEIGHT - HOST_LOWER_HEIGHT  # 1056
-SPLIT_UPPER_HEIGHT = HOST_LOWER_TOP  # 1056
+# Lower band = 40% of the 9:16 frame → host always sits under the footage plane.
+HOST_LOWER_RATIO = 0.40
+HOST_LOWER_HEIGHT = int(round(VIDEO_HEIGHT * HOST_LOWER_RATIO))  # 768
+HOST_LOWER_TOP = VIDEO_HEIGHT - HOST_LOWER_HEIGHT  # 1152
+SPLIT_UPPER_HEIGHT = HOST_LOWER_TOP  # 1152
 
 FADE_S = 0.28
 MAX_MODE_STRETCH_S = 12.0

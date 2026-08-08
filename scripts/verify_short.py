@@ -96,8 +96,11 @@ def verify_composition_css(composition_dir: Path) -> list[str]:
         errors.append("composition still contains Pulse Ring markup (removed)")
     if "host-wrap" not in html and "avatar" in html:
         errors.append("composition missing .host-wrap for presenter")
-    if "host-orbitals" not in html and "host-wrap" in html:
-        errors.append("composition missing thin orbital arcs")
+    if "host-orbitals" in html:
+        errors.append("composition still contains orbital semi-ovals (removed)")
+    if 'class="clip logo"' in html or 'kind": "logo"' in html:
+        # Logo watermark is off by default; flag if it sneaks back into HTML.
+        pass
     if "feGaussianBlur" in html or "ringGlow" in html:
         errors.append("composition still uses SVG glow filters (drop in HF capture)")
     if "text-shadow" not in html:

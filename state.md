@@ -1,18 +1,25 @@
 # state.md — pipeline hybrid modes + life-bio-er100
 
 ## Status
-DONE
+IN_PROGRESS — QA fixes after first render review (awaiting studio avatar regen + re-render)
 
 ## Deliverables
-- Pipeline: Pulse Ring removed; `mode: split|full_host|full_footage`; Deep Void/Crimson; caption glow+CA; thin orbitals
-- Job: `jobs/life-bio-er100.json` + `PRODUCTION_BRIEF.md` (A–F)
-- Avatar: `jobs/life-bio-er100/avatar.mp4` (HeyGen NIKITA2, 1080×1920)
-- B-roll: `jobs/life-bio-er100/broll/*.mp4` (18 Freepik free clips)
-- Output: GHA Render Short success → `build/output/life-bio-er100.mp4` (48s, 9:16)
-- Artifact: `/opt/cursor/artifacts/life-bio-er100.mp4`
-- Verify: `scripts/verify_short.py` OK on GHA + local
+- Pipeline: Pulse Ring removed; `mode: split|full_host|full_footage`
+- SPLIT = fixed **40% host / 60% footage** (was 45%)
+- No logo watermark, no orbital semi-ovals
+- Avatar video audio stripped at compose (fixes double VO: HeyGen AAC + mix)
+- SFX: ≤5 short accents, accent_score prefers oneshots; long cinematic demoted
+- Footage search: strip "deep void" bias, luma gate on local b-roll, lit rescue queries
+- Job: `jobs/life-bio-er100.json` + `PRODUCTION_BRIEF.md`
+- Avatar: `jobs/life-bio-er100/avatar.mp4` (old plate until user regenerates studio look)
+- B-roll: `jobs/life-bio-er100/broll/*.mp4` (18 clips)
+- Last successful artifact (OLD look/render): https://github.com/darkuseone/branded-shorts-factory/actions/runs/31234740841/artifacts/9015125316
+
+## Next
+1. User regenerates HeyGen avatar with studio look `54172d7a…`
+2. Commit new `avatar.mp4` + re-run Render Short
+3. Verify single audio track + 40/60 split + visible footage
 
 ## Notes
-- Soft warning only: avatar.segments not contiguous across FULL_FOOTAGE windows (host opacity 0 there).
-- Tone: Phase 1 safety honesty; metaphor «взлом кода», no «eternal life proven».
+- Host frame background is transparent so studio plate shows (not Deep Void fill)
 - PR: https://github.com/darkuseone/branded-shorts-factory/pull/9

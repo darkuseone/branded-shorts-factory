@@ -413,14 +413,14 @@ class CaptionSettings:
 @dataclass
 class BrandElements:
     logo: str = ""
-    logo_position: str = "top_left"
+    logo_position: str = "none"
     lower_third: bool = False
     color_primary: str = DEFAULT_PRIMARY
     color_accent: str = DEFAULT_ACCENT
     color_background: str = DEFAULT_BACKGROUND
     font_family: str = "Inter"
     intro_sting: bool = False
-    outro_card: bool = True
+    outro_card: bool = False
     safe_area: bool = True
     watermark_opacity: float = 0.55
 
@@ -450,9 +450,9 @@ class MemeSettings:
 class SfxPolicy:
     """Density caps for automatic sound design (brand book §7)."""
 
-    max_effects: int | None = None  # None → derived from duration
-    min_gap: float = 1.2
-    type_cooldown: float = 4.0
+    max_effects: int | None = 5  # hard default: ≤5 short accents per Short
+    min_gap: float = 1.8
+    type_cooldown: float = 5.0
     voice_guard: float = 0.4
 
 
@@ -1060,17 +1060,19 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
         col.warn("memes.tags", "memes enabled without tags; nothing will be inserted")
 
     sfx_raw = data.get("sfx")
+    if not isinstance(sfx_raw, dict) and isinstance(data.get("sfx_policy"), dict):
+        sfx_raw = {"policy": data.get("sfx_policy")}
     sfx_data = _obj(sfx_raw if isinstance(sfx_raw, dict) else {}, "sfx", col)
     policy_data = _obj(sfx_data.get("policy") if isinstance(sfx_data, dict) else {}, "sfx.policy", col)
     max_fx = _number(policy_data, "max_effects", "sfx.policy", col, minimum=0.0, maximum=40.0)
     sfx_policy = SfxPolicy(
-        max_effects=int(max_fx) if max_fx is not None else None,
+        max_effects=int(max_fx) if max_fx is not None else 5,
         min_gap=float(
-            _number(policy_data, "min_gap", "sfx.policy", col, default=1.2, minimum=0.2, maximum=10.0) or 1.2
+            _number(policy_data, "min_gap", "sfx.policy", col, default=1.8, minimum=0.2, maximum=10.0) or 1.8
         ),
         type_cooldown=float(
-            _number(policy_data, "type_cooldown", "sfx.policy", col, default=4.0, minimum=0.0, maximum=30.0)
-            or 4.0
+            _number(policy_data, "type_cooldown", "sfx.policy", col, default=5.0, minimum=0.0, maximum=30.0)
+            or 5.0
         ),
         voice_guard=float(
             _number(policy_data, "voice_guard", "sfx.policy", col, default=0.4, minimum=0.0, maximum=2.0)
