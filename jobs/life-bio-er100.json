@@ -540,5 +540,5 @@
     "manual_review_ok": true
   },
   "_pipeline_note": "Real Freepik+Wikimedia footage staged into broll/; sparse CSS data chips (OCT4/SOX2/KLF4) — not AI Ken-Burns stills. Avatar kept. Audio: strip all video AAC.",
-  "_render_bump": "real-footage-v1"
+  "_render_bump": "real-footage-v2-letterbox"
 }
