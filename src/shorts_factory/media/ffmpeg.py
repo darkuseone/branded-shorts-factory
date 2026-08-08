@@ -164,6 +164,102 @@ def extract_keyframes(
     return frames
 
 
+def mean_luma(
+    path: Path,
+    *,
+    ffmpeg: str = "ffmpeg",
+    at: float = 0.4,
+) -> float | None:
+    """Average luma (0–255) of one scaled gray frame. None when probe fails.
+
+    Used to reject near-black stock that reads as an empty backdrop under SPLIT /
+    FULL_FOOTAGE — the classic "black screen behind the host" failure.
+    """
+    if not path.exists() or not is_available(ffmpeg):
+        return None
+    import tempfile
+
+    with tempfile.TemporaryDirectory(prefix="luma_") as tmp:
+        target = Path(tmp) / "frame.gray"
+        command = [
+            ffmpeg,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-ss",
+            f"{max(0.0, at):.3f}",
+            "-i",
+            str(path),
+            "-frames:v",
+            "1",
+            "-vf",
+            "scale=160:-2,format=gray",
+            "-f",
+            "rawvideo",
+            str(target),
+        ]
+        try:
+            completed = subprocess.run(command, capture_output=True, text=True, timeout=60, check=False)
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        if completed.returncode != 0 or not target.exists() or target.stat().st_size == 0:
+            return None
+        data = target.read_bytes()
+        if not data:
+            return None
+        return sum(data) / len(data)
+
+
+def remux_without_audio(
+    source: Path,
+    target: Path,
+    *,
+    ffmpeg: str = "ffmpeg",
+) -> bool:
+    """Copy video streams only — drops embedded audio so the timeline mix is SSOT.
+
+    HyperFrames / Chromium may still mux `<video muted>` audio into the final
+    file. Stripping the track before compose is the reliable fix for double VO
+    (HeyGen AAC + ElevenLabs / extracted mix).
+    """
+    if not source.exists():
+        return False
+    if not is_available(ffmpeg):
+        log.warning("ffmpeg unavailable; cannot strip audio from %s", source.name)
+        return False
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    command = [
+        ffmpeg,
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+        "-i",
+        str(source),
+        "-an",
+        "-c:v",
+        "copy",
+        "-movflags",
+        "+faststart",
+        str(target),
+    ]
+    try:
+        completed = subprocess.run(command, capture_output=True, text=True, timeout=180, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        log.warning("strip-audio failed for %s: %s", source.name, exc)
+        return False
+    if completed.returncode != 0 or not target.exists() or target.stat().st_size == 0:
+        log.warning(
+            "strip-audio rejected %s: %s",
+            source.name,
+            (completed.stderr or "")[:200],
+        )
+        return False
+    return True
+
+
 def _float(value: object) -> float:
     try:
         return float(value)  # type: ignore[arg-type]

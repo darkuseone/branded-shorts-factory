@@ -313,9 +313,7 @@ class VisualResolver:
         matches = sorted(
             path
             for path in folder.iterdir()
-            if path.is_file()
-            and path.stem == visual.id
-            and path.suffix.lower() in extensions
+            if path.is_file() and path.stem == visual.id and path.suffix.lower() in extensions
         )
         if not matches:
             return None
@@ -339,13 +337,29 @@ class VisualResolver:
             if info.duration:
                 candidate.duration = info.duration
         asset = LocalAsset(candidate=candidate, path=path, info=info)
+        from .media.ffmpeg import mean_luma
+
+        luma = mean_luma(path, ffmpeg=self.settings.ffmpeg_cmd)
+        # Infographics are often dark-on-void by brand; don't reject staged plates.
+        dark_floor = 8.0 if visual.type in {"infographic", "motion_graphics"} else 18.0
+        if luma is not None and luma < dark_floor:
+            log.warning(
+                "%s: local b-roll too dark (luma=%.1f); falling through to search",
+                visual.id,
+                luma,
+                extra={"stage": "resolve"},
+            )
+            return None
         log.info("%s: using local b-roll %s", visual.id, path.name, extra={"stage": "resolve"})
+        notes = [f"local b-roll override: {path.relative_to(self.settings.paths.root)}"]
+        if luma is not None:
+            notes.append(f"luma={luma:.1f}")
         return VisualQA(
             visual_id=visual.id,
             outcome="accepted",
             asset=asset,
             attempts=1,
-            notes=[f"local b-roll override: {path.relative_to(self.settings.paths.root)}"],
+            notes=notes,
         )
 
     # -- memes --------------------------------------------------------------

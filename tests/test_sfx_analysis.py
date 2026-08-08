@@ -108,7 +108,7 @@ def test_impacts_only_come_from_the_bottom_of_the_spectrum():
     assert "thump" in bass_drum
 
 
-def test_a_very_short_tick_can_drive_the_ring_leaving_frame():
+def test_a_very_short_tick_can_drive_host_leaving_frame():
     roles = roles_for(shape="oneshot", band="high", duration=0.16, tail=0.07, position=0.0)
     assert {"power_down", "power_up", "click"} <= set(roles)
 

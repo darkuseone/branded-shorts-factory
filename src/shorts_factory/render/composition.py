@@ -24,8 +24,14 @@ from pathlib import Path
 from typing import Any
 
 from ..logging_utils import get_logger
+from ..media.ffmpeg import remux_without_audio
 from ..spec import Spec
-from .ring import RingConfig, RingPlan, layout_box, plan_ring, ring_css, ring_svg
+from .host_presence import (
+    HostPlan,
+    host_chrome_css,
+    host_lower_layout,
+    plan_host,
+)
 from .timeline import (
     BOTTOM_UI_RESERVE,
     SAFE_MARGIN,
@@ -35,6 +41,38 @@ from .timeline import (
 )
 
 log = get_logger("composition")
+
+
+def _reencode_silent(source: Path, target: Path) -> bool:
+    """Fallback when stream-copy strip fails (odd containers / webm)."""
+    import subprocess
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        "ffmpeg",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+        "-i",
+        str(source),
+        "-an",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-crf",
+        "20",
+        "-movflags",
+        "+faststart",
+        str(target),
+    ]
+    try:
+        completed = subprocess.run(cmd, capture_output=True, text=True, timeout=300, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return completed.returncode == 0 and target.exists() and target.stat().st_size > 0
+
 
 FONT_STACK = '"{family}", "Inter", "Helvetica Neue", Arial, system-ui, sans-serif'
 
@@ -77,13 +115,13 @@ class CompositionResult:
 class CompositionWriter:
     """Turns a `Timeline` into an on-disk HyperFrames project."""
 
-    def __init__(self, spec: Spec, timeline: Timeline, directory: Path, ring: RingPlan | None = None):
+    def __init__(self, spec: Spec, timeline: Timeline, directory: Path, host: HostPlan | None = None):
         self.spec = spec
         self.timeline = timeline
         self.directory = directory
         self.media_dir = directory / "media"
-        self._copied: dict[Path, str] = {}
-        self.ring = ring or plan_ring(spec, RingConfig())
+        self._copied: dict[tuple[Path, bool], str] = {}
+        self.host = host or plan_host(spec)
 
     # -- entry point --------------------------------------------------------
 
@@ -129,27 +167,57 @@ class CompositionWriter:
 
     # -- media --------------------------------------------------------------
 
-    def _media_src(self, path: Path | None) -> str | None:
-        """Copy an asset into the project and return its relative URL."""
+    def _media_src(self, path: Path | None, *, strip_audio: bool = False) -> str | None:
+        """Copy an asset into the project and return its relative URL.
+
+        ``strip_audio=True`` remuxes video-only. Required for muted avatar /
+        b-roll clips: HTML ``muted`` alone does not stop HyperFrames from
+        muxing embedded AAC into the final Short (double VO with the mix).
+        """
         if path is None:
             return None
         source = Path(path)
         if not source.exists():
             log.warning("missing asset, skipping: %s", source, extra={"stage": "compose"})
             return None
-        if source in self._copied:
-            return self._copied[source]
+        cache_key = (source, strip_audio)
+        if cache_key in self._copied:
+            return self._copied[cache_key]
 
-        target = self.media_dir / source.name
-        counter = 1
-        while target.exists() and not _same_file(target, source):
-            target = self.media_dir / f"{source.stem}_{counter}{source.suffix}"
-            counter += 1
-        if not target.exists():
-            shutil.copy2(source, target)
+        if strip_audio:
+            target = self.media_dir / f"{source.stem}_silent{source.suffix}"
+            counter = 1
+            while target.exists() and target.stat().st_size == 0:
+                target = self.media_dir / f"{source.stem}_silent_{counter}{source.suffix}"
+                counter += 1
+            if not target.exists() and not remux_without_audio(source, target):
+                # Re-encode without audio — never copy AAC into the composition
+                # (HyperFrames may mux muted <video> tracks → "two soundtracks").
+                reencoded = self.media_dir / f"{source.stem}_silent_reenc.mp4"
+                if not _reencode_silent(source, reencoded):
+                    log.error(
+                        "cannot strip audio from %s; skipping clip",
+                        source.name,
+                        extra={"stage": "compose"},
+                    )
+                    return None
+                target = reencoded
+                log.warning(
+                    "strip via remux failed; re-encoded silent: %s",
+                    source.name,
+                    extra={"stage": "compose"},
+                )
+        else:
+            target = self.media_dir / source.name
+            counter = 1
+            while target.exists() and not _same_file(target, source):
+                target = self.media_dir / f"{source.stem}_{counter}{source.suffix}"
+                counter += 1
+            if not target.exists():
+                shutil.copy2(source, target)
 
         relative = f"media/{target.name}"
-        self._copied[source] = relative
+        self._copied[cache_key] = relative
         return relative
 
     # -- markup -------------------------------------------------------------
@@ -182,19 +250,30 @@ class CompositionWriter:
         )
 
         if element.kind in {"video", "avatar"}:
-            src = self._media_src(element.src)
+            # Always strip embedded audio from visual clips (avatar, b-roll,
+            # memes). HTML ``muted`` is not enough — HyperFrames/Chromium can
+            # still mux AAC into the output and it reads as a second soundtrack.
+            strip = True
+            src = self._media_src(element.src, strip_audio=strip)
             if not src:
                 return ""
             loop = " loop" if element.props.get("loop") else ""
-            if element.kind == "avatar" and self.ring.visible:
-                return self._avatar_with_ring(attrs, src, loop)
-            return f'<video {attrs} src="{src}" muted playsinline preload="auto"{loop}></video>'
+            if element.kind == "avatar" and self.host.visible:
+                return self._avatar_with_host(attrs, src, loop)
+            # Animate a wrapper DIV — CSS opacity/transform on <video> itself
+            # is dropped by HyperFrames capture (avatar works because the
+            # parent .host-wrap is animated, not the video node).
+            return (
+                f'<div id="wrap_{element.id}" class="media-shell">'
+                f'<video {attrs} src="{src}" muted playsinline preload="auto"{loop}></video>'
+                f"</div>"
+            )
 
         if element.kind == "image":
             src = self._media_src(element.src)
             if not src:
                 return ""
-            return f'<img {attrs} src="{src}" alt="">'
+            return f'<div id="wrap_{element.id}" class="media-shell"><img {attrs} src="{src}" alt=""></div>'
 
         if element.kind == "logo":
             src = self._media_src(element.src)
@@ -224,24 +303,23 @@ class CompositionWriter:
 
         return ""
 
-    def _avatar_with_ring(self, attrs: str, src: str, loop: str) -> str:
-        """Presenter clipped to a circle, wrapped by the neon pulse ring."""
-        cfg = self.ring.config
-        box = layout_box(cfg, anchor=cfg.default_anchor)
-        size = box["size"]
-        # Never mount ring-network SVG: even with display:none, HyperFrames
-        # capture painted a persistent tall red ellipse on the left edge.
+    def _avatar_with_host(self, attrs: str, src: str, loop: str) -> str:
+        """Host box only — wrap matches the host rectangle, never full-bleed.
+
+        A full-screen ``host-wrap`` overlay was compositing above b-roll in
+        HyperFrames and wiped the upper 60% to black even when opacity CSS
+        looked correct. Layout keyframes animate this wrap between SPLIT and
+        FULL_HOST; FULL_FOOTAGE collapses the wrap via host_chrome (layout+opacity).
+        """
+        layout = host_lower_layout()
         return (
-            f'<div id="pulse_ring" class="pulse-ring-wrap" '
-            f'style="left:{box["left"]}px;top:{box["top"]}px;width:{size}px;height:{size}px;">'
-            f'<div class="pulse-ring-breath">'
-            f'<div class="pulse-ring-halo" aria-hidden="true"></div>'
-            f'<div class="pulse-ring-neon" aria-hidden="true"></div>'
-            f"{ring_svg(cfg, size)}"
-            f'<div class="avatar-clip">'
-            f'<div class="avatar-face">'
+            f'<div id="host_wrap" class="host-wrap" style="z-index:30;'
+            f"top:{layout['top']}px;left:{layout['left']}px;"
+            f'width:{layout["width"]}px;height:{layout["height"]}px;">'
+            f'<div class="host-frame">'
+            f'<div class="host-video">'
             f'<video {attrs} src="{src}" muted playsinline preload="auto"{loop}></video>'
-            f"</div></div></div></div>"
+            f"</div></div></div>"
         )
 
     def _caption_inner(self, element: Element) -> str:
@@ -289,38 +367,29 @@ class CompositionWriter:
                 caption_highlight=captions.highlight_color,
                 caption_top=anchor["top"],
                 caption_stroke=(
-                    "-webkit-text-stroke: 3px rgba(0,0,0,.85); paint-order: stroke fill;"
+                    "-webkit-text-stroke: 1.5px rgba(5,5,8,.65); paint-order: stroke fill;"
                     if captions.stroke
                     else ""
                 ),
-            )
+                caption_glow=_caption_glow_css(brand.color_primary),
+            ),
         ]
 
         for element in self.timeline.visual_elements:
             blocks.append(self._element_css(element))
 
-        if self.ring.visible:
-            blocks.append(ring_css(self.ring, duration=self.timeline.duration))
-            blocks.append(self._ring_base_css())
+        if self.host.visible:
+            blocks.append(host_chrome_css(self.host, duration=self.timeline.duration))
+            blocks.append(self._host_base_css())
             self._copy_brand_fonts()
         elif any(el.props.get("role") == "data_chip" for el in self.timeline.elements):
             self._copy_brand_fonts()
 
         return "\n".join(block for block in blocks if block)
 
-    def _ring_base_css(self) -> str:
-        """Neon bloom + face crop — CSS only (SVG filters die in HF capture)."""
-        cfg = self.ring.config
-        stroke = cfg.stroke
-        glow = cfg.glow
-        zoom = max(1.0, float(cfg.face_zoom))
-        position = cfg.face_position or "center 30%"
-        return _RING_BASE_CSS.format(
-            stroke=stroke,
-            glow=glow,
-            face_zoom=f"{zoom:.3f}",
-            face_position=position,
-        )
+    def _host_base_css(self) -> str:
+        """Rectangular host frame. Transparent fill — studio avatar is the plate."""
+        return _HOST_BASE_CSS.format(background="transparent")
 
     def _element_css(self, element: Element) -> str:
         duration = max(self.timeline.duration, 0.001)
@@ -333,11 +402,16 @@ class CompositionWriter:
         if element.kind in {"video", "image"} and "layout" in element.props:
             layout = element.props["layout"]
             radius = layout.get("radius", 0)
+            # Animate the shell; the inner media fills it at opacity 1.
             rules.append(
                 f"position:absolute;top:{layout['top']}px;left:{layout['left']}px;"
                 f"width:{layout['width']}px;height:{layout['height']}px;"
-                f"object-fit:{layout.get('fit', 'cover')};"
-                + (f"border-radius:{radius}px;overflow:hidden;" if radius else "")
+                f"z-index:10;overflow:hidden;" + (f"border-radius:{radius}px;" if radius else "")
+            )
+            # Inner clip fills the shell; object-fit lives on the media node.
+            keyframes.append(
+                f"#el_{element.id}{{width:100%;height:100%;object-fit:{layout.get('fit', 'cover')};"
+                f"display:block;opacity:1;}}"
             )
         elif element.kind == "avatar":
             rules.append(self._avatar_css(element))
@@ -354,8 +428,8 @@ class CompositionWriter:
             )
 
         # Timing: a single full-length animation with percentage stops.
-        fade_in = min(0.35, element.duration * 0.3)
-        fade_out = min(0.35, element.duration * 0.3)
+        fade_in = min(0.45, element.duration * 0.35)
+        fade_out = min(0.45, element.duration * 0.35)
         p0 = _pct(element.start, duration)
         p1 = _pct(element.start + fade_in, duration)
         p2 = _pct(element.end - fade_out, duration)
@@ -367,22 +441,27 @@ class CompositionWriter:
             )
             # The move itself runs between p1 and p2; CSS interpolates linearly
             # between those stops, so the fades never eat into the motion.
+            peak = (
+                "0"
+                if element.props.get("hidden_under_host")
+                else ("0.22" if element.props.get("dim") else "1")
+            )
             keyframes.append(
                 _keyframes(
                     name,
                     [
                         (0.0, f"opacity:0;transform:{motion_from};"),
                         (p0, f"opacity:0;transform:{motion_from};"),
-                        (p1, f"opacity:1;transform:{motion_from};"),
-                        (p2, f"opacity:1;transform:{motion_to};"),
+                        (p1, f"opacity:{peak};transform:{motion_from};"),
+                        (p2, f"opacity:{peak};transform:{motion_to};"),
                         (p3, f"opacity:0;transform:{motion_to};"),
                         (100.0, f"opacity:0;transform:{motion_to};"),
                     ],
                 )
             )
         elif element.kind == "avatar":
-            if self.ring.visible:
-                # Visibility is driven by the ring wrapper; keep the video opaque.
+            if self.host.visible:
+                # Visibility is driven by .host-wrap; keep the video opaque.
                 keyframes.append(
                     _keyframes(
                         name,
@@ -423,7 +502,13 @@ class CompositionWriter:
             )
 
         rules.append(f"animation:{name} {duration:.3f}s linear 0s 1 normal both;")
-        css = [f"{selector}{{{''.join(rule for rule in rules if rule)}}}"]
+        # Video/image shells are animated; avatar/caption/text keep element id.
+        target = (
+            f"#wrap_{element.id}"
+            if element.kind in {"video", "image"} and "layout" in element.props
+            else selector
+        )
+        css = [f"{target}{{{''.join(rule for rule in rules if rule)}}}"]
         css.extend(keyframes)
 
         if element.kind == "caption" and self.spec.captions.style in {"karaoke", "word_pop"}:
@@ -443,10 +528,10 @@ class CompositionWriter:
                 _keyframes(
                     name,
                     [
-                        (0.0, "color:var(--caption-color);transform:scale(1);"),
-                        (max(pre - 0.0001, 0.0), "color:var(--caption-color);transform:scale(1);"),
-                        (hit, "color:var(--caption-highlight);transform:scale(1.06);"),
-                        (100.0, "color:var(--caption-highlight);transform:scale(1);"),
+                        (0.0, "color:var(--caption-color);"),
+                        (max(pre - 0.0001, 0.0), "color:var(--caption-color);"),
+                        (hit, "color:var(--caption-highlight);"),
+                        (100.0, "color:var(--caption-highlight);"),
                     ],
                 )
             )
@@ -456,31 +541,24 @@ class CompositionWriter:
         return "\n".join(blocks)
 
     def _avatar_css(self, element: Element) -> str:
-        if self.ring.visible:
-            # Positioning lives on the wrapper; the video fills the clipped circle.
-            return "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;"
+        if self.host.visible:
+            # Positioning lives on .host-frame; the video fills the rectangle.
+            return "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"
         layout = element.props.get("layout", {})
         scale = float(layout.get("scale", 0.34))
         width = int(self.timeline.width * scale)
-        anchor = layout.get("anchor", "bottom-right")
+        anchor = layout.get("anchor", "split")
         base = f"position:absolute;width:{width}px;height:auto;object-fit:contain;"
-        if anchor == "fullscreen":
+        if anchor in {"fullscreen", "full_host"}:
             return "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"
         if anchor == "center":
             return base + "left:50%;top:50%;transform:translate(-50%,-50%);"
-        vertical = (
-            f"bottom:{layout.get('bottom', BOTTOM_UI_RESERVE)}px;"
-            if "bottom" in anchor
-            else f"top:{layout.get('top', 200)}px;"
+        # Default rectangular lower band.
+        box = host_lower_layout()
+        return (
+            f"position:absolute;top:{box['top']}px;left:0;"
+            f"width:{box['width']}px;height:{box['height']}px;object-fit:cover;"
         )
-        if "center" in anchor:
-            return base + vertical + "left:50%;transform:translateX(-50%);"
-        horizontal = (
-            f"right:{layout.get('right', SAFE_MARGIN)}px;"
-            if "right" in anchor
-            else f"left:{layout.get('left', SAFE_MARGIN)}px;"
-        )
-        return base + vertical + horizontal
 
     def _copy_brand_fonts(self) -> None:
         """Copy local woff2 files into media/ so the composition stays offline."""
@@ -581,7 +659,8 @@ def _entrance_for(element: Element) -> tuple[str, str]:
     if role == "data_chip":
         return "translateY(28px) translateX(-50%)", "translateY(-8px) translateX(-50%)"
     if element.kind == "caption":
-        return "translateY(18px) scale(.98)", "translateY(-10px)"
+        # Opacity-only — translateY/scale on captions reads as text jumping.
+        return "none", "none"
     return "translateY(24px)", "translateY(-12px)"
 
 
@@ -627,7 +706,7 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   line-height: 1.12;
   letter-spacing: -0.01em;
   color: var(--caption-color);
-  text-shadow: 0 6px 28px rgba(0,0,0,.55);
+  text-shadow: {caption_glow};
   {caption_stroke}
 }}
 .caption .w {{ display: inline-block; }}
@@ -655,8 +734,8 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   display: inline-block;
   font-size: 54px;
   font-weight: 700;
-  color: #fff;
-  text-shadow: 0 4px 20px rgba(0,0,0,.5);
+  color: #F1F5F9;
+  text-shadow: {caption_glow};
 }}
 .text[data-role="outro"] .text-inner {{ font-size: 76px; letter-spacing: -0.02em; }}
 .data-chip-inner {{
@@ -664,7 +743,7 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   align-items: center;
   gap: 10px;
   padding: 14px 22px;
-  background: #14171C;
+  background: #0A0A0F;
   border: 1px solid color-mix(in srgb, var(--primary) 70%, transparent);
   border-left: 3px solid var(--primary);
   border-radius: 4px;
@@ -675,107 +754,59 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   font-size: 34px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: #F5F7FA;
+  color: #F1F5F9;
   white-space: nowrap;
 }}
 .cta-inner {{
   display: inline-block;
   padding: 26px 52px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #08090c;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #F1F5F9;
   font-size: 52px;
   font-weight: 800;
-  box-shadow: 0 18px 60px rgba(0,0,0,.45);
+  box-shadow: 0 18px 60px rgba(0,0,0,.45), 0 0 24px color-mix(in srgb, var(--primary) 45%, transparent);
 }}
 """
 
-_RING_BASE_CSS = """\
-.pulse-ring-wrap {{
+_HOST_BASE_CSS = """\
+.host-wrap {{
   position: absolute;
   z-index: 30;
   pointer-events: none;
-  overflow: visible;
-  isolation: isolate;
-  contain: layout style;
+  overflow: hidden;
 }}
-.pulse-ring-breath {{
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}}
-/* Soft outer bloom — radial paint survives HF capture better than SVG blur. */
-.pulse-ring-halo {{
-  position: absolute;
-  inset: -14%;
-  z-index: 0;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle closest-side,
-    transparent 62%,
-    rgba(255, 42, 60, 0.75) 78%,
-    rgba(255, 90, 110, 0.4) 88%,
-    transparent 100%
-  );
-  pointer-events: none;
-}}
-/* Neon tube rim — white-hot core + red corona via box-shadow (not SVG filters). */
-.pulse-ring-neon {{
-  position: absolute;
-  inset: 2.5%;
-  z-index: 2;
-  border-radius: 50%;
-  border: 6px solid {stroke};
-  box-shadow:
-    0 0 1px 1px #fff,
-    0 0 4px 2px #FFE0E4,
-    0 0 10px 3px #FF8A96,
-    0 0 20px 7px {stroke},
-    0 0 40px 16px {glow},
-    0 0 64px 24px rgba(255, 42, 60, 0.55),
-    inset 0 0 8px 2px rgba(255, 255, 255, 0.75),
-    inset 0 0 18px 4px rgba(255, 140, 150, 0.7);
-  pointer-events: none;
-}}
-.pulse-ring-svg {{
+.host-frame {{
   position: absolute;
   inset: 0;
-  z-index: 3;
-  pointer-events: none;
-  opacity: 0.95;
-  /* No CSS filter — stacked drop-shadows leaked a tall left ghost in HF capture. */
-}}
-.avatar-clip {{
-  position: absolute;
-  inset: 4.5%;
-  border-radius: 50%;
   overflow: hidden;
-  z-index: 1;
-  background: #0A0C10;
+  background: {background};
 }}
-/* Zoom the face on a WRAPPER — CSS transform on <video> is ignored by HF capture. */
-.avatar-face {{
-  width: 100%;
-  height: 100%;
-  transform: scale({face_zoom});
-  transform-origin: center 36%;
+.host-video {{
+  position: absolute;
+  inset: 0;
 }}
-.avatar-face video,
-.avatar-clip video {{
+.host-video video {{
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: {face_position};
-  /* no transform here — HF composites <video> without element transforms */
-}}
-.ring-network {{
-  display: none !important;
-}}
-@keyframes net_draw {{
-  to {{ stroke-dashoffset: 0; }}
+  /* Pin framing to upper torso/face — milder than 28% so micro head-bob
+     from HeyGen does not look like the host jumping inside the split band. */
+  object-position: center 12%;
+  transform: scale(1.08);
+  transform-origin: center 18%;
 }}
 """
+
+
+def _caption_glow_css(primary: str) -> str:
+    """Soft crimson glow + light chromatic aberration (no SVG filters)."""
+    return (
+        f"0 0 18px {primary}99, 0 0 36px {primary}55, "
+        f"1px 0 0 rgba(225,29,72,0.55), -1px 0 0 rgba(56,189,248,0.35), "
+        f"0 6px 28px rgba(0,0,0,.55)"
+    )
+
 
 _SCRIPT = """\
 // HyperFrames reads the DOM for timing; this only exposes a seek hook so the

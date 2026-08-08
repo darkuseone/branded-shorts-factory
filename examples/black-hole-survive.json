@@ -12,6 +12,7 @@
     "start": 0,
     "duration": 2.6,
     "emphasis": "high",
+    "mode": "full_host",
     "on_camera": true
   },
 
@@ -20,33 +21,38 @@
       "id": "s1",
       "text": "Кажется, горизонт событий — просто тёмная стена. Пересёк — и ты внутри. Это миф.",
       "start": 2.6,
-      "duration": 5.8
+      "duration": 5.8,
+      "mode": "split"
     },
     {
       "id": "s2",
       "text": "Ещё до центра приливные силы рвут тело в нить. Спагеттификация — не метафора.",
       "start": 8.4,
       "duration": 6.2,
-      "emphasis": "high"
+      "emphasis": "high",
+      "mode": "full_host"
     },
     {
       "id": "s3",
       "text": "У сверхмассивной дыры горизонт шире — боль растягивается. Но финал тот же.",
       "start": 14.6,
-      "duration": 6.0
+      "duration": 6.0,
+      "mode": "full_footage"
     },
     {
       "id": "s4",
       "text": "В центре классическая физика ломается. Плотность стремится к бесконечности.",
       "start": 20.6,
       "duration": 6.4,
-      "emphasis": "high"
+      "emphasis": "high",
+      "mode": "full_host"
     },
     {
       "id": "s5",
       "text": "Информация, которую ты нёс, может сохраниться на горизонте. Ты — нет.",
       "start": 27.0,
-      "duration": 6.2
+      "duration": 6.2,
+      "mode": "split"
     },
     {
       "id": "s6",
@@ -54,30 +60,34 @@
       "start": 33.2,
       "duration": 5.5,
       "emphasis": "high",
+      "mode": "full_host",
       "on_camera": true
     },
     {
       "id": "s7",
       "text": "Зато теперь ты знаешь, почему туда лучше не лезть даже в мысленном эксперименте.",
       "start": 38.7,
-      "duration": 5.8
+      "duration": 5.8,
+      "mode": "full_footage"
     }
   ],
 
   "voice_settings": {
     "provider": "elevenlabs",
     "model": "eleven_v3",
+    "voice_id": "REPLACE_WITH_YOUR_VOICE_ID",
     "language": "ru"
   },
 
   "avatar": {
     "enabled": true,
     "provider": "heygen",
+    "avatar_id": "REPLACE_WITH_YOUR_AVATAR_ID",
     "version": "avatar_5",
     "position": "bottom_right",
     "scale": 0.30,
     "background": "transparent",
-    "segments": ["hook", "s6"]
+    "segments": []
   },
 
   "visuals": [
@@ -88,102 +98,284 @@
       "keywords": ["event horizon glow", "accretion disk space", "schwarzschild black hole"],
       "start": 0,
       "duration": 2.6,
-      "position": "fullscreen",
+      "position": "auto",
       "motion": "zoom_in",
       "priority": "critical",
       "segment_ref": "hook",
       "must_avoid": ["cartoon", "logo", "text"]
     },
     {
-      "id": "v2",
+      "id": "v2a",
       "type": "footage",
       "query": "spacetime curvature grid warp",
-      "keywords": ["gravity well animation", "warped space grid", "general relativity visual"],
+      "keywords": ["gravity well animation", "warped space grid"],
       "start": 2.6,
-      "duration": 5.8,
-      "position": "fullscreen",
+      "duration": 2.0,
+      "position": "auto",
       "motion": "kenburns",
       "segment_ref": "s1"
     },
     {
-      "id": "v3",
+      "id": "v2b",
+      "type": "footage",
+      "query": "event horizon dark wall myth",
+      "keywords": ["event horizon edge", "dark threshold space"],
+      "start": 4.6,
+      "duration": 2.0,
+      "position": "auto",
+      "motion": "parallax",
+      "segment_ref": "s1"
+    },
+    {
+      "id": "v2c",
+      "type": "motion_graphics",
+      "query": "general relativity spacetime fold",
+      "keywords": ["general relativity visual", "folded spacetime"],
+      "start": 6.6,
+      "duration": 1.8,
+      "position": "auto",
+      "motion": "zoom_in",
+      "segment_ref": "s1"
+    },
+    {
+      "id": "v3a",
       "type": "infographic",
       "query": "tidal forces spaghettification diagram minimal",
-      "keywords": ["tidal stretch diagram", "astronaut stretch science", "gravity gradient"],
+      "keywords": ["tidal stretch diagram", "gravity gradient"],
       "start": 8.4,
-      "duration": 6.2,
-      "position": "fullscreen",
+      "duration": 2.1,
+      "position": "auto",
       "motion": "none",
       "priority": "high",
       "segment_ref": "s2",
       "must_include": ["tidal"]
     },
     {
-      "id": "v4",
+      "id": "v3b",
+      "type": "footage",
+      "query": "astronaut stretch science concept",
+      "keywords": ["astronaut stretch science", "tidal pull visual"],
+      "start": 10.5,
+      "duration": 2.1,
+      "position": "auto",
+      "motion": "zoom_in",
+      "priority": "high",
+      "segment_ref": "s2"
+    },
+    {
+      "id": "v3c",
+      "type": "motion_graphics",
+      "query": "spaghettification thread pull abstract",
+      "keywords": ["body stretched thread", "tidal filament abstract"],
+      "start": 12.6,
+      "duration": 2.0,
+      "position": "auto",
+      "motion": "parallax",
+      "priority": "high",
+      "segment_ref": "s2"
+    },
+    {
+      "id": "v4a",
       "type": "footage",
       "query": "supermassive black hole galaxy center",
-      "keywords": ["milky way black hole", "sagittarius a star orbits", "galactic core"],
+      "keywords": ["milky way black hole", "galactic core"],
       "start": 14.6,
-      "duration": 6.0,
+      "duration": 2.0,
       "position": "fullscreen",
       "motion": "zoom_out",
       "segment_ref": "s3"
     },
     {
-      "id": "v5",
+      "id": "v4b",
+      "type": "footage",
+      "query": "sagittarius a star orbits",
+      "keywords": ["sagittarius a star orbits", "stars orbit black hole"],
+      "start": 16.6,
+      "duration": 2.0,
+      "position": "fullscreen",
+      "motion": "kenburns",
+      "segment_ref": "s3"
+    },
+    {
+      "id": "v4c",
+      "type": "footage",
+      "query": "wide event horizon cinematic glow",
+      "keywords": ["wide accretion disk", "supermassive horizon glow"],
+      "start": 18.6,
+      "duration": 2.0,
+      "position": "fullscreen",
+      "motion": "parallax",
+      "segment_ref": "s3"
+    },
+    {
+      "id": "v5a",
       "type": "motion_graphics",
       "query": "singularity density infinity minimal dark",
-      "keywords": ["point singularity abstract", "infinite density visual", "physics breakdown"],
+      "keywords": ["point singularity abstract", "infinite density visual"],
       "start": 20.6,
-      "duration": 6.4,
-      "position": "fullscreen",
+      "duration": 2.2,
+      "position": "auto",
       "motion": "parallax",
       "priority": "high",
       "segment_ref": "s4"
     },
     {
-      "id": "v6",
+      "id": "v5b",
+      "type": "footage",
+      "query": "physics breakdown abstract collapse",
+      "keywords": ["physics breakdown", "matter collapse dark"],
+      "start": 22.8,
+      "duration": 2.1,
+      "position": "auto",
+      "motion": "zoom_in",
+      "priority": "high",
+      "segment_ref": "s4"
+    },
+    {
+      "id": "v5c",
+      "type": "motion_graphics",
+      "query": "infinite density point light void",
+      "keywords": ["singularity point light", "void density spike"],
+      "start": 24.9,
+      "duration": 2.1,
+      "position": "auto",
+      "motion": "kenburns",
+      "priority": "high",
+      "segment_ref": "s4"
+    },
+    {
+      "id": "v6a",
       "type": "infographic",
       "query": "holographic principle horizon information",
-      "keywords": ["event horizon information surface", "black hole entropy diagram", "hawking radiation soft"],
+      "keywords": ["event horizon information surface", "black hole entropy diagram"],
       "start": 27.0,
-      "duration": 6.2,
-      "position": "fullscreen",
+      "duration": 2.1,
+      "position": "auto",
       "motion": "none",
       "segment_ref": "s5"
     },
     {
-      "id": "v7",
+      "id": "v6b",
+      "type": "footage",
+      "query": "hawking radiation soft glow",
+      "keywords": ["hawking radiation soft", "horizon faint glow"],
+      "start": 29.1,
+      "duration": 2.1,
+      "position": "auto",
+      "motion": "kenburns",
+      "segment_ref": "s5"
+    },
+    {
+      "id": "v6c",
+      "type": "motion_graphics",
+      "query": "information encoded on horizon surface",
+      "keywords": ["horizon data lattice", "entropy surface pattern"],
+      "start": 31.2,
+      "duration": 2.0,
+      "position": "auto",
+      "motion": "parallax",
+      "segment_ref": "s5"
+    },
+    {
+      "id": "v7a",
       "type": "footage",
       "query": "astronaut silhouette against nebula dark",
-      "keywords": ["lone astronaut space", "human scale cosmos", "void silhouette"],
+      "keywords": ["lone astronaut space", "human scale cosmos"],
       "start": 33.2,
-      "duration": 5.5,
-      "position": "fullscreen",
+      "duration": 1.9,
+      "position": "auto",
       "motion": "zoom_in",
       "priority": "high",
       "segment_ref": "s6"
     },
     {
-      "id": "v8",
+      "id": "v7b",
+      "type": "footage",
+      "query": "void silhouette fading into dark",
+      "keywords": ["void silhouette", "figure dissolving darkness"],
+      "start": 35.1,
+      "duration": 1.9,
+      "position": "auto",
+      "motion": "kenburns",
+      "priority": "high",
+      "segment_ref": "s6"
+    },
+    {
+      "id": "v7c",
+      "type": "footage",
+      "query": "empty space after disappearance",
+      "keywords": ["empty cosmic void", "silence of deep space"],
+      "start": 37.0,
+      "duration": 1.7,
+      "position": "auto",
+      "motion": "parallax",
+      "priority": "high",
+      "segment_ref": "s6"
+    },
+    {
+      "id": "v8a",
       "type": "footage",
       "query": "deep space stars slow drift",
-      "keywords": ["starfield slow pan", "cosmic void calm", "night sky deep"],
+      "keywords": ["starfield slow pan", "cosmic void calm"],
       "start": 38.7,
-      "duration": 5.8,
+      "duration": 2.0,
       "position": "fullscreen",
       "motion": "kenburns",
       "segment_ref": "s7"
     },
     {
-      "id": "v9",
+      "id": "v8b",
+      "type": "footage",
+      "query": "night sky deep starfield",
+      "keywords": ["night sky deep", "milky way quiet drift"],
+      "start": 40.7,
+      "duration": 2.0,
+      "position": "fullscreen",
+      "motion": "parallax",
+      "segment_ref": "s7"
+    },
+    {
+      "id": "v8c",
+      "type": "footage",
+      "query": "distant galaxies calm pullback",
+      "keywords": ["distant galaxies", "cosmic pullback wide"],
+      "start": 42.7,
+      "duration": 1.8,
+      "position": "fullscreen",
+      "motion": "zoom_out",
+      "segment_ref": "s7"
+    },
+    {
+      "id": "v9a",
       "type": "motion_graphics",
       "query": "minimal particle field dark graphite",
       "keywords": ["abstract particles loop", "dark tech background"],
       "start": 44.5,
-      "duration": 7.5,
-      "position": "fullscreen",
+      "duration": 2.4,
+      "position": "auto",
       "motion": "parallax",
+      "allow_magnific": false
+    },
+    {
+      "id": "v9b",
+      "type": "motion_graphics",
+      "query": "crimson ember particles void",
+      "keywords": ["subtle red particle drift", "void graphite motion"],
+      "start": 46.9,
+      "duration": 2.4,
+      "position": "auto",
+      "motion": "parallax",
+      "allow_magnific": false
+    },
+    {
+      "id": "v9c",
+      "type": "motion_graphics",
+      "query": "fade to deep void black",
+      "keywords": ["deep void fade", "black screen particles die"],
+      "start": 49.3,
+      "duration": 2.4,
+      "position": "auto",
+      "motion": "none",
       "allow_magnific": false
     }
   ],
@@ -209,11 +401,17 @@
     "style": "karaoke",
     "position": "center_bottom",
     "max_chars_per_line": 22,
+    "highlight_color": "#E11D48",
+    "text_color": "#F1F5F9",
     "stroke": true,
     "uppercase": false
   },
 
-  "brand_elements": {},
+  "brand_elements": {
+    "color_primary": "#E11D48",
+    "color_accent": "#F43F5E",
+    "color_background": "#050508"
+  },
 
   "cta": {
     "text": "Подпишись — сигнал из будущего",

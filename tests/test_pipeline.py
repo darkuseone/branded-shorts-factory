@@ -119,7 +119,8 @@ def build_resolver(settings, spec, *, vision=None, downloader=None, results=None
 def test_every_visual_is_filled_when_search_and_qa_agree(settings, minimal_spec):
     resolver = build_resolver(settings, minimal_spec)
     resolved = resolver.resolve_all(minimal_spec)
-    assert [item.qa.outcome for item in resolved] == ["accepted", "accepted"]
+    outcomes = [item.qa.outcome for item in resolved]
+    assert outcomes == ["accepted"] * len(minimal_spec.visuals)
     assert all(item.asset is not None for item in resolved)
 
 
@@ -219,7 +220,8 @@ def test_run_report_records_budget_and_search_trail(settings, example_spec):
     payload = result.to_dict()
     assert payload["budget"]["spent"] == 0
     assert set(payload["search"]) == {visual.id for visual in example_spec.visuals}
-    assert payload["search"]["v1"]["queries"], "the query fan is part of the audit trail"
+    first_id = example_spec.visuals[0].id
+    assert payload["search"][first_id]["queries"], "the query fan is part of the audit trail"
 
 
 def test_non_contiguous_avatar_segments_are_flagged(settings, example_spec):

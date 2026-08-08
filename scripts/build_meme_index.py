@@ -22,6 +22,7 @@ def _norm(name: str) -> str:
     stripped = "".join(ch for ch in decomposed if unicodedata.category(ch) != "Mn")
     return unicodedata.normalize("NFC", stripped).casefold()
 
+
 # Curated Russian sci-pop meta-irony catalog. Filenames are the source of truth;
 # this map adds humor role, safe beats, and trim windows for long clips.
 CURATED: dict[str, dict] = {
@@ -561,7 +562,10 @@ def main() -> None:
         items.append(entry)
 
     payload = {
-        "_comment": "REDSHIFT meme bank — humor roles for meta-irony sci-pop. Regenerate via scripts/build_meme_index.py",
+        "_comment": (
+            "REDSHIFT meme bank — humor roles for meta-irony sci-pop. "
+            "Regenerate via scripts/build_meme_index.py"
+        ),
         "items": items,
     }
     out = MEMES / "index.json"

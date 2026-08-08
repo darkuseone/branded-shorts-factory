@@ -77,6 +77,8 @@ ROLE_TARGET_LUFS = {
     "glitch": -21.0,
     "power_down": -22.0,
     "power_up": -22.0,
+    "host_exit": -22.0,
+    "host_enter": -22.0,
     "ambience": -30.0,
 }
 DEFAULT_TARGET_LUFS = -19.0

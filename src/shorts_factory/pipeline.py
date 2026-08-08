@@ -8,13 +8,14 @@ Two-phase flow (HeyGen MCP lives in chat, secrets live in Actions):
 
     prepare → voice.wav + words.json artifact
     (chat)  → HeyGen avatar → commit jobs/<id>/avatar.mp4
-    render  → timeline + ring + mix + HyperFrames
+    render  → timeline + host modes + mix + HyperFrames
 
 Full local path still works: ``build`` does prepare + avatar API + render.
 """
 
 from __future__ import annotations
 
+import contextlib
 import json
 import shutil
 import subprocess
@@ -39,12 +40,12 @@ from .logging_utils import get_logger, stage
 from .qa.gate import QAReport
 from .render.audio_mix import build_mix
 from .render.composition import CompositionWriter
+from .render.host_presence import HostPlan, plan_host
 from .render.hyperframes import HyperFramesRunner, RenderResult
-from .render.ring import RingConfig, RingPlan, plan_ring
 from .render.timeline import Timeline, build_timeline, use_mixed_audio
 from .resolver import ResolvedVisual, VisualResolver
 from .spec import Spec, SpecIssue
-from .voice.audio_design import resolve_from_library, suggest_audio_fx
+from .voice.audio_design import finalize_audio_fx, resolve_from_library, suggest_audio_fx
 from .voice.captions import CaptionCue, build_cues
 from .voice.elevenlabs import ElevenLabsClient, SfxClip, VoiceClip
 from .voice.heygen import AvatarClip, HeyGenClient
@@ -160,7 +161,7 @@ class Pipeline:
             spec,
             result.timeline,
             self.settings.paths.composition / spec.id,
-            ring=_ring_plan(spec, self._brandbook),
+            host=plan_host(spec),
         ).write()
         result.composition_dir = composition.directory
 
@@ -251,9 +252,7 @@ class Pipeline:
 
         with stage("compose", log) as info:
             composition_dir = self.settings.paths.composition / spec.id
-            writer = CompositionWriter(
-                spec, result.timeline, composition_dir, ring=_ring_plan(spec, self._brandbook)
-            )
+            writer = CompositionWriter(spec, result.timeline, composition_dir, host=plan_host(spec))
             composition = writer.write()
             result.composition_dir = composition.directory
             info["media"] = composition.media_files
@@ -377,10 +376,8 @@ class Pipeline:
                 log.warning("could not extract avatar audio: %s", exc, extra={"stage": "voice"})
                 return []
             voice_path = target
-            try:
+            with contextlib.suppress(OSError):
                 shutil.copy2(target, job_dir / "voice_from_avatar.mp3")
-            except OSError:
-                pass
         else:
             target = self.settings.paths.voice / f"{spec.id}_from_avatar.mp3"
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -404,7 +401,7 @@ class Pipeline:
 
     def _resolve_sound_design(self, spec: Spec, result: RunResult) -> None:
         """Your own sounds first; generate only what the bank cannot cover."""
-        effects = spec.audio_fx or suggest_audio_fx(spec)
+        effects = finalize_audio_fx(spec.audio_fx, spec) if spec.audio_fx else suggest_audio_fx(spec)
         if not effects:
             return
 
@@ -621,18 +618,6 @@ class Pipeline:
         log.info("report written to %s", path, extra={"stage": "report"})
 
 
-def _ring_plan(spec: Spec, book: Brandbook | None = None) -> RingPlan:
-    """Load ring geometry from the brandbook when present, else use defaults."""
-    if book is None:
-        book = Brandbook.load(Path(__file__).resolve().parents[2] / "brand")
-    raw = None
-    if book is not None:
-        extra = book.extra if isinstance(book.extra, dict) else {}
-        candidate = extra.get("ring")
-        raw = candidate if isinstance(candidate, dict) else None
-    config = RingConfig.from_brandbook(raw)
-    if spec.ring.diameter_ratio is not None:
-        config = replace(config, diameter_ratio=spec.ring.diameter_ratio)
-    if spec.ring.anchor:
-        config = replace(config, default_anchor=spec.ring.anchor)
-    return plan_ring(spec, config)
+def _host_plan(spec: Spec) -> HostPlan:
+    """Build host presentation windows from segment modes."""
+    return plan_host(spec)

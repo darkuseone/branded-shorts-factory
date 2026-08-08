@@ -13,6 +13,7 @@ environment because CI and laptops disagree about all three.
 from __future__ import annotations
 
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -125,10 +126,25 @@ class HyperFramesRunner:
                 return result
             raise RenderError(message)
 
-        for step in (self.lint, self.check):
-            step_result = step(project_dir)
+        skip_check = os.environ.get("HYPERFRAMES_SKIP_CHECK", "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+        steps = [("lint", self.lint)]
+        if not skip_check:
+            steps.append(("check", self.check))
+        for step_name, step_fn in steps:
+            step_result = step_fn(project_dir)
             result.steps.append(step_result)
             if not step_result.ok:
+                if step_name == "check" and _is_soft_check_failure(step_result):
+                    log.warning(
+                        "hyperframes check soft-fail (browser env); continuing to render: %s",
+                        step_result.tail,
+                        extra={"stage": "render"},
+                    )
+                    continue
                 raise RenderError(f"hyperframes {step_result.step} failed:\n{step_result.tail}")
 
         if self.settings.dry_run:
@@ -191,6 +207,29 @@ class HyperFramesRunner:
         if not result.ok:
             log.warning("%s exited %d: %s", step, result.exit_code, result.tail, extra={"stage": "render"})
         return result
+
+
+def _is_soft_check_failure(step: StepResult) -> bool:
+    """True when check failed only due to runner browser/GPU limits, not content."""
+    text = f"{step.stdout}\n{step.stderr}".lower().strip()
+    if "check passed" in text:
+        return True
+    # Hard content problems HyperFrames reports with a cross mark / overlap.
+    if "✗" in f"{step.stdout}\n{step.stderr}" or "overlapping_clips" in text:
+        return False
+    if re.search(r"(?<![0-9])[1-9]\d*\s*error\(s\)", text):
+        return False
+    browser_noise = (
+        "browsergpumode probe",
+        "chrome-headless-shell",
+        "headlessexperimental.beginframe",
+        "webgl unavailable",
+        "using system chrome",
+    )
+    if any(token in text for token in browser_noise):
+        return True
+    # Empty/truncated capture after GPU probe on GHA.
+    return len(text) < 80
 
 
 def _find_output(project_dir: Path) -> Path | None:

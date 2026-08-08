@@ -267,7 +267,7 @@ _STOPWORDS = frozenset(
 # the whole point is to bias one or two of the parallel searches toward the
 # look we want without narrowing every branch of the fan.
 _TYPE_MODIFIERS: dict[str, tuple[str, ...]] = {
-    "footage": ("cinematic 4k", "slow motion", "vertical"),
+    "footage": ("cinematic 4k", "well lit laboratory", "vertical"),
     "image": ("high resolution", "minimal background"),
     "motion_graphics": ("motion graphics animation", "abstract loop", "particles"),
     "infographic": ("data visualization animation", "chart animation", "clean infographic"),
@@ -275,6 +275,13 @@ _TYPE_MODIFIERS: dict[str, tuple[str, ...]] = {
     "generated": ("cinematic render",),
     "meme": (),
 }
+
+#: Phrases that bias stock toward near-black plates — strip / rescue with lit variants.
+_DARK_BIAS_RE = re.compile(
+    r"\b(deep void|near[- ]black|pitch black|black screen|void background|dark void)\b",
+    re.IGNORECASE,
+)
+_LIT_RESCUE = ("well lit", "clinical lighting", "bright laboratory", "high key detail")
 
 # Best-effort RU→EN glossary. Stock APIs are English-first, so a Cyrillic-only
 # query silently returns junk. This covers the vocabulary that actually shows
@@ -457,10 +464,14 @@ def build_query_plan(visual: Visual, spec: Spec | None = None) -> QueryPlan:
             warnings.append("no English query available; stock results will be unreliable")
 
     primary = english[0]
+    primary = _DARK_BIAS_RE.sub(" ", primary)
+    primary = " ".join(primary.split()).strip() or english[0]
     queries: list[str] = []
 
     def add(query: str) -> None:
         cleaned = " ".join(query.split()).strip()
+        cleaned = _DARK_BIAS_RE.sub(" ", cleaned)
+        cleaned = " ".join(cleaned.split()).strip()
         if not cleaned:
             return
         if cleaned.lower() in {q.lower() for q in queries}:
@@ -473,6 +484,12 @@ def build_query_plan(visual: Visual, spec: Spec | None = None) -> QueryPlan:
 
     for modifier in _TYPE_MODIFIERS.get(visual.type, ())[:2]:
         add(f"{primary} {modifier}")
+
+    # If the author leaned on void/black language, force at least one lit rescue
+    # so stock APIs don't return an empty dark plate.
+    if any(_DARK_BIAS_RE.search(term or "") for term in authored + english):
+        add(f"{primary} {_LIT_RESCUE[0]}")
+        add(f"{primary} {_LIT_RESCUE[1]}")
 
     if context:
         extra = [word for word in keywords_from_text(context, limit=3) if word not in primary.lower()]

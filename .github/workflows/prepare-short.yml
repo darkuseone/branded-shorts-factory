@@ -37,6 +37,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Pick the scenario
         id: pick
@@ -44,8 +46,18 @@ jobs:
           if [ -n "${{ inputs.spec }}" ]; then
             SPEC="${{ inputs.spec }}"
           else
-            SPEC=$(git diff --name-only --diff-filter=d '${{ github.event.before }}' '${{ github.sha }}' \
-                   -- 'jobs/*.json' | tail -n 1)
+            BEFORE="${{ github.event.before }}"
+            SHA="${{ github.sha }}"
+            if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] \
+               && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+              SPEC=$(git diff --name-only --diff-filter=d "$BEFORE" "$SHA" -- 'jobs/*.json' | tail -n 1)
+            fi
+            if [ -z "$SPEC" ]; then
+              SPEC=$(git show --name-only --pretty='' "$SHA" -- 'jobs/*.json' | tail -n 1)
+            fi
+            if [ -z "$SPEC" ]; then
+              SPEC=$(ls -1t jobs/*.json 2>/dev/null | head -n 1)
+            fi
           fi
           if [ -z "$SPEC" ] || [ ! -f "$SPEC" ]; then
             echo "::error::No scenario JSON found (looked for '$SPEC')"

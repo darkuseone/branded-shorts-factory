@@ -82,11 +82,11 @@
 
     "ring": {
       "type": "object",
-      "description": "Pulse Ring overrides. Geometry defaults live in brand/brandbook.json.",
+      "description": "Deprecated. Pulse Ring removed — overrides are ignored.",
       "properties": {
-        "enabled": { "type": "boolean", "default": true },
-        "anchor": { "enum": ["bottom_right", "bottom_left", "bottom_center", "center"] },
-        "diameter_ratio": { "type": "number", "minimum": 0.1, "maximum": 0.8 }
+        "enabled": { "type": "boolean" },
+        "anchor": { "type": "string" },
+        "diameter_ratio": { "type": "number" }
       }
     },
 
@@ -135,7 +135,8 @@
           "type": {
             "enum": [
               "whoosh", "impact", "riser", "swoosh", "click", "pop", "glitch",
-              "sub_drop", "transition", "ui", "thump", "power_down", "power_up"
+              "sub_drop", "transition", "ui", "thump", "power_down", "power_up",
+              "host_exit", "host_enter"
             ]
           },
           "at": { "type": "number", "minimum": 0 },
@@ -157,8 +158,8 @@
           "enum": ["center", "center_bottom", "bottom", "top", "upper_third", "lower_third"]
         },
         "max_chars_per_line": { "type": "integer", "minimum": 10, "maximum": 48, "default": 22 },
-        "highlight_color": { "type": "string", "default": "#FF2A3C" },
-        "text_color": { "type": "string", "default": "#FFFFFF" },
+        "highlight_color": { "type": "string", "default": "#E11D48" },
+        "text_color": { "type": "string", "default": "#F1F5F9" },
         "stroke": { "type": "boolean", "default": true },
         "uppercase": { "type": "boolean", "default": false }
       }
@@ -233,6 +234,11 @@
         "duration": { "type": "number", "minimum": 0.05 },
         "emphasis": { "enum": ["low", "normal", "high"], "default": "normal" },
         "on_camera": { "type": "boolean", "default": false },
+        "mode": {
+          "enum": ["split", "full_host", "full_footage"],
+          "default": "split",
+          "description": "Host presentation: SPLIT (lower ~45%), FULL_HOST, or FULL_FOOTAGE."
+        },
         "pause_after": { "type": "number", "minimum": 0, "default": 0 }
       }
     },
@@ -257,7 +263,7 @@
         "start": { "type": "number", "minimum": 0 },
         "duration": { "type": "number", "minimum": 0.2 },
         "position": {
-          "enum": ["fullscreen", "top", "bottom", "center", "pip", "left", "right", "background"],
+          "enum": ["fullscreen", "top", "bottom", "center", "pip", "left", "right", "background", "split_upper", "auto"],
           "default": "fullscreen"
         },
         "motion": {

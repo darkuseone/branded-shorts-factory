@@ -54,10 +54,16 @@ def resolved_for(spec, fake_media: Path, outcome: str = "accepted") -> list[Reso
 # --------------------------------------------------------------------------- #
 
 
-def test_timeline_places_every_visual_on_the_broll_track(minimal_spec, fake_media):
+def test_timeline_places_every_visual_on_a_video_track(minimal_spec, fake_media):
+    from shorts_factory.render.timeline import TRACK_MEME, TRACK_OVERLAY
+
     timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, fake_media))
-    broll = [element for element in timeline.elements if element.track == TRACK_BROLL]
-    assert len(broll) == len(minimal_spec.visuals)
+    placed = [
+        element
+        for element in timeline.elements
+        if element.track in {TRACK_BROLL, TRACK_OVERLAY, TRACK_MEME} and element.kind in {"video", "image"}
+    ]
+    assert len(placed) == len(minimal_spec.visuals)
     assert timeline.width == 1080 and timeline.height == 1920
     assert timeline.duration == minimal_spec.duration_target
 
@@ -74,7 +80,7 @@ def test_unfilled_visuals_are_dropped_with_a_warning(minimal_spec, fake_media):
 
 def test_short_source_clip_is_marked_for_looping(minimal_spec, fake_media):
     resolved = resolved_for(minimal_spec, fake_media)
-    resolved[0].qa.asset.candidate.duration = 2.0  # slot is 10s
+    resolved[0].qa.asset.candidate.duration = 0.8  # slot is 2.0s
     timeline = build_timeline(minimal_spec, resolved)
     element = next(e for e in timeline.elements if e.id == "v1")
     assert element.props["loop"] is True

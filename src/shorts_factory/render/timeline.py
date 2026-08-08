@@ -33,6 +33,7 @@ TRACK_CAPTIONS = 4
 TRACK_BRAND = 5
 TRACK_CTA = 6
 TRACK_MEME = 7
+TRACK_DATA_CHIP = 8
 TRACK_AUDIO_VOICE = 10
 TRACK_AUDIO_SFX = 11
 TRACK_AUDIO_MUSIC = 12
@@ -110,24 +111,57 @@ class Timeline:
         }
 
 
-_POSITION_LAYOUT: dict[str, dict[str, Any]] = {
-    "fullscreen": {"top": 0, "left": 0, "width": VIDEO_WIDTH, "height": VIDEO_HEIGHT, "fit": "cover"},
-    "background": {"top": 0, "left": 0, "width": VIDEO_WIDTH, "height": VIDEO_HEIGHT, "fit": "cover"},
-    "top": {"top": 180, "left": 0, "width": VIDEO_WIDTH, "height": 760, "fit": "cover"},
-    "center": {"top": 520, "left": 0, "width": VIDEO_WIDTH, "height": 880, "fit": "cover"},
-    "bottom": {"top": 900, "left": 0, "width": VIDEO_WIDTH, "height": 700, "fit": "cover"},
-    "left": {"top": 480, "left": 0, "width": 700, "height": 960, "fit": "cover"},
-    "right": {"top": 480, "left": 380, "width": 700, "height": 960, "fit": "cover"},
-    "pip": {"top": 220, "left": 620, "width": 380, "height": 380, "fit": "cover", "radius": 32},
-}
+def _position_layout() -> dict[str, dict[str, Any]]:
+    """Layouts derived from the 40/60 host split (see host_presence)."""
+    from .host_presence import HOST_LOWER_HEIGHT, HOST_LOWER_TOP, SPLIT_UPPER_HEIGHT
+
+    return {
+        "fullscreen": {
+            "top": 0,
+            "left": 0,
+            "width": VIDEO_WIDTH,
+            "height": VIDEO_HEIGHT,
+            "fit": "cover",
+        },
+        "background": {
+            "top": 0,
+            "left": 0,
+            "width": VIDEO_WIDTH,
+            "height": VIDEO_HEIGHT,
+            "fit": "cover",
+        },
+        "top": {"top": 0, "left": 0, "width": VIDEO_WIDTH, "height": SPLIT_UPPER_HEIGHT, "fit": "cover"},
+        "split_upper": {
+            "top": 0,
+            "left": 0,
+            "width": VIDEO_WIDTH,
+            "height": SPLIT_UPPER_HEIGHT,
+            "fit": "cover",
+        },
+        "center": {"top": 520, "left": 0, "width": VIDEO_WIDTH, "height": 880, "fit": "cover"},
+        "bottom": {
+            "top": HOST_LOWER_TOP,
+            "left": 0,
+            "width": VIDEO_WIDTH,
+            "height": HOST_LOWER_HEIGHT,
+            "fit": "cover",
+        },
+        "left": {"top": 480, "left": 0, "width": 700, "height": 960, "fit": "cover"},
+        "right": {"top": 480, "left": 380, "width": 700, "height": 960, "fit": "cover"},
+        "pip": {"top": 220, "left": 620, "width": 380, "height": 380, "fit": "cover", "radius": 32},
+    }
+
+
+_POSITION_LAYOUT: dict[str, dict[str, Any]] = _position_layout()
 
 _AVATAR_LAYOUT: dict[str, dict[str, Any]] = {
-    "bottom_right": {"anchor": "bottom-right", "right": SAFE_MARGIN, "bottom": BOTTOM_UI_RESERVE},
-    "bottom_left": {"anchor": "bottom-left", "left": SAFE_MARGIN, "bottom": BOTTOM_UI_RESERVE},
-    "bottom_center": {"anchor": "bottom-center", "bottom": BOTTOM_UI_RESERVE},
-    "top_right": {"anchor": "top-right", "right": SAFE_MARGIN, "top": 200},
-    "center": {"anchor": "center"},
-    "fullscreen": {"anchor": "fullscreen"},
+    "bottom_right": {"anchor": "split", "mode": "split"},
+    "bottom_left": {"anchor": "split", "mode": "split"},
+    "bottom_center": {"anchor": "split", "mode": "split"},
+    "top_right": {"anchor": "split", "mode": "split"},
+    "center": {"anchor": "full_host", "mode": "full_host"},
+    "fullscreen": {"anchor": "full_host", "mode": "full_host"},
+    "split": {"anchor": "split", "mode": "split"},
 }
 
 
@@ -204,14 +238,25 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
 
         visual = item.visual
         asset = item.asset
-        layout = dict(_POSITION_LAYOUT.get(visual.position, _POSITION_LAYOUT["fullscreen"]))
-        is_full = visual.position in {"fullscreen", "background"}
-        # Memes punch over b-roll on their own track so they never fight
-        # fullscreen footage or data chips (HyperFrames forbids same-track overlap).
+        position = _resolve_visual_position(spec, visual)
+        layout = dict(_POSITION_LAYOUT.get(position, _POSITION_LAYOUT["fullscreen"]))
+        # SPLIT upper-band and other main planes share TRACK_BROLL (timed, no overlap).
+        # PiP/side overlays keep TRACK_OVERLAY. Data chips use TRACK_DATA_CHIP.
+        is_main = position in {
+            "fullscreen",
+            "background",
+            "split_upper",
+            "top",
+            "center",
+            "bottom",
+            "auto",
+        }
         if visual.type == "meme":
             track = TRACK_MEME
+        elif is_main:
+            track = TRACK_BROLL
         else:
-            track = TRACK_BROLL if is_full else TRACK_OVERLAY
+            track = TRACK_OVERLAY
 
         props: dict[str, Any] = {
             "layout": layout,
@@ -220,7 +265,16 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
             "license": asset.candidate.license,
             "credit": asset.candidate.author,
             "review": item.qa.outcome == "manual_review",
+            "position": position,
         }
+        # Hide b-roll under FULL_HOST so the presenter owns the frame.
+        if visual.segment_ref:
+            segment = spec.segment_by_id(visual.segment_ref)
+        else:
+            segment = spec.segment_at(visual.start)
+        if segment is not None and segment.mode == "full_host" and visual.type != "meme":
+            props["dim"] = True
+            props["hidden_under_host"] = True
         if asset.is_video:
             # Loop or trim to the slot; the renderer honours playbackRate/loop.
             props["loop"] = bool(asset.duration and asset.duration + 0.2 < visual.duration)
@@ -249,11 +303,27 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
         )
 
 
+def _resolve_visual_position(spec: Spec, visual: Any) -> str:
+    """Map auto slots to the plane that matches the spoken host mode.
+
+    * ``split`` → upper 60% band (footage above the fixed 40% host)
+    * ``full_footage`` / ``full_host`` → fullscreen (host dims/hides b-roll itself)
+    """
+    position = visual.position or "fullscreen"
+    segment = spec.segment_by_id(visual.segment_ref) if visual.segment_ref else spec.segment_at(visual.start)
+    mode = getattr(segment, "mode", None) if segment else None
+    if mode == "split" and position in {"auto", "fullscreen", "background", "top"}:
+        return "split_upper"
+    if position == "auto":
+        return "fullscreen" if mode in {"full_footage", "full_host", None} else "split_upper"
+    return position
+
+
 def _add_avatar(timeline: Timeline, spec: Spec, avatar: AvatarClip | None, start: float = 0.0) -> None:
-    """Place the presenter at the start of the window it was rendered for."""
+    """Place the presenter; layout/visibility are driven by host mode CSS."""
     if avatar is None or not spec.avatar.enabled:
         return
-    layout = dict(_AVATAR_LAYOUT.get(spec.avatar.position, _AVATAR_LAYOUT["bottom_right"]))
+    layout = dict(_AVATAR_LAYOUT.get(spec.avatar.position, _AVATAR_LAYOUT["split"]))
     layout["scale"] = spec.avatar.scale
     duration = avatar.duration or spec.spoken_duration or spec.duration_target
     start = max(0.0, min(start, spec.duration_target))
@@ -268,8 +338,6 @@ def _add_avatar(timeline: Timeline, spec: Spec, avatar: AvatarClip | None, start
             props={
                 "layout": layout,
                 "transparent": avatar.transparent,
-                # The avatar clip carries its own audio only when we could not
-                # drive it from our own narration render.
                 "muted": True,
             },
         )
@@ -283,10 +351,13 @@ def _add_captions(timeline: Timeline, spec: Spec, cues: list[CaptionCue]) -> Non
     for index, cue in enumerate(ordered):
         start = round(cue.start, 3)
         end = round(cue.end, 3)
-        if index + 1 < len(ordered):
-            # Snap to the next cue so rounded float tails never overlap.
-            end = min(end, round(ordered[index + 1].start, 3))
-        duration = max(end - start, 0.05)
+        next_start = round(ordered[index + 1].start, 3) if index + 1 < len(ordered) else None
+        if next_start is not None:
+            # Never spill into the next caption — HyperFrames forbids same-track overlap.
+            end = min(end, next_start)
+        duration = end - start
+        if duration <= 0.001:
+            continue
         timeline.add(
             Element(
                 id=f"cap_{index:03d}",
