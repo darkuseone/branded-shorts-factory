@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from ..logging_utils import get_logger
 from ..spec import Spec
-from .timeline import TRACK_OVERLAY, Element, Timeline
+from .timeline import TRACK_DATA_CHIP, Element, Timeline
 
 log = get_logger("data_chips")
 
@@ -94,7 +94,7 @@ def add_data_chips(timeline: Timeline, spec: Spec) -> list[DataChip]:
                 kind="text",
                 start=chip.start,
                 duration=chip.duration,
-                track=TRACK_OVERLAY,
+                track=TRACK_DATA_CHIP,
                 text=chip.text,
                 props={
                     "role": "data_chip",

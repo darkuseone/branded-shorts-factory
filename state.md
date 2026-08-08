@@ -4,22 +4,21 @@
 IN_PROGRESS
 
 ## Current step
-Avatar committed; waiting for GHA Prepare/Render with Pexels secrets. Local free-stock prepare aborted (huge IA downloads).
+Pushing local Freepik b-roll + data-chip track fix; waiting for GHA Render.
 
 ## Done
-- [x] Branch `cursor/pipeline-hybrid-modes-a5e0`
-- [x] Kill Pulse Ring + host modes + brand FX + validators
-- [x] `jobs/life-bio-er100.json` + PRODUCTION_BRIEF A–F
+- [x] Hybrid host modes; Pulse Ring removed
+- [x] Brand Deep Void / Crimson + caption FX
 - [x] CI green (ruff + pytest)
-- [x] HeyGen avatar NIKITA2 → `jobs/life-bio-er100/avatar.mp4` (49.9s, 1080×1920)
-- [x] `voice_from_avatar.mp3` extracted
-- [x] Prepare/Render workflow pick-scenario hardened (fetch-depth 0 + fallbacks)
+- [x] `jobs/life-bio-er100.json` + PRODUCTION_BRIEF
+- [x] HeyGen avatar + voice_from_avatar
+- [x] Local broll staged (18 clips, Magnific Freepik free)
+- [x] Data chips → TRACK_DATA_CHIP (no HyperFrames overlap)
+- [x] Meme history gap for life-bio meme
 
 ## Next
-- GHA Prepare Short (Pexels) + Render Short
-- Download artifact / verify_short → iterate → DONE
+- GHA Render Short → verify_short → DONE
 
 ## Notes
-- Avatar SSOT: `37fa8301e2dd46b2a8d11d4b766a6a50`
-- HeyGen video id: `a854b2d822a94df5ac0a0818439d5fff`
-- PR: https://github.com/darkuseone/branded-shorts-factory/pull/9
+- First Render failed: track-2 chip/footage overlap + 12 unfilled (Magnific API 404 + QA)
+- Fix: local_broll + chip track + footage-only job

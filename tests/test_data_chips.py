@@ -119,8 +119,11 @@ def test_extract_chips_finds_numbers_outside_hook():
 
 def test_timeline_includes_data_chip_elements(minimal_spec):
     # Force a number into a body segment.
+    from shorts_factory.render.timeline import TRACK_DATA_CHIP
+
     minimal_spec.script[0].text = "Там почти 90 атмосфер давления."
     timeline = build_timeline(minimal_spec, [])
     chips = [el for el in timeline.elements if el.props.get("role") == "data_chip"]
     assert chips
     assert chips[0].kind == "text"
+    assert chips[0].track == TRACK_DATA_CHIP

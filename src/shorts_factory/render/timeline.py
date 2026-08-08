@@ -33,6 +33,7 @@ TRACK_CAPTIONS = 4
 TRACK_BRAND = 5
 TRACK_CTA = 6
 TRACK_MEME = 7
+TRACK_DATA_CHIP = 8
 TRACK_AUDIO_VOICE = 10
 TRACK_AUDIO_SFX = 11
 TRACK_AUDIO_MUSIC = 12
@@ -208,10 +209,23 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
         asset = item.asset
         position = _resolve_visual_position(spec, visual)
         layout = dict(_POSITION_LAYOUT.get(position, _POSITION_LAYOUT["fullscreen"]))
-        is_full = position in {"fullscreen", "background"}
-        # Memes punch over b-roll on their own track so they never fight
-        # fullscreen footage or data chips (HyperFrames forbids same-track overlap).
-        track = TRACK_MEME if visual.type == "meme" else TRACK_BROLL if is_full else TRACK_OVERLAY
+        # SPLIT upper-band and other main planes share TRACK_BROLL (timed, no overlap).
+        # PiP/side overlays keep TRACK_OVERLAY. Data chips use TRACK_DATA_CHIP.
+        is_main = position in {
+            "fullscreen",
+            "background",
+            "split_upper",
+            "top",
+            "center",
+            "bottom",
+            "auto",
+        }
+        if visual.type == "meme":
+            track = TRACK_MEME
+        elif is_main:
+            track = TRACK_BROLL
+        else:
+            track = TRACK_OVERLAY
 
         props: dict[str, Any] = {
             "layout": layout,

@@ -62,9 +62,9 @@
     },
     {
       "id": "s7",
-      "text": "Если старость — баг в коде… мы готовы его править?",
+      "text": "Старость — баг в коде. Мы уже у клинической двери. Готовы править?",
       "start": 34.0,
-      "duration": 5.5,
+      "duration": 5.0,
       "emphasis": "high",
       "mode": "full_host",
       "on_camera": true
@@ -88,7 +88,7 @@
   "visuals": [
     {
       "id": "v1a",
-      "type": "generated",
+      "type": "footage",
       "query": "epigenetic aging clock glowing in deep void",
       "keywords": [
         "cellular aging clock",
@@ -101,7 +101,7 @@
       "motion": "zoom_in",
       "priority": "critical",
       "segment_ref": "hook",
-      "allow_magnific": true,
+      "allow_magnific": false,
       "must_avoid": [
         "cartoon",
         "watermark",
@@ -122,7 +122,8 @@
       "position": "auto",
       "motion": "kenburns",
       "priority": "high",
-      "segment_ref": "hook"
+      "segment_ref": "hook",
+      "allow_magnific": false
     },
     {
       "id": "v2a",
@@ -137,7 +138,8 @@
       "duration": 2.5,
       "position": "auto",
       "motion": "parallax",
-      "segment_ref": "s1"
+      "segment_ref": "s1",
+      "allow_magnific": false
     },
     {
       "id": "v2b",
@@ -153,11 +155,12 @@
       "position": "auto",
       "motion": "kenburns",
       "segment_ref": "s1",
-      "priority": "high"
+      "priority": "high",
+      "allow_magnific": false
     },
     {
       "id": "v3a",
-      "type": "infographic",
+      "type": "footage",
       "query": "OSK transcription factors OCT4 SOX2 KLF4",
       "keywords": [
         "yamanaka factors diagram",
@@ -170,14 +173,14 @@
       "motion": "none",
       "priority": "critical",
       "segment_ref": "s2",
-      "allow_magnific": true,
+      "allow_magnific": false,
       "must_include": [
         "factors"
       ]
     },
     {
       "id": "v3b",
-      "type": "motion_graphics",
+      "type": "footage",
       "query": "dna methylation reset animation",
       "keywords": [
         "epigenetic marks reset",
@@ -190,7 +193,7 @@
       "motion": "parallax",
       "priority": "high",
       "segment_ref": "s2",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v4a",
@@ -205,11 +208,12 @@
       "duration": 2.5,
       "position": "auto",
       "motion": "zoom_in",
-      "segment_ref": "s3"
+      "segment_ref": "s3",
+      "allow_magnific": false
     },
     {
       "id": "v4b",
-      "type": "infographic",
+      "type": "footage",
       "query": "clinical trial phase 1 safety badge",
       "keywords": [
         "phase one trial icon",
@@ -222,11 +226,11 @@
       "motion": "none",
       "priority": "high",
       "segment_ref": "s3",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v5a",
-      "type": "generated",
+      "type": "footage",
       "query": "abstract information theory aging data stream deep void",
       "keywords": [
         "epigenetic information loss",
@@ -239,7 +243,7 @@
       "motion": "parallax",
       "priority": "high",
       "segment_ref": "s4",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v5b",
@@ -254,7 +258,8 @@
       "duration": 2.5,
       "position": "auto",
       "motion": "pan_left",
-      "segment_ref": "s4"
+      "segment_ref": "s4",
+      "allow_magnific": false
     },
     {
       "id": "v6a",
@@ -273,7 +278,8 @@
       "must_avoid": [
         "gore",
         "cartoon"
-      ]
+      ],
+      "allow_magnific": false
     },
     {
       "id": "v6b",
@@ -289,7 +295,8 @@
       "position": "fullscreen",
       "motion": "zoom_in",
       "priority": "high",
-      "segment_ref": "s5"
+      "segment_ref": "s5",
+      "allow_magnific": false
     },
     {
       "id": "v7a",
@@ -304,7 +311,8 @@
       "duration": 2.5,
       "position": "auto",
       "motion": "kenburns",
-      "segment_ref": "s6"
+      "segment_ref": "s6",
+      "allow_magnific": false
     },
     {
       "id": "v7b",
@@ -319,11 +327,12 @@
       "duration": 2.5,
       "position": "auto",
       "motion": "parallax",
-      "segment_ref": "s6"
+      "segment_ref": "s6",
+      "allow_magnific": false
     },
     {
       "id": "v8a",
-      "type": "generated",
+      "type": "footage",
       "query": "bug in biological code metaphor deep void crimson",
       "keywords": [
         "code glitch biology",
@@ -336,7 +345,7 @@
       "motion": "zoom_in",
       "priority": "critical",
       "segment_ref": "s7",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v_meme",
@@ -353,7 +362,8 @@
       "position": "fullscreen",
       "motion": "none",
       "priority": "high",
-      "segment_ref": "s7"
+      "segment_ref": "s7",
+      "allow_magnific": false
     },
     {
       "id": "v9a",
@@ -365,10 +375,11 @@
         "longevity science visual"
       ],
       "start": 38.3,
-      "duration": 3.2,
+      "duration": 2.2,
       "position": "fullscreen",
       "motion": "kenburns",
-      "segment_ref": "s7"
+      "segment_ref": "s7",
+      "allow_magnific": false
     },
     {
       "id": "v9b",
@@ -380,10 +391,11 @@
         "void atmosphere"
       ],
       "start": 41.5,
-      "duration": 3.2,
+      "duration": 2.2,
       "position": "fullscreen",
       "motion": "zoom_out",
-      "segment_ref": "s7"
+      "segment_ref": "s7",
+      "allow_magnific": false
     },
     {
       "id": "v9c",
@@ -399,7 +411,8 @@
       "position": "fullscreen",
       "motion": "kenburns",
       "segment_ref": "s7",
-      "notes": "CTA bed"
+      "notes": "CTA bed",
+      "allow_magnific": false
     }
   ],
   "music": {
@@ -475,11 +488,11 @@
     "max_duration": 1.3
   },
   "constraints": {
-    "magnific_token_budget": 14,
-    "allow_generative": true,
+    "magnific_token_budget": 0,
+    "allow_generative": false,
     "require_vision_qa": false,
-    "min_visual_score": 0.45,
+    "min_visual_score": 0.35,
     "manual_review_ok": true
   },
-  "_pipeline_note": "hybrid modes + free-stock prepare fallback OK"
+  "_pipeline_note": "hybrid modes; local Magnific Freepik broll staged; no Pulse Ring"
 }
