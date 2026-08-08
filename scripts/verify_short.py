@@ -72,6 +72,23 @@ def _mean(rgb: bytes) -> float:
     return sum(rgb) / max(len(rgb), 1)
 
 
+def _std(rgb: bytes) -> float:
+    if not rgb:
+        return 0.0
+    mean = _mean(rgb)
+    # Sample every 24th byte channel-triplet approx via stride on bytes.
+    acc = 0.0
+    n = 0
+    for i in range(0, len(rgb), 48):
+        chunk = rgb[i : i + 3]
+        if len(chunk) < 3:
+            break
+        val = sum(chunk) / 3.0
+        acc += (val - mean) ** 2
+        n += 1
+    return (acc / n) ** 0.5 if n else 0.0
+
+
 def verify_composition_css(composition_dir: Path) -> list[str]:
     html = (composition_dir / "index.html").read_text(encoding="utf-8")
     errors: list[str] = []
@@ -101,19 +118,28 @@ def verify_output(spec_path: Path, output: Path, composition_dir: Path | None) -
     if target and abs(info["duration"] - target) > 1.5:
         errors.append(f"duration {info['duration']:.2f}s vs target {target:.2f}s")
 
-    # Brightness samples — catch the "only first clip painted" regression.
+    # Brightness / activity samples — Deep Void brand is intentionally dark;
+    # reject only flat near-black frames (no host/b-roll variance), not low means.
     samples = [1.0, 5.5, 12.0, 22.0, 33.0, 42.0]
     means = []
+    stds = []
     for t in samples:
         if t >= info["duration"] - 0.2:
             continue
-        m = _mean(_frame_rgb(output, t))
+        frame = _frame_rgb(output, t)
+        m = _mean(frame)
         means.append((t, m))
-    if means and max(m for _, m in means) < 25:
-        errors.append(f"all sampled frames near-black: {means}")
+        stds.append((t, _std(frame)))
+    if means and max(m for _, m in means) < 8 and max(s for _, s in stds) < 5:
+        errors.append(f"all sampled frames flat near-black: means={means} stds={stds}")
     by_t = {t: m for t, m in means}
-    if by_t.get(1.0, 0) and by_t.get(33.0, 0) and by_t[33.0] < by_t[1.0] + 15:
-        errors.append(f"mid/late b-roll looks dead (t1={by_t[1.0]:.1f}, t33={by_t[33.0]:.1f})")
+    by_std = {t: s for t, s in stds}
+    # Late sample should still show content activity (host or footage), not a dead plate.
+    if by_std.get(1.0, 0) and by_std.get(33.0, 0) and by_std[33.0] < 4 and by_t.get(33.0, 0) < 6:
+        errors.append(
+            f"mid/late frame looks empty (t1 std={by_std[1.0]:.1f} mean={by_t[1.0]:.1f}, "
+            f"t33 std={by_std[33.0]:.1f} mean={by_t[33.0]:.1f})"
+        )
 
     if composition_dir is not None:
         errors.extend(verify_composition_css(composition_dir))

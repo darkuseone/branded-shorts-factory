@@ -236,13 +236,14 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
             "review": item.qa.outcome == "manual_review",
             "position": position,
         }
-        # Dim/hide b-roll under FULL_HOST so the presenter owns the frame.
+        # Hide b-roll under FULL_HOST so the presenter owns the frame.
         if visual.segment_ref:
             segment = spec.segment_by_id(visual.segment_ref)
         else:
             segment = spec.segment_at(visual.start)
         if segment is not None and segment.mode == "full_host" and visual.type != "meme":
             props["dim"] = True
+            props["hidden_under_host"] = True
         if asset.is_video:
             # Loop or trim to the slot; the renderer honours playbackRate/loop.
             props["loop"] = bool(asset.duration and asset.duration + 0.2 < visual.duration)
@@ -315,10 +316,13 @@ def _add_captions(timeline: Timeline, spec: Spec, cues: list[CaptionCue]) -> Non
     for index, cue in enumerate(ordered):
         start = round(cue.start, 3)
         end = round(cue.end, 3)
-        if index + 1 < len(ordered):
-            # Snap to the next cue so rounded float tails never overlap.
-            end = min(end, round(ordered[index + 1].start, 3))
-        duration = max(end - start, 0.05)
+        next_start = round(ordered[index + 1].start, 3) if index + 1 < len(ordered) else None
+        if next_start is not None:
+            # Never spill into the next caption — HyperFrames forbids same-track overlap.
+            end = min(end, next_start)
+        duration = end - start
+        if duration <= 0.001:
+            continue
         timeline.add(
             Element(
                 id=f"cap_{index:03d}",

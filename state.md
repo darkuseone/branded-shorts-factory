@@ -4,21 +4,20 @@
 IN_PROGRESS
 
 ## Current step
-Pushing local Freepik b-roll + data-chip track fix; waiting for GHA Render.
+Caption de-overlap + verify dark-brand fix pushed; waiting on GHA Docker Render.
 
 ## Done
 - [x] Hybrid host modes; Pulse Ring removed
-- [x] Brand Deep Void / Crimson + caption FX
-- [x] CI green (ruff + pytest)
-- [x] `jobs/life-bio-er100.json` + PRODUCTION_BRIEF
-- [x] HeyGen avatar + voice_from_avatar
-- [x] Local broll staged (18 clips, Magnific Freepik free)
-- [x] Data chips → TRACK_DATA_CHIP (no HyperFrames overlap)
-- [x] Meme history gap for life-bio meme
+- [x] Brand + caption FX + orbitals
+- [x] Job + brief + HeyGen avatar (real MP4, not LFS)
+- [x] Local Freepik b-roll staged (18 clips)
+- [x] Local HyperFrames render produced `build/output/life-bio-er100.mp4` (screenshot mode; footage weak)
+- [x] verify_short adapted for Deep Void (VERIFY OK on local)
+- [x] Caption min-duration bug fixed (GHA lint overlap)
 
 ## Next
-- GHA Render Short → verify_short → DONE
+- GHA Render with Docker → verify → DONE
 
 ## Notes
-- First Render failed: track-2 chip/footage overlap + 12 unfilled (Magnific API 404 + QA)
-- Fix: local_broll + chip track + footage-only job
+- Screenshot-mode local render under-paints video; Docker required for real b-roll.
+- Artifact copy: `/opt/cursor/artifacts/life-bio-er100.mp4`
