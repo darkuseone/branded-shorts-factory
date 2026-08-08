@@ -362,7 +362,9 @@ class CompositionWriter:
             )
             # The move itself runs between p1 and p2; CSS interpolates linearly
             # between those stops, so the fades never eat into the motion.
-            peak = "0.22" if element.props.get("dim") else "1"
+            peak = "0" if element.props.get("hidden_under_host") else (
+                "0.22" if element.props.get("dim") else "1"
+            )
             keyframes.append(
                 _keyframes(
                     name,

@@ -1,23 +1,18 @@
 # state.md — pipeline hybrid modes + life-bio-er100
 
 ## Status
-IN_PROGRESS
+DONE
 
-## Current step
-Caption de-overlap + verify dark-brand fix pushed; waiting on GHA Docker Render.
-
-## Done
-- [x] Hybrid host modes; Pulse Ring removed
-- [x] Brand + caption FX + orbitals
-- [x] Job + brief + HeyGen avatar (real MP4, not LFS)
-- [x] Local Freepik b-roll staged (18 clips)
-- [x] Local HyperFrames render produced `build/output/life-bio-er100.mp4` (screenshot mode; footage weak)
-- [x] verify_short adapted for Deep Void (VERIFY OK on local)
-- [x] Caption min-duration bug fixed (GHA lint overlap)
-
-## Next
-- GHA Render with Docker → verify → DONE
+## Deliverables
+- Pipeline: Pulse Ring removed; `mode: split|full_host|full_footage`; Deep Void/Crimson; caption glow+CA; thin orbitals
+- Job: `jobs/life-bio-er100.json` + `PRODUCTION_BRIEF.md` (A–F)
+- Avatar: `jobs/life-bio-er100/avatar.mp4` (HeyGen NIKITA2, 1080×1920)
+- B-roll: `jobs/life-bio-er100/broll/*.mp4` (18 Freepik free clips)
+- Output: GHA Render Short success → `build/output/life-bio-er100.mp4` (48s, 9:16)
+- Artifact: `/opt/cursor/artifacts/life-bio-er100.mp4`
+- Verify: `scripts/verify_short.py` OK on GHA + local
 
 ## Notes
-- Screenshot-mode local render under-paints video; Docker required for real b-roll.
-- Artifact copy: `/opt/cursor/artifacts/life-bio-er100.mp4`
+- Soft warning only: avatar.segments not contiguous across FULL_FOOTAGE windows (host opacity 0 there).
+- Tone: Phase 1 safety honesty; metaphor «взлом кода», no «eternal life proven».
+- PR: https://github.com/darkuseone/branded-shorts-factory/pull/9
