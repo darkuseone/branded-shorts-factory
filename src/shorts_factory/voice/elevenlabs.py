@@ -99,6 +99,8 @@ FX_PROMPTS = {
     "thump": "soft low thump pulse, short, dry, not aggressive",
     "power_down": "short quiet power-down tick, soft electronic fade",
     "power_up": "short quiet power-up tick, soft electronic chirp",
+    "host_exit": "short quiet host-exit tick, soft electronic fade",
+    "host_enter": "short quiet host-enter tick, soft electronic chirp",
 }
 
 

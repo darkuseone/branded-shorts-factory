@@ -8,7 +8,7 @@ Two-phase flow (HeyGen MCP lives in chat, secrets live in Actions):
 
     prepare → voice.wav + words.json artifact
     (chat)  → HeyGen avatar → commit jobs/<id>/avatar.mp4
-    render  → timeline + ring + mix + HyperFrames
+    render  → timeline + host modes + mix + HyperFrames
 
 Full local path still works: ``build`` does prepare + avatar API + render.
 """
@@ -40,7 +40,7 @@ from .qa.gate import QAReport
 from .render.audio_mix import build_mix
 from .render.composition import CompositionWriter
 from .render.hyperframes import HyperFramesRunner, RenderResult
-from .render.ring import RingConfig, RingPlan, plan_ring
+from .render.host_presence import HostPlan, plan_host
 from .render.timeline import Timeline, build_timeline, use_mixed_audio
 from .resolver import ResolvedVisual, VisualResolver
 from .spec import Spec, SpecIssue
@@ -160,7 +160,7 @@ class Pipeline:
             spec,
             result.timeline,
             self.settings.paths.composition / spec.id,
-            ring=_ring_plan(spec, self._brandbook),
+            host=plan_host(spec),
         ).write()
         result.composition_dir = composition.directory
 
@@ -252,7 +252,7 @@ class Pipeline:
         with stage("compose", log) as info:
             composition_dir = self.settings.paths.composition / spec.id
             writer = CompositionWriter(
-                spec, result.timeline, composition_dir, ring=_ring_plan(spec, self._brandbook)
+                spec, result.timeline, composition_dir, host=plan_host(spec)
             )
             composition = writer.write()
             result.composition_dir = composition.directory
@@ -621,18 +621,6 @@ class Pipeline:
         log.info("report written to %s", path, extra={"stage": "report"})
 
 
-def _ring_plan(spec: Spec, book: Brandbook | None = None) -> RingPlan:
-    """Load ring geometry from the brandbook when present, else use defaults."""
-    if book is None:
-        book = Brandbook.load(Path(__file__).resolve().parents[2] / "brand")
-    raw = None
-    if book is not None:
-        extra = book.extra if isinstance(book.extra, dict) else {}
-        candidate = extra.get("ring")
-        raw = candidate if isinstance(candidate, dict) else None
-    config = RingConfig.from_brandbook(raw)
-    if spec.ring.diameter_ratio is not None:
-        config = replace(config, diameter_ratio=spec.ring.diameter_ratio)
-    if spec.ring.anchor:
-        config = replace(config, default_anchor=spec.ring.anchor)
-    return plan_ring(spec, config)
+def _host_plan(spec: Spec) -> HostPlan:
+    """Build host presentation windows from segment modes."""
+    return plan_host(spec)

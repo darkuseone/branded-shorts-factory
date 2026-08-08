@@ -133,7 +133,7 @@ def collect_beats(spec: Spec) -> list[Beat]:
         at = segment.start + min(0.35, max(guard, segment.duration * 0.12))
         beats.append(Beat(at=at, role="thump", intensity=0.45, duration=0.5, reason=f"emphasis {segment.id}"))
 
-    # Ring exit / return from avatar.segments gaps (brand book EXIT / RETURN).
+    # Host exit / enter from avatar.segments gaps (FULL_FOOTAGE windows).
     if spec.avatar.enabled and spec.avatar.segments:
         on_ids = set(spec.avatar.segments)
         present = [segment for segment in spec.all_segments if segment.id in on_ids]
@@ -142,10 +142,10 @@ def collect_beats(spec: Spec) -> list[Beat]:
             if gap < 1.2:
                 continue
             beats.append(
-                Beat(at=left.end, role="power_down", intensity=0.4, duration=0.25, reason="ring exit")
+                Beat(at=left.end, role="host_exit", intensity=0.4, duration=0.25, reason="host exit")
             )
             beats.append(
-                Beat(at=right.start, role="power_up", intensity=0.4, duration=0.25, reason="ring return")
+                Beat(at=right.start, role="host_enter", intensity=0.4, duration=0.25, reason="host enter")
             )
 
     climax = _climax_at(spec)

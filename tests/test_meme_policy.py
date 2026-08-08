@@ -22,48 +22,59 @@ def _spec(**overrides):
     }
     base.update(overrides)
     document = minimal_document(**base)
-    document["duration_target"] = 45
     document["hook"] = {
         "id": "hook",
         "text": "Можно ли выжить внутри чёрной дыры?",
         "start": 0,
-        "duration": 2.8,
+        "duration": 4.0,
         "emphasis": "high",
+        "mode": "full_host",
     }
     document["script"] = [
         {
             "id": "s1",
             "text": "Кажется, горизонт событий — просто тёмная стена. Это миф.",
-            "start": 2.8,
-            "duration": 6,
+            "start": 4.0,
+            "duration": 5.5,
+            "mode": "split",
         },
         {
             "id": "s2",
             "text": "Приливные силы рвут тело ещё до центра. Давление — как миллиард атмосфер.",
-            "start": 8.8,
-            "duration": 7,
+            "start": 9.5,
+            "duration": 6.0,
             "emphasis": "high",
+            "mode": "full_footage",
         },
         {
             "id": "s3",
             "text": "А в центре классическая физика уже не работает.",
-            "start": 15.8,
-            "duration": 6,
+            "start": 15.5,
+            "duration": 5.5,
+            "mode": "split",
         },
         {
             "id": "s4",
             "text": "Так что ответ короткий: выжить нельзя. И это естественно.",
-            "start": 21.8,
-            "duration": 6,
+            "start": 21.0,
+            "duration": 5.5,
+            "mode": "full_host",
         },
     ]
     document["visuals"] = [
-        {"id": "v1", "type": "footage", "query": "black hole accretion", "start": 0, "duration": 10},
-        {"id": "v2", "type": "infographic", "query": "tidal forces diagram", "start": 10, "duration": 10},
-        {"id": "v3", "type": "footage", "query": "spacetime warp", "start": 20, "duration": 12},
-        {"id": "v4", "type": "footage", "query": "event horizon glow", "start": 32, "duration": 13},
+        {"id": "v1", "type": "footage", "query": "black hole accretion", "start": 0, "duration": 2.0, "position": "auto"},
+        {"id": "v2", "type": "footage", "query": "event horizon", "start": 2.0, "duration": 2.0, "position": "auto"},
+        {"id": "v3", "type": "infographic", "query": "tidal forces diagram", "start": 4.0, "duration": 2.5, "position": "auto"},
+        {"id": "v4", "type": "footage", "query": "spacetime warp", "start": 6.5, "duration": 2.5, "position": "auto"},
+        {"id": "v5", "type": "footage", "query": "neutron star crush", "start": 9.5, "duration": 3.0, "position": "fullscreen"},
+        {"id": "v6", "type": "footage", "query": "gravity well", "start": 12.5, "duration": 3.0, "position": "fullscreen"},
+        {"id": "v7", "type": "footage", "query": "singularity abstract", "start": 15.5, "duration": 2.5, "position": "auto"},
+        {"id": "v8", "type": "footage", "query": "event horizon glow", "start": 18.0, "duration": 3.0, "position": "auto"},
+        {"id": "v9", "type": "footage", "query": "black hole silhouette", "start": 21.0, "duration": 2.5, "position": "auto"},
+        {"id": "v10", "type": "footage", "query": "accretion disk flare", "start": 23.5, "duration": 3.0, "position": "auto"},
     ]
-    document["cta"] = {"text": "Подпишись", "start": 40, "duration": 4}
+    document["duration_target"] = 28
+    document["cta"] = {"text": "Подпишись", "start": 24, "duration": 3.5}
     spec, _ = parse_spec(document)
     return spec
 

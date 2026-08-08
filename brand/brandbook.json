@@ -1,17 +1,18 @@
 {
-  "_comment": "REDSHIFT brand book — single source of truth for colour, type, ring and sound. Per-video brand_elements always win over these values.",
+  "_comment": "REDSHIFT brand book — Deep Void / Crimson Pulse. Per-video brand_elements always win.",
   "name": "REDSHIFT",
   "slogan": "Сигнал из будущего.",
   "language": "ru",
   "colors": {
-    "primary": "#FF2A3C",
-    "accent": "#37E4FF",
-    "background": "#0A0C10",
-    "panel": "#14171C",
-    "deep_red": "#B4001E",
-    "text": "#F5F7FA",
-    "text_secondary": "#9BA3AE",
-    "caption_highlight": "#FF2A3C"
+    "primary": "#E11D48",
+    "accent": "#F43F5E",
+    "background": "#050508",
+    "panel": "#0A0A0F",
+    "deep_red": "#BE123C",
+    "gold": "#FBBF24",
+    "text": "#F1F5F9",
+    "text_secondary": "#94A3B8",
+    "caption_highlight": "#E11D48"
   },
   "typography": {
     "family": "Inter",
@@ -26,40 +27,21 @@
   "lower_third": false,
   "outro_card": true,
   "safe_area_margin": 96,
-  "ring": {
-    "diameter_ratio": 0.3,
-    "default_anchor": "bottom_right",
-    "cta_anchor": "bottom_center",
-    "stroke": "#FF2A3C",
-    "glow": "#FF4D63",
-    "face_zoom": 1.05,
-    "face_position": "center 36%",
-    "states": {
-      "idle": {
-        "pulse": 0.05,
-        "cycle_s": 2.4
-      },
-      "emphasis": {
-        "pulse": 0.18,
-        "duration_s": 0.25,
-        "repeats": 2
-      },
-      "transition": {
-        "expand": 1.4,
-        "duration_s": 0.35
-      },
-      "exit": {
-        "duration_s": 0.25
-      }
-    }
+  "host": {
+    "modes": ["split", "full_host", "full_footage"],
+    "split_lower_ratio": 0.45,
+    "orbitals": true,
+    "_comment": "Pulse Ring removed. Host is rectangular lower-band SPLIT or fullscreen FULL_HOST."
   },
   "sfx_kit": {
     "whoosh": "transition",
     "thump": "emphasis",
     "ui": "data_chip",
     "riser": "pre_climax",
-    "power_down": "ring_exit",
-    "power_up": "ring_return"
+    "host_exit": "host_leave",
+    "host_enter": "host_return",
+    "power_down": "host_leave",
+    "power_up": "host_return"
   },
   "music_by_rubric": {
     "космос": "Orbital Drift",
@@ -100,10 +82,10 @@
     "look_id_edit_studio": "eca97e9fe55f40799b25943fdc1a1599",
     "look_id_prev_studio": "54172d7a5b2946ed8a592dee955fb0c7",
     "look_id_neon_desk_host": "bbcc4667fbb14ec69a73b34f455cda54",
-    "_comment_looks": "SELECTED: D1 Tattooed studio (option A). Pulse Ring circle crop. Avatar V + NIKITA2.",
+    "_comment_looks": "SELECTED: D1 Tattooed studio. Rectangular SPLIT/FULL_HOST (no Pulse Ring). Avatar V + NIKITA2.",
     "group_id": "d0573be250724c23bed61037f1c7490d",
     "engine": "avatar_v",
-    "motion_prompt": "Lively sci-pop host talking to camera with energy. Natural eyebrow raises on the question, slight forward lean on the punchline, small expressive head tilts, soft ironic smile, occasional hand gesture near the desk. Keep neon studio and microphone stable. Curious and sharp, not stiff."
+    "motion_prompt": "Lively sci-pop host talking to camera with energy. Natural eyebrow raises on the question, slight forward lean on the punchline, small expressive head tilts, soft ironic smile. Micro head turns and blinks only — no big hand gestures in close face shots. Curious and sharp, not stiff."
   },
   "voice": {
     "voice_id": "14NozJq5eoBmDc1FXFDq",
@@ -118,5 +100,5 @@
     "language": "ru",
     "_comment": "Always NIKITA2 on HeyGen. Livelier delivery: stability 0.5 + style 0.65."
   },
-  "magnific_prompt_skeleton": "[SUBJECT], cinematic sci-fi realism, dark graphite background (#0A0C10), subtle red rim light accent (#FF2A3C), cool cyan ambient glow (#37E4FF), volumetric fog, high detail, shallow depth of field, 8k, photorealistic, tech-documentary lighting, no text, no watermark"
+  "magnific_prompt_skeleton": "[SUBJECT], cinematic sci-fi realism, deep void background (#050508), subtle crimson rim light (#E11D48), volumetric fog, high detail, shallow depth of field, 8k, photorealistic, tech-documentary lighting, no text, no watermark"
 }

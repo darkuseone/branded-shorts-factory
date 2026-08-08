@@ -194,8 +194,10 @@ SFX_SYNONYMS: dict[str, tuple[str, ...]] = {
     "transition": ("transition", "whoosh", "swoosh", "sweep", "cut"),
     "ui": ("ui", "blip", "beep", "notify", "notification", "confirm"),
     "thump": ("thump", "pulse", "impact", "hit", "kick"),
-    "power_down": ("power_down", "powerdown", "tick", "click", "ui"),
-    "power_up": ("power_up", "powerup", "tick", "click", "ui"),
+    "power_down": ("power_down", "powerdown", "host_exit", "tick", "click", "ui"),
+    "power_up": ("power_up", "powerup", "host_enter", "tick", "click", "ui"),
+    "host_exit": ("host_exit", "power_down", "powerdown", "tick", "click", "ui"),
+    "host_enter": ("host_enter", "power_up", "powerup", "tick", "click", "ui"),
 }
 
 

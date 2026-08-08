@@ -22,10 +22,24 @@ Level = Literal["error", "warning", "info"]
 VISUAL_TYPES = frozenset(
     {"footage", "image", "motion_graphics", "infographic", "meme", "screen_record", "generated"}
 )
-POSITIONS = frozenset({"fullscreen", "top", "bottom", "center", "pip", "left", "right", "background"})
+POSITIONS = frozenset(
+    {
+        "fullscreen",
+        "top",
+        "bottom",
+        "center",
+        "pip",
+        "left",
+        "right",
+        "background",
+        "split_upper",
+        "auto",
+    }
+)
 MOTIONS = frozenset({"none", "kenburns", "parallax", "zoom_in", "zoom_out", "pan_left", "pan_right"})
 PRIORITIES = frozenset({"low", "normal", "high", "critical"})
 CAPTION_STYLES = frozenset({"karaoke", "word_pop", "line", "none"})
+HOST_MODES = frozenset({"split", "full_host", "full_footage"})
 AUDIO_FX_TYPES = frozenset(
     {
         "whoosh",
@@ -38,13 +52,28 @@ AUDIO_FX_TYPES = frozenset(
         "sub_drop",
         "transition",
         "ui",
-        # Ring states from the brand book: a soft pulse under an emphasised
-        # number, and the power-down/up tick as the ring leaves and returns.
         "thump",
+        # Host enter/leave ticks (legacy aliases: power_down / power_up).
+        "host_exit",
+        "host_enter",
         "power_down",
         "power_up",
     }
 )
+
+# Brand defaults — Deep Void / Crimson Pulse.
+DEFAULT_PRIMARY = "#E11D48"
+DEFAULT_ACCENT = "#F43F5E"
+DEFAULT_BACKGROUND = "#050508"
+DEFAULT_TEXT = "#F1F5F9"
+DEFAULT_TEXT_SECONDARY = "#94A3B8"
+DEFAULT_GOLD = "#FBBF24"
+
+MAX_MODE_STRETCH_S = 12.0
+MODE_DWELL_MIN_S = 4.0
+MODE_DWELL_MAX_S = 7.0
+SHOT_TARGET_MIN_S = 1.5
+SHOT_TARGET_MAX_S = 2.4
 
 # Channel rubrics from the REDSHIFT brand book. Free-form strings are accepted
 # too — the set is only for autocomplete and music/meme policy matching.
@@ -246,6 +275,8 @@ class ScriptSegment:
     duration: float
     emphasis: str = "normal"
     on_camera: bool = False
+    #: Presentation mode: split | full_host | full_footage.
+    mode: str = "split"
     pause_after: float = 0.0
 
     @property
@@ -373,8 +404,8 @@ class CaptionSettings:
     size: int = 72
     position: str = "center_bottom"
     max_chars_per_line: int = 22
-    highlight_color: str = "#FF2A3C"
-    text_color: str = "#FFFFFF"
+    highlight_color: str = DEFAULT_PRIMARY
+    text_color: str = DEFAULT_TEXT
     stroke: bool = True
     uppercase: bool = False
 
@@ -384,9 +415,9 @@ class BrandElements:
     logo: str = ""
     logo_position: str = "top_left"
     lower_third: bool = False
-    color_primary: str = "#FF2A3C"
-    color_accent: str = "#37E4FF"
-    color_background: str = "#0A0C10"
+    color_primary: str = DEFAULT_PRIMARY
+    color_accent: str = DEFAULT_ACCENT
+    color_background: str = DEFAULT_BACKGROUND
     font_family: str = "Inter"
     intro_sting: bool = False
     outro_card: bool = True
@@ -426,15 +457,6 @@ class SfxPolicy:
 
 
 @dataclass
-class RingSettings:
-    """Optional per-video overrides for the Pulse Ring."""
-
-    enabled: bool = True
-    anchor: str = ""  # empty → brandbook default
-    diameter_ratio: float | None = None
-
-
-@dataclass
 class Constraints:
     magnific_token_budget: int | None = None
     allow_generative: bool = True
@@ -466,7 +488,6 @@ class Spec:
     constraints: Constraints
     rubric: str = ""
     sfx_policy: SfxPolicy = field(default_factory=SfxPolicy)
-    ring: RingSettings = field(default_factory=RingSettings)
     raw: dict[str, Any] = field(default_factory=dict)
 
     # -- derived views ------------------------------------------------------
@@ -570,9 +591,41 @@ def _parse_segment(
         duration=float(duration),
         emphasis=_enum(data, "emphasis", path, col, {"low", "normal", "high"}, "normal"),
         on_camera=_bool(data, "on_camera", path, col, False),
+        mode=_parse_host_mode(data, path, col),
         pause_after=float(_number(data, "pause_after", path, col, default=0.0, minimum=0.0) or 0.0),
     )
+    # Keep on_camera in sync with mode for legacy consumers.
+    if segment.mode == "full_footage":
+        segment.on_camera = False
+    elif segment.mode in {"split", "full_host"} and "on_camera" not in data:
+        segment.on_camera = segment.mode == "full_host"
     return segment
+
+
+def _parse_host_mode(data: dict[str, Any], path: str, col: _Collector) -> str:
+    raw = data.get("mode")
+    if raw is None:
+        # Legacy fallback: on_camera True → full_host, else split (host still
+        # may be gated by avatar.segments).
+        if data.get("on_camera") is True:
+            return "full_host"
+        return "split"
+    if not isinstance(raw, str):
+        col.error(f"{path}.mode", f"expected a string, got {type(raw).__name__}")
+        return "split"
+    normalised = raw.strip().lower().replace("-", "_")
+    aliases = {
+        "fullhost": "full_host",
+        "full_host": "full_host",
+        "fullfootage": "full_footage",
+        "full_footage": "full_footage",
+        "split": "split",
+    }
+    mode = aliases.get(normalised, normalised)
+    if mode not in HOST_MODES:
+        col.error(f"{path}.mode", f"{raw!r} is not one of {sorted(HOST_MODES)}")
+        return "split"
+    return mode
 
 
 def _parse_script(raw: Any, col: _Collector) -> list[ScriptSegment]:
@@ -756,6 +809,11 @@ def _cross_checks(spec: Spec, col: _Collector) -> None:
             col.error(f"{path}.segment_ref", f"unknown segment id {visual.segment_ref!r}")
         if visual.duration < 0.8:
             col.warn(f"{path}.duration", f"{visual.duration:g}s is too short to read on screen")
+        if visual.duration > 3.8 and visual.type != "meme":
+            col.warn(
+                f"{path}.duration",
+                f"{visual.duration:g}s exceeds max shot length 3.8s without a cut",
+            )
 
     segment_ids: set[str] = set()
     for segment in spec.all_segments:
@@ -765,6 +823,9 @@ def _cross_checks(spec: Spec, col: _Collector) -> None:
 
     for missing in [s for s in spec.avatar.segments if s not in segment_ids]:
         col.error("avatar.segments", f"unknown segment id {missing!r}")
+
+    _validate_host_modes(spec, col)
+    _validate_shot_pacing(spec, col)
 
     spoken = spec.spoken_duration
     if spoken > spec.duration_target + 1.0:
@@ -926,9 +987,9 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
             _number(captions_data, "max_chars_per_line", "captions", col, default=22, minimum=10, maximum=48)
             or 22
         ),
-        highlight_color=_string(captions_data, "highlight_color", "captions", col, default="#FF2A3C")
-        or "#FF2A3C",
-        text_color=_string(captions_data, "text_color", "captions", col, default="#FFFFFF") or "#FFFFFF",
+        highlight_color=_string(captions_data, "highlight_color", "captions", col, default=DEFAULT_PRIMARY)
+        or DEFAULT_PRIMARY,
+        text_color=_string(captions_data, "text_color", "captions", col, default=DEFAULT_TEXT) or DEFAULT_TEXT,
         stroke=_bool(captions_data, "stroke", "captions", col, True),
         uppercase=_bool(captions_data, "uppercase", "captions", col, False),
     )
@@ -945,12 +1006,12 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
             "top_left",
         ),
         lower_third=_bool(brand_data, "lower_third", "brand_elements", col, False),
-        color_primary=_string(brand_data, "color_primary", "brand_elements", col, default="#FF2A3C")
-        or "#FF2A3C",
-        color_accent=_string(brand_data, "color_accent", "brand_elements", col, default="#37E4FF")
-        or "#37E4FF",
-        color_background=_string(brand_data, "color_background", "brand_elements", col, default="#0A0C10")
-        or "#0A0C10",
+        color_primary=_string(brand_data, "color_primary", "brand_elements", col, default=DEFAULT_PRIMARY)
+        or DEFAULT_PRIMARY,
+        color_accent=_string(brand_data, "color_accent", "brand_elements", col, default=DEFAULT_ACCENT)
+        or DEFAULT_ACCENT,
+        color_background=_string(brand_data, "color_background", "brand_elements", col, default=DEFAULT_BACKGROUND)
+        or DEFAULT_BACKGROUND,
         font_family=_string(brand_data, "font_family", "brand_elements", col, default="Inter") or "Inter",
         intro_sting=_bool(brand_data, "intro_sting", "brand_elements", col, False),
         outro_card=_bool(brand_data, "outro_card", "brand_elements", col, True),
@@ -1014,26 +1075,9 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
         ),
     )
 
-    ring_data = _obj(data.get("ring"), "ring", col)
-    diameter = _number(ring_data, "diameter_ratio", "ring", col, minimum=0.1, maximum=0.8)
-    anchor_raw = ring_data.get("anchor")
-    anchor = ""
-    if isinstance(anchor_raw, str) and anchor_raw.strip():
-        anchor = _enum(
-            ring_data,
-            "anchor",
-            "ring",
-            col,
-            {"bottom_right", "bottom_left", "bottom_center", "center"},
-            "bottom_right",
-        )
-    elif anchor_raw is not None and not isinstance(anchor_raw, str):
-        col.error("ring.anchor", f"expected a string, got {type(anchor_raw).__name__}")
-    ring = RingSettings(
-        enabled=_bool(ring_data, "enabled", "ring", col, True),
-        anchor=anchor,
-        diameter_ratio=float(diameter) if diameter is not None else None,
-    )
+    # Legacy `ring` keys are ignored — Pulse Ring was removed.
+    if "ring" in data and data.get("ring") is not None:
+        col.info("ring", "Pulse Ring removed; `ring` overrides are ignored")
 
     constraints_data = _obj(data.get("constraints"), "constraints", col)
     budget_value = _number(constraints_data, "magnific_token_budget", "constraints", col, minimum=0.0)
@@ -1056,6 +1100,9 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
         manual_review_ok=_bool(constraints_data, "manual_review_ok", "constraints", col, True),
     )
 
+    avatar = _parse_avatar(_obj(data.get("avatar"), "avatar", col), col)
+    avatar = _autofill_avatar_segments(avatar, hook, script)
+
     if col.has_errors:
         raise SpecError(col.issues, source)
 
@@ -1069,7 +1116,7 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
         hook=hook,
         script=script,
         voice=_parse_voice(_obj(data.get("voice_settings"), "voice_settings", col), col, language),
-        avatar=_parse_avatar(_obj(data.get("avatar"), "avatar", col), col),
+        avatar=avatar,
         visuals=visuals,
         music=music,
         audio_fx=_parse_audio_fx(data.get("audio_fx"), col),
@@ -1078,7 +1125,6 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
         cta=cta,
         memes=memes,
         sfx_policy=sfx_policy,
-        ring=ring,
         constraints=constraints,
         raw=data,
     )
@@ -1105,6 +1151,72 @@ def load_spec(path: str | Path) -> tuple[Spec, list[SpecIssue]]:
             str(file_path),
         ) from exc
     return parse_spec(document, source=str(file_path))
+
+
+def _autofill_avatar_segments(
+    avatar: AvatarSettings,
+    hook: ScriptSegment | None,
+    script: list[ScriptSegment],
+) -> AvatarSettings:
+    """If segments empty, derive them from modes where the host is on camera."""
+    if not avatar.enabled:
+        return avatar
+    if avatar.segments:
+        return avatar
+    segments = ([hook] if hook else []) + list(script)
+    filled = [seg.id for seg in segments if seg.mode in {"split", "full_host"}]
+    if not filled:
+        return avatar
+    avatar.segments = filled
+    return avatar
+
+
+def _validate_host_modes(spec: Spec, col: _Collector) -> None:
+    """Mode stretch >12s is an error; stretches outside 4–7s warn."""
+    if not spec.all_segments:
+        return
+    # Merge consecutive identical modes into stretches.
+    stretches: list[tuple[str, float, float]] = []
+    current_mode = spec.all_segments[0].mode
+    start = spec.all_segments[0].start
+    end = spec.all_segments[0].end
+    for segment in spec.all_segments[1:]:
+        if segment.mode == current_mode and segment.start <= end + 0.35:
+            end = max(end, segment.end)
+            continue
+        stretches.append((current_mode, start, end))
+        current_mode = segment.mode
+        start = segment.start
+        end = segment.end
+    stretches.append((current_mode, start, end))
+
+    for mode, a, b in stretches:
+        length = b - a
+        if length > MAX_MODE_STRETCH_S + 0.05:
+            col.error(
+                "mode",
+                f"mode {mode!r} held for {length:.1f}s (max {MAX_MODE_STRETCH_S:g}s)",
+            )
+        elif length > MODE_DWELL_MAX_S + 0.05:
+            col.warn(
+                "mode",
+                f"mode {mode!r} held for {length:.1f}s "
+                f"(preferred ≤{MODE_DWELL_MAX_S:g}s; hard max {MAX_MODE_STRETCH_S:g}s)",
+            )
+
+
+def _validate_shot_pacing(spec: Spec, col: _Collector) -> None:
+    shots = [v for v in spec.visuals if v.type != "meme" and v.duration > 0]
+    if len(shots) < 3:
+        return
+    ordered = sorted(shots, key=lambda v: v.duration)
+    mid = ordered[len(ordered) // 2].duration
+    if not (SHOT_TARGET_MIN_S <= mid <= SHOT_TARGET_MAX_S):
+        col.warn(
+            "visuals",
+            f"median shot length {mid:g}s outside preferred "
+            f"{SHOT_TARGET_MIN_S:g}–{SHOT_TARGET_MAX_S:g}s band",
+        )
 
 
 def format_issues(issues: Sequence[SpecIssue]) -> str:

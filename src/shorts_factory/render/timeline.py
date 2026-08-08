@@ -113,21 +113,23 @@ class Timeline:
 _POSITION_LAYOUT: dict[str, dict[str, Any]] = {
     "fullscreen": {"top": 0, "left": 0, "width": VIDEO_WIDTH, "height": VIDEO_HEIGHT, "fit": "cover"},
     "background": {"top": 0, "left": 0, "width": VIDEO_WIDTH, "height": VIDEO_HEIGHT, "fit": "cover"},
-    "top": {"top": 180, "left": 0, "width": VIDEO_WIDTH, "height": 760, "fit": "cover"},
+    "top": {"top": 0, "left": 0, "width": VIDEO_WIDTH, "height": 1056, "fit": "cover"},
+    "split_upper": {"top": 0, "left": 0, "width": VIDEO_WIDTH, "height": 1056, "fit": "cover"},
     "center": {"top": 520, "left": 0, "width": VIDEO_WIDTH, "height": 880, "fit": "cover"},
-    "bottom": {"top": 900, "left": 0, "width": VIDEO_WIDTH, "height": 700, "fit": "cover"},
+    "bottom": {"top": 1056, "left": 0, "width": VIDEO_WIDTH, "height": 864, "fit": "cover"},
     "left": {"top": 480, "left": 0, "width": 700, "height": 960, "fit": "cover"},
     "right": {"top": 480, "left": 380, "width": 700, "height": 960, "fit": "cover"},
     "pip": {"top": 220, "left": 620, "width": 380, "height": 380, "fit": "cover", "radius": 32},
 }
 
 _AVATAR_LAYOUT: dict[str, dict[str, Any]] = {
-    "bottom_right": {"anchor": "bottom-right", "right": SAFE_MARGIN, "bottom": BOTTOM_UI_RESERVE},
-    "bottom_left": {"anchor": "bottom-left", "left": SAFE_MARGIN, "bottom": BOTTOM_UI_RESERVE},
-    "bottom_center": {"anchor": "bottom-center", "bottom": BOTTOM_UI_RESERVE},
-    "top_right": {"anchor": "top-right", "right": SAFE_MARGIN, "top": 200},
-    "center": {"anchor": "center"},
-    "fullscreen": {"anchor": "fullscreen"},
+    "bottom_right": {"anchor": "split", "mode": "split"},
+    "bottom_left": {"anchor": "split", "mode": "split"},
+    "bottom_center": {"anchor": "split", "mode": "split"},
+    "top_right": {"anchor": "split", "mode": "split"},
+    "center": {"anchor": "full_host", "mode": "full_host"},
+    "fullscreen": {"anchor": "full_host", "mode": "full_host"},
+    "split": {"anchor": "split", "mode": "split"},
 }
 
 
@@ -204,8 +206,9 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
 
         visual = item.visual
         asset = item.asset
-        layout = dict(_POSITION_LAYOUT.get(visual.position, _POSITION_LAYOUT["fullscreen"]))
-        is_full = visual.position in {"fullscreen", "background"}
+        position = _resolve_visual_position(spec, visual)
+        layout = dict(_POSITION_LAYOUT.get(position, _POSITION_LAYOUT["fullscreen"]))
+        is_full = position in {"fullscreen", "background"}
         # Memes punch over b-roll on their own track so they never fight
         # fullscreen footage or data chips (HyperFrames forbids same-track overlap).
         if visual.type == "meme":
@@ -220,7 +223,12 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
             "license": asset.candidate.license,
             "credit": asset.candidate.author,
             "review": item.qa.outcome == "manual_review",
+            "position": position,
         }
+        # Dim/hide b-roll under FULL_HOST so the presenter owns the frame.
+        segment = spec.segment_by_id(visual.segment_ref) if visual.segment_ref else spec.segment_at(visual.start)
+        if segment is not None and segment.mode == "full_host" and visual.type != "meme":
+            props["dim"] = True
         if asset.is_video:
             # Loop or trim to the slot; the renderer honours playbackRate/loop.
             props["loop"] = bool(asset.duration and asset.duration + 0.2 < visual.duration)
@@ -249,11 +257,23 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
         )
 
 
+def _resolve_visual_position(spec: Spec, visual: Any) -> str:
+    """Map auto/fullscreen slots to split_upper when the spoken mode is SPLIT."""
+    position = visual.position or "fullscreen"
+    segment = spec.segment_by_id(visual.segment_ref) if visual.segment_ref else spec.segment_at(visual.start)
+    mode = getattr(segment, "mode", None) if segment else None
+    if position in {"auto", "fullscreen", "background", "top"} and mode == "split":
+        return "split_upper"
+    if position == "auto":
+        return "fullscreen" if mode == "full_footage" else "split_upper"
+    return position
+
+
 def _add_avatar(timeline: Timeline, spec: Spec, avatar: AvatarClip | None, start: float = 0.0) -> None:
-    """Place the presenter at the start of the window it was rendered for."""
+    """Place the presenter; layout/visibility are driven by host mode CSS."""
     if avatar is None or not spec.avatar.enabled:
         return
-    layout = dict(_AVATAR_LAYOUT.get(spec.avatar.position, _AVATAR_LAYOUT["bottom_right"]))
+    layout = dict(_AVATAR_LAYOUT.get(spec.avatar.position, _AVATAR_LAYOUT["split"]))
     layout["scale"] = spec.avatar.scale
     duration = avatar.duration or spec.spoken_duration or spec.duration_target
     start = max(0.0, min(start, spec.duration_target))
@@ -268,8 +288,6 @@ def _add_avatar(timeline: Timeline, spec: Spec, avatar: AvatarClip | None, start
             props={
                 "layout": layout,
                 "transparent": avatar.transparent,
-                # The avatar clip carries its own audio only when we could not
-                # drive it from our own narration render.
                 "muted": True,
             },
         )

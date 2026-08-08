@@ -123,14 +123,14 @@ def test_whooshes_only_on_topic_changes_not_every_cut():
 def test_emphasis_marks_earn_a_soft_thump():
     beats = collect_beats(_spec())
     thumps = [beat for beat in beats if beat.role == "thump"]
-    assert thumps, "high-emphasis segments should pulse the ring"
+    assert thumps, "high-emphasis segments should get a soft thump"
 
 
-def test_ring_exit_and_return_when_avatar_leaves_the_frame():
+def test_host_exit_and_enter_when_avatar_leaves_the_frame():
     beats = collect_beats(_spec(avatar_segments=["hook", "s4"]))
     roles = {beat.role for beat in beats}
-    assert "power_down" in roles
-    assert "power_up" in roles
+    assert "host_exit" in roles
+    assert "host_enter" in roles
 
 
 def test_one_riser_builds_into_the_climax():
