@@ -8,6 +8,8 @@ on:
     paths:
       - "jobs/**/avatar.mp4"
       - "jobs/**/avatar.webm"
+      - "jobs/**/broll/**"
+      - "jobs/*.json"
   workflow_dispatch:
     inputs:
       spec:
@@ -59,18 +61,40 @@ jobs:
             BEFORE="${{ github.event.before }}"
             SHA="${{ github.sha }}"
             AVATAR=""
+            JOBJSON=""
             if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] \
                && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
               AVATAR=$(git diff --name-only --diff-filter=d "$BEFORE" "$SHA" \
                        -- 'jobs/**/avatar.mp4' 'jobs/**/avatar.webm' | tail -n 1)
+              JOBJSON=$(git diff --name-only --diff-filter=d "$BEFORE" "$SHA" \
+                        -- 'jobs/*.json' 'jobs/**/broll/**' | grep -E 'jobs/[^/]+\.json$' | tail -n 1)
+              if [ -z "$JOBJSON" ]; then
+                BROLL=$(git diff --name-only --diff-filter=d "$BEFORE" "$SHA" -- 'jobs/**/broll/**' | head -n 1)
+                if [ -n "$BROLL" ]; then
+                  ID=$(echo "$BROLL" | awk -F/ '{print $2}')
+                  JOBJSON="jobs/${ID}.json"
+                fi
+              fi
             fi
             if [ -z "$AVATAR" ]; then
               AVATAR=$(git show --name-only --pretty='' "$SHA" \
                        -- 'jobs/**/avatar.mp4' 'jobs/**/avatar.webm' | tail -n 1)
             fi
+            if [ -z "$JOBJSON" ]; then
+              JOBJSON=$(git show --name-only --pretty='' "$SHA" -- 'jobs/*.json' | tail -n 1)
+            fi
+            if [ -z "$JOBJSON" ]; then
+              BROLL=$(git show --name-only --pretty='' "$SHA" -- 'jobs/**/broll/**' | head -n 1)
+              if [ -n "$BROLL" ]; then
+                ID=$(echo "$BROLL" | awk -F/ '{print $2}')
+                JOBJSON="jobs/${ID}.json"
+              fi
+            fi
             if [ -n "$AVATAR" ]; then
               ID=$(basename "$(dirname "$AVATAR")")
               SPEC="jobs/${ID}.json"
+            elif [ -n "$JOBJSON" ]; then
+              SPEC="$JOBJSON"
             fi
           fi
           if [ -z "$SPEC" ] || [ ! -f "$SPEC" ]; then
