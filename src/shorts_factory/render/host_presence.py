@@ -175,7 +175,7 @@ def host_chrome_css(plan: HostPlan, *, duration: float) -> str:
             "@keyframes host_chrome{0%{opacity:0;top:1920px;left:0px;width:1080px;height:0px}"
             "100%{opacity:0;top:1920px;left:0px;width:1080px;height:0px}}\n"
             ".host-wrap{animation:host_chrome "
-            f"{max(duration, 0.001):.3f}s linear 0s 1 normal both;}}"
+            f"{max(duration, 0.001):.3f}s step-end 0s 1 normal both;}}"
         )
 
     stops: list[tuple[float, str]] = []
@@ -204,10 +204,12 @@ def host_chrome_css(plan: HostPlan, *, duration: float) -> str:
     if stops[-1][0] < 100.0:
         stops.append((100.0, last_body))
     stops = _dedupe(stops)
+    # step-end: hold geometry until the next keyframe — linear morph between
+    # FULL_HOST (1920) and SPLIT (768) makes the presenter "jump" in the band.
     parts = [f"{p:.4f}%{{{body}}}" for p, body in stops]
     return (
         f"@keyframes host_chrome{{{''.join(parts)}}}\n"
-        f".host-wrap{{animation:host_chrome {duration:.3f}s linear 0s 1 normal both;}}"
+        f".host-wrap{{animation:host_chrome {duration:.3f}s step-end 0s 1 normal both;}}"
     )
 
 

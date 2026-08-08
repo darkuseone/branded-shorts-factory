@@ -1,6 +1,7 @@
-# Pre-staged b-roll (life-bio-er100)
+# life-bio-er100 b-roll (REAL footage)
 
-Vertical 9:16 clips from Magnific Freepik free stock, cropped for keyless / QA-stable renders.
-Resolver picks `jobs/<id>/broll/<visual_id>.mp4` before Pexels/Pixabay.
+Staged 9:16 muted clips from:
+- Freepik free stock video (lab, vial, eye exam, clinic, cleanroom, DNA stock)
+- Wikimedia Commons (DNA replication, CRISPR/Doudna, mitosis, cheek cells)
 
-Themes: DNA helix, lab vials, clinical corridor, eye macro, lab mice, biotech corridor.
+Resolver prefers these local files before any generative path.

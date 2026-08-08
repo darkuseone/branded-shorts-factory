@@ -102,8 +102,8 @@
   "visuals": [
     {
       "id": "v1a",
-      "type": "infographic",
-      "query": "epigenetic aging clock glowing crimson rim light",
+      "type": "footage",
+      "query": "DNA replication 3D animation educational",
       "keywords": [
         "cellular aging clock",
         "biological clock crimson light",
@@ -112,10 +112,10 @@
       "start": 0,
       "duration": 2.0,
       "position": "auto",
-      "motion": "zoom_in",
+      "motion": "none",
       "priority": "critical",
       "segment_ref": "hook",
-      "allow_magnific": true,
+      "allow_magnific": false,
       "must_avoid": [
         "cartoon",
         "watermark",
@@ -125,7 +125,7 @@
     {
       "id": "v1b",
       "type": "footage",
-      "query": "dna double helix close up",
+      "query": "DNA genetics stock laboratory",
       "keywords": [
         "dna strand animation",
         "genetic helix dark",
@@ -134,15 +134,15 @@
       "start": 2.0,
       "duration": 2.0,
       "position": "auto",
-      "motion": "kenburns",
+      "motion": "none",
       "priority": "high",
       "segment_ref": "hook",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v2a",
       "type": "footage",
-      "query": "gene therapy vial laboratory",
+      "query": "gloved hand medicine vial pharmacy",
       "keywords": [
         "biotech syringe vial",
         "clinical lab injection",
@@ -151,14 +151,14 @@
       "start": 4.0,
       "duration": 2.5,
       "position": "auto",
-      "motion": "parallax",
+      "motion": "none",
       "segment_ref": "s1",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v2b",
       "type": "footage",
-      "query": "clinical trial laboratory scientists",
+      "query": "scientists group microscope discussion",
       "keywords": [
         "medical research lab",
         "biotech cleanroom",
@@ -167,15 +167,15 @@
       "start": 6.5,
       "duration": 2.5,
       "position": "auto",
-      "motion": "kenburns",
+      "motion": "none",
       "segment_ref": "s1",
       "priority": "high",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v3a",
-      "type": "infographic",
-      "query": "OSK transcription factors OCT4 SOX2 KLF4 badges",
+      "type": "footage",
+      "query": "CRISPR gene editing explainer Jennifer Doudna",
       "keywords": [
         "yamanaka factors diagram",
         "three gene factors icons",
@@ -187,12 +187,13 @@
       "motion": "none",
       "priority": "critical",
       "segment_ref": "s2",
-      "allow_magnific": true
+      "allow_magnific": false,
+      "notes": "real gene-edit footage; OSK labels via data chips"
     },
     {
       "id": "v3b",
-      "type": "infographic",
-      "query": "dna methylation reset animation",
+      "type": "footage",
+      "query": "cell mitosis educational microscopy",
       "keywords": [
         "epigenetic marks reset",
         "gene expression youthful",
@@ -201,15 +202,15 @@
       "start": 11.5,
       "duration": 2.5,
       "position": "fullscreen",
-      "motion": "parallax",
+      "motion": "none",
       "priority": "high",
       "segment_ref": "s2",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v4a",
       "type": "footage",
-      "query": "human eye optic nerve retina",
+      "query": "man eye test ophthalmology clinic",
       "keywords": [
         "retinal ganglion cells",
         "optic nerve close up",
@@ -218,14 +219,14 @@
       "start": 14.0,
       "duration": 2.5,
       "position": "auto",
-      "motion": "zoom_in",
+      "motion": "none",
       "segment_ref": "s3",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v4b",
-      "type": "infographic",
-      "query": "clinical trial phase 1 safety badge",
+      "type": "footage",
+      "query": "doctor examining patient clinic Phase 1",
       "keywords": [
         "phase one trial icon",
         "safety first medical",
@@ -237,12 +238,12 @@
       "motion": "none",
       "priority": "high",
       "segment_ref": "s3",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v5a",
       "type": "footage",
-      "query": "abstract information theory aging data stream crimson",
+      "query": "scientist operating microscope laboratory",
       "keywords": [
         "epigenetic information loss",
         "neural field crimson",
@@ -251,15 +252,15 @@
       "start": 19.0,
       "duration": 2.5,
       "position": "auto",
-      "motion": "parallax",
+      "motion": "none",
       "priority": "high",
       "segment_ref": "s4",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v5b",
       "type": "footage",
-      "query": "dna code scrolling dark screen",
+      "query": "cheek epithelial cells microscope slide prep",
       "keywords": [
         "genetic code terminal",
         "bioinformatics screen",
@@ -268,14 +269,14 @@
       "start": 21.5,
       "duration": 2.5,
       "position": "auto",
-      "motion": "pan_left",
+      "motion": "none",
       "segment_ref": "s4",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v6a",
       "type": "footage",
-      "query": "laboratory mouse research eye",
+      "query": "laboratory rats research observation",
       "keywords": [
         "lab mouse close up",
         "animal vision research",
@@ -284,18 +285,18 @@
       "start": 24.0,
       "duration": 2.5,
       "position": "fullscreen",
-      "motion": "kenburns",
+      "motion": "none",
       "segment_ref": "s5",
       "must_avoid": [
         "gore",
         "cartoon"
       ],
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v6b",
       "type": "footage",
-      "query": "human iris macro close up",
+      "query": "eye examination ophthalmology",
       "keywords": [
         "eye iris detail",
         "human pupil macro",
@@ -307,12 +308,12 @@
       "motion": "zoom_in",
       "priority": "high",
       "segment_ref": "s5",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v7a",
       "type": "footage",
-      "query": "clinical doorway light threshold",
+      "query": "doctor patient clinic corridor",
       "keywords": [
         "hospital corridor light",
         "research facility door",
@@ -321,14 +322,14 @@
       "start": 29.0,
       "duration": 2.5,
       "position": "auto",
-      "motion": "kenburns",
+      "motion": "none",
       "segment_ref": "s6",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v7b",
       "type": "footage",
-      "query": "dna helix against dark background",
+      "query": "DNA genetics molecule stock",
       "keywords": [
         "genetic helix crimson rim",
         "molecular biology abstract",
@@ -337,14 +338,14 @@
       "start": 31.5,
       "duration": 2.5,
       "position": "auto",
-      "motion": "parallax",
+      "motion": "none",
       "segment_ref": "s6",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v8a",
       "type": "footage",
-      "query": "bug in biological code metaphor crimson laboratory",
+      "query": "biologist chemical research experiment",
       "keywords": [
         "code glitch biology",
         "rewrite aging metaphor",
@@ -353,10 +354,10 @@
       "start": 34.0,
       "duration": 3.0,
       "position": "auto",
-      "motion": "zoom_in",
+      "motion": "none",
       "priority": "critical",
       "segment_ref": "s7",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v_meme",
@@ -379,7 +380,7 @@
     {
       "id": "v9a",
       "type": "footage",
-      "query": "futuristic biotechnology abstract",
+      "query": "cleanroom sterility protective suit",
       "keywords": [
         "biotech future dark",
         "cellular rejuvenation abstract",
@@ -388,14 +389,14 @@
       "start": 38.3,
       "duration": 2.4,
       "position": "fullscreen",
-      "motion": "kenburns",
+      "motion": "none",
       "segment_ref": "s8",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v9b",
       "type": "footage",
-      "query": "biotech particles floating well lit",
+      "query": "scientists laboratory discussion",
       "keywords": [
         "dark particles floating",
         "cosmic dust crimson",
@@ -404,14 +405,14 @@
       "start": 40.7,
       "duration": 2.4,
       "position": "fullscreen",
-      "motion": "zoom_out",
+      "motion": "none",
       "segment_ref": "s8",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v9c",
       "type": "footage",
-      "query": "abstract molecular structure dark",
+      "query": "microscope sample close up",
       "keywords": [
         "molecule render dark",
         "protein structure sci-fi",
@@ -420,46 +421,46 @@
       "start": 43.1,
       "duration": 2.4,
       "position": "fullscreen",
-      "motion": "kenburns",
+      "motion": "none",
       "segment_ref": "s8",
       "notes": "CTA bed",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v9d",
       "type": "footage",
-      "query": "futuristic biotechnology abstract",
+      "query": "scientist microscope laboratory",
       "keywords": [
         "biotech future"
       ],
       "start": 45.5,
       "duration": 3.2,
       "position": "auto",
-      "motion": "kenburns",
+      "motion": "none",
       "segment_ref": "s9",
-      "allow_magnific": true
+      "allow_magnific": false
     },
     {
       "id": "v9e",
       "type": "footage",
-      "query": "abstract molecular structure dark",
+      "query": "DNA replication educational",
       "keywords": [
         "molecule"
       ],
       "start": 48.7,
       "duration": 3.3,
       "position": "auto",
-      "motion": "kenburns",
+      "motion": "none",
       "segment_ref": "s9",
       "notes": "CTA bed",
-      "allow_magnific": true
+      "allow_magnific": false
     }
   ],
   "music": {
     "track": "Biotic Pulse",
-    "volume": 0.14,
+    "volume": 0.08,
     "ducking": true,
-    "duck_to": 0.045,
+    "duck_to": 0.03,
     "fade_in": 0.4,
     "fade_out": 1.2
   },
@@ -467,8 +468,14 @@
     {
       "type": "impact",
       "at": 0.05,
-      "intensity": 0.78,
-      "duration": 0.45
+      "intensity": 0.7,
+      "duration": 0.4
+    },
+    {
+      "type": "whoosh",
+      "at": 3.95,
+      "intensity": 0.45,
+      "duration": 0.35
     },
     {
       "type": "whoosh",
@@ -477,28 +484,22 @@
       "duration": 0.4
     },
     {
-      "type": "thump",
-      "at": 19.3,
+      "type": "whoosh",
+      "at": 13.95,
       "intensity": 0.45,
       "duration": 0.35
     },
     {
-      "type": "riser",
-      "at": 32.6,
-      "intensity": 0.55,
-      "duration": 1.2
-    },
-    {
-      "type": "pop",
-      "at": 43.0,
-      "intensity": 0.5,
-      "duration": 0.35
+      "type": "thump",
+      "at": 19.1,
+      "intensity": 0.4,
+      "duration": 0.3
     }
   ],
   "sfx_policy": {
     "max_effects": 5,
-    "min_gap": 1.8,
-    "type_cooldown": 5.0
+    "min_gap": 1.5,
+    "type_cooldown": 3.5
   },
   "captions": {
     "enabled": true,
@@ -538,6 +539,6 @@
     "min_visual_score": 0.35,
     "manual_review_ok": true
   },
-  "_pipeline_note": "studio avatar 54172d7a + Magnific infographics/stills as kenburns broll; 40/60 host; no logo/orbitals; strip avatar audio",
-  "_render_bump": "studio-hostwrap-fix-v3"
+  "_pipeline_note": "Real Freepik+Wikimedia footage staged into broll/; sparse CSS data chips (OCT4/SOX2/KLF4) — not AI Ken-Burns stills. Avatar kept. Audio: strip all video AAC.",
+  "_render_bump": "real-footage-v1"
 }

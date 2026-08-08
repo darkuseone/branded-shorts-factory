@@ -42,6 +42,38 @@ from .timeline import (
 
 log = get_logger("composition")
 
+
+def _reencode_silent(source: Path, target: Path) -> bool:
+    """Fallback when stream-copy strip fails (odd containers / webm)."""
+    import subprocess
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        "ffmpeg",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+        "-i",
+        str(source),
+        "-an",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-crf",
+        "20",
+        "-movflags",
+        "+faststart",
+        str(target),
+    ]
+    try:
+        completed = subprocess.run(cmd, capture_output=True, text=True, timeout=300, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return completed.returncode == 0 and target.exists() and target.stat().st_size > 0
+
+
 FONT_STACK = '"{family}", "Inter", "Helvetica Neue", Arial, system-ui, sans-serif'
 
 _CAPTION_ANCHORS = {
@@ -159,10 +191,19 @@ class CompositionWriter:
                 target = self.media_dir / f"{source.stem}_silent_{counter}{source.suffix}"
                 counter += 1
             if not target.exists() and not remux_without_audio(source, target):
-                # Fall back to a plain copy — better a possible double than a hole.
-                shutil.copy2(source, target)
+                # Re-encode without audio — never copy AAC into the composition
+                # (HyperFrames may mux muted <video> tracks → "two soundtracks").
+                reencoded = self.media_dir / f"{source.stem}_silent_reenc.mp4"
+                if not _reencode_silent(source, reencoded):
+                    log.error(
+                        "cannot strip audio from %s; skipping clip",
+                        source.name,
+                        extra={"stage": "compose"},
+                    )
+                    return None
+                target = reencoded
                 log.warning(
-                    "avatar/video audio strip failed; copied with audio: %s",
+                    "strip via remux failed; re-encoded silent: %s",
                     source.name,
                     extra={"stage": "compose"},
                 )
@@ -209,9 +250,10 @@ class CompositionWriter:
         )
 
         if element.kind in {"video", "avatar"}:
-            # Always strip embedded audio from muted visual clips — the mix
-            # track is the only soundtrack HyperFrames should hear.
-            strip = bool(element.props.get("muted", element.kind == "avatar"))
+            # Always strip embedded audio from visual clips (avatar, b-roll,
+            # memes). HTML ``muted`` is not enough — HyperFrames/Chromium can
+            # still mux AAC into the output and it reads as a second soundtrack.
+            strip = True
             src = self._media_src(element.src, strip_audio=strip)
             if not src:
                 return ""
@@ -386,8 +428,8 @@ class CompositionWriter:
             )
 
         # Timing: a single full-length animation with percentage stops.
-        fade_in = min(0.35, element.duration * 0.3)
-        fade_out = min(0.35, element.duration * 0.3)
+        fade_in = min(0.45, element.duration * 0.35)
+        fade_out = min(0.45, element.duration * 0.35)
         p0 = _pct(element.start, duration)
         p1 = _pct(element.start + fade_in, duration)
         p2 = _pct(element.end - fade_out, duration)
@@ -486,10 +528,10 @@ class CompositionWriter:
                 _keyframes(
                     name,
                     [
-                        (0.0, "color:var(--caption-color);transform:scale(1);"),
-                        (max(pre - 0.0001, 0.0), "color:var(--caption-color);transform:scale(1);"),
-                        (hit, "color:var(--caption-highlight);transform:scale(1.06);"),
-                        (100.0, "color:var(--caption-highlight);transform:scale(1);"),
+                        (0.0, "color:var(--caption-color);"),
+                        (max(pre - 0.0001, 0.0), "color:var(--caption-color);"),
+                        (hit, "color:var(--caption-highlight);"),
+                        (100.0, "color:var(--caption-highlight);"),
                     ],
                 )
             )
@@ -617,7 +659,8 @@ def _entrance_for(element: Element) -> tuple[str, str]:
     if role == "data_chip":
         return "translateY(28px) translateX(-50%)", "translateY(-8px) translateX(-50%)"
     if element.kind == "caption":
-        return "translateY(18px) scale(.98)", "translateY(-10px)"
+        # Opacity-only — translateY/scale on captions reads as text jumping.
+        return "none", "none"
     return "translateY(24px)", "translateY(-12px)"
 
 
@@ -747,7 +790,11 @@ _HOST_BASE_CSS = """\
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 28%;
+  /* Pin framing to upper torso/face — milder than 28% so micro head-bob
+     from HeyGen does not look like the host jumping inside the split band. */
+  object-position: center 12%;
+  transform: scale(1.08);
+  transform-origin: center 18%;
 }}
 """
 
