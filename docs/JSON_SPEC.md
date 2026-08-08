@@ -30,7 +30,7 @@ PYTHONPATH=src python -m shorts_factory validate jobs/my-short.json
 | `script` | array \| string | да | закадровый текст по сегментам |
 | `voice_settings` | object | нет | ElevenLabs v3 |
 | `avatar` | object | нет | HeyGen Avatar 5 / `provider: external` |
-| `ring` | object | нет | Pulse Ring overrides |
+| `ring` | object | нет | **удалено.** Pulse Ring снят; поле игнорируется (info) |
 | `sfx.policy` | object | нет | потолок плотности звукового дизайна |
 | `visuals` | array | да | визуальные слоты (минимум один) |
 | `music` | object | нет | трек из `assets/music/` (пусто → по `rubric`) |
@@ -40,6 +40,9 @@ PYTHONPATH=src python -m shorts_factory validate jobs/my-short.json
 | `cta` | object \| string | нет | призыв к действию |
 | `memes` | object | нет | разрешение на мемы |
 | `constraints` | object | нет | бюджеты и строгость QA |
+
+Цвета по умолчанию (Deep Void / Crimson Pulse): primary `#E11D48`, accent
+`#F43F5E`, background `#050508`, text `#F1F5F9`.
 
 ---
 
@@ -52,10 +55,34 @@ PYTHONPATH=src python -m shorts_factory validate jobs/my-short.json
   "start": 8.2,
   "duration": 5.5,
   "emphasis": "high",
+  "mode": "full_host",
   "on_camera": false,
   "pause_after": 0.2
 }
 ```
+
+### `mode` (обязательно для явного контроля)
+
+Каждый сегмент `hook` / `script[]` задаёт презентацию ведущего:
+
+| Значение | Кадр |
+| --- | --- |
+| `split` | основной режим: футаж сверху (`split_upper`), ведущий в нижней полосе ~45% |
+| `full_host` | ведущий на весь экран (хук и сильные биты) |
+| `full_footage` | только футаж, ведущего нет |
+
+Правила смены режима:
+
+- чередуйте режимы примерно каждые **4–7 с**;
+- один режим **не дольше 12 с** подряд (иначе `ERROR`);
+- `full_host` — на хук и сильные акценты (`emphasis: high`);
+- `split` — основной режим повествования;
+- `full_footage` — красивые футажные моменты.
+
+Если `mode` не указан, остаётся legacy-фолбэк: `on_camera: true` → `full_host`,
+иначе `split`. В новых сценариях пишите `mode` явно.
+
+Прочее:
 
 - `start` / `duration` — секунды на общем таймлайне. Если не указать
   `duration`, он оценивается по длине текста.
@@ -77,13 +104,13 @@ PYTHONPATH=src python -m shorts_factory validate jobs/my-short.json
 
 ```json
 {
-  "id": "v3",
+  "id": "v3a",
   "type": "motion_graphics",
   "query": "sulfuric acid cloud layers cross section",
   "keywords": ["atmosphere layers animation", "chemical cloud diagram"],
   "start": 8.2,
-  "duration": 5.5,
-  "position": "fullscreen",
+  "duration": 1.9,
+  "position": "auto",
   "motion": "parallax",
   "priority": "high",
   "segment_ref": "s2",
@@ -94,12 +121,15 @@ PYTHONPATH=src python -m shorts_factory validate jobs/my-short.json
 }
 ```
 
+Длина шота: предпочтительно **1.5–2.4 с**, жёсткий потолок **3.8 с** (длинный
+сегмент режьте на несколько коротких шотов с разными `query` / `keywords`).
+
 | Поле | Что делает |
 | --- | --- |
 | `type` | `footage`, `image`, `motion_graphics`, `infographic`, `meme`, `screen_record`, `generated`. Определяет и тип медиа, и модификаторы поиска |
 | `query` | основной запрос. **Пишите по-английски** — стоковые API англоязычные |
 | `keywords` | 2–4 синонима; ищутся параллельно с основным, а не «если не нашлось» |
-| `position` | `fullscreen`, `top`, `bottom`, `center`, `pip`, `left`, `right`, `background` |
+| `position` | `auto` (рекомендуется), `split_upper`, `fullscreen`, `top`, `bottom`, `center`, `pip`, `left`, `right`, `background`. `auto` подставляет `split_upper` в `split` и `fullscreen` в остальных режимах сегмента |
 | `motion` | `kenburns`, `parallax`, `zoom_in`, `zoom_out`, `pan_left`, `pan_right`, `none` |
 | `priority` | `high` / `critical` — hero-кадр: эскалирует раньше и может тратить резерв токенов |
 | `segment_ref` | к какому сегменту относится кадр; это и есть контекст для обеих проверок QA |
@@ -133,10 +163,14 @@ PYTHONPATH=src python -m shorts_factory validate jobs/my-short.json
 
 ## `avatar`
 
-`segments` перечисляет id сегментов, где аватар в кадре. Пусто — аватар идёт
-через весь ролик. Аватар озвучивается нашей же дорожкой ElevenLabs (она
-загружается в HeyGen как аудио-ассет); если загрузка недоступна — HeyGen
-получает текст и `voice_id`.
+Ведущий — прямоугольная нижняя полоса (`split`) или fullscreen (`full_host`).
+**Pulse Ring удалён** — не используйте `ring` и не рассчитывайте на круглую
+маску.
+
+`segments` перечисляет id сегментов, где аватар в кадре. Пустой список
+(`[]`) или отсутствие поля → сегменты **автозаполняются** из `mode`: все
+`split` и `full_host` (но не `full_footage`). Явный список должен совпадать
+с этими режимами.
 
 ## `audio_fx[]`
 
@@ -179,8 +213,12 @@ PYTHONPATH=src python -m shorts_factory validate jobs/my-short.json
 ## Чек-лист перед сборкой
 
 - [ ] `validate` без ошибок и без неожиданных предупреждений
+- [ ] у каждого `hook` / `script[]` явно указан `mode`
+- [ ] режимы чередуются ~4–7 с, ни один не держится >12 с
+- [ ] шоты ~1.5–2.4 с (макс. 3.8 с); длинные куски нарезаны
 - [ ] визуалы покрывают ≥ 85% таймлайна (иначе будет фирменная заливка)
 - [ ] у каждого `visuals[]` есть 2–4 английских `keywords`
 - [ ] hero-кадры (крючок, кульминация) помечены `priority`
 - [ ] `voice_id` и `avatar_id` подставлены настоящие
 - [ ] трек из `music.track` действительно лежит в `assets/music/`
+- [ ] нет зависимости от Pulse Ring / `ring`

@@ -12,6 +12,7 @@
     "start": 0,
     "duration": 3.2,
     "emphasis": "high",
+    "mode": "full_host",
     "on_camera": true
   },
 
@@ -20,33 +21,38 @@
       "id": "s1",
       "text": "Сверху всё выглядит спокойно. Плотные облака, мягкий свет.",
       "start": 3.2,
-      "duration": 5.0
+      "duration": 5.0,
+      "mode": "split"
     },
     {
       "id": "s2",
       "text": "Но эти облака — из серной кислоты. И они прячут настоящий ад.",
       "start": 8.2,
       "duration": 5.5,
-      "emphasis": "high"
+      "emphasis": "high",
+      "mode": "full_host"
     },
     {
       "id": "s3",
       "text": "Давление у поверхности — девяносто земных атмосфер. Как километр под водой.",
       "start": 13.7,
-      "duration": 6.0
+      "duration": 6.0,
+      "mode": "full_footage"
     },
     {
       "id": "s4",
       "text": "Температура — четыреста семьдесят градусов. Свинец там течёт как вода.",
       "start": 19.7,
       "duration": 6.3,
-      "emphasis": "high"
+      "emphasis": "high",
+      "mode": "full_host"
     },
     {
       "id": "s5",
       "text": "Причина — углекислый газ. Он держит тепло и не отпускает его наружу.",
       "start": 26.0,
-      "duration": 6.0
+      "duration": 6.0,
+      "mode": "split"
     },
     {
       "id": "s6",
@@ -54,6 +60,7 @@
       "start": 32.0,
       "duration": 5.5,
       "emphasis": "high",
+      "mode": "full_host",
       "on_camera": true
     }
   ],
@@ -77,101 +84,263 @@
     "position": "bottom_right",
     "scale": 0.32,
     "background": "transparent",
-    "segments": ["hook", "s6"]
+    "segments": []
   },
 
   "visuals": [
     {
-      "id": "v1",
+      "id": "v1a",
       "type": "footage",
       "query": "venus planet",
-      "keywords": ["venus surface", "planet venus space", "solar system planet"],
+      "keywords": ["planet venus space", "solar system planet"],
       "start": 0,
-      "duration": 3.2,
-      "position": "fullscreen",
+      "duration": 1.6,
+      "position": "auto",
       "motion": "zoom_in",
       "priority": "critical",
       "segment_ref": "hook",
       "must_avoid": ["cartoon", "logo"]
     },
     {
-      "id": "v2",
+      "id": "v1b",
+      "type": "footage",
+      "query": "venus surface hellish",
+      "keywords": ["venus surface lava", "scorched planet surface"],
+      "start": 1.6,
+      "duration": 1.6,
+      "position": "auto",
+      "motion": "kenburns",
+      "priority": "critical",
+      "segment_ref": "hook",
+      "must_avoid": ["cartoon", "logo"]
+    },
+    {
+      "id": "v2a",
       "type": "footage",
       "query": "thick clouds from orbit",
-      "keywords": ["planet clouds atmosphere", "cloud layer from space", "swirling clouds"],
+      "keywords": ["planet clouds atmosphere", "cloud layer from space"],
       "start": 3.2,
-      "duration": 5.0,
-      "position": "fullscreen",
+      "duration": 1.7,
+      "position": "auto",
       "motion": "kenburns",
       "segment_ref": "s1"
     },
     {
-      "id": "v3",
+      "id": "v2b",
+      "type": "footage",
+      "query": "swirling cloud layer soft light",
+      "keywords": ["swirling clouds", "soft cloud glow orbit"],
+      "start": 4.9,
+      "duration": 1.7,
+      "position": "auto",
+      "motion": "parallax",
+      "segment_ref": "s1"
+    },
+    {
+      "id": "v2c",
+      "type": "footage",
+      "query": "dense atmosphere haze planet",
+      "keywords": ["atmospheric haze", "opaque cloud deck"],
+      "start": 6.6,
+      "duration": 1.6,
+      "position": "auto",
+      "motion": "zoom_in",
+      "segment_ref": "s1"
+    },
+    {
+      "id": "v3a",
       "type": "motion_graphics",
       "query": "sulfuric acid cloud layers cross section",
       "keywords": ["atmosphere layers animation", "chemical cloud diagram"],
       "start": 8.2,
-      "duration": 5.5,
-      "position": "fullscreen",
+      "duration": 1.9,
+      "position": "auto",
       "motion": "parallax",
       "priority": "high",
       "segment_ref": "s2"
     },
     {
-      "id": "v4",
+      "id": "v3b",
+      "type": "footage",
+      "query": "yellow acid clouds toxic",
+      "keywords": ["sulfuric clouds", "venus acid atmosphere"],
+      "start": 10.1,
+      "duration": 1.9,
+      "position": "auto",
+      "motion": "kenburns",
+      "priority": "high",
+      "segment_ref": "s2"
+    },
+    {
+      "id": "v3c",
+      "type": "motion_graphics",
+      "query": "hellish under cloud reveal",
+      "keywords": ["atmosphere reveal animation", "hidden surface hell"],
+      "start": 12.0,
+      "duration": 1.7,
+      "position": "auto",
+      "motion": "zoom_in",
+      "priority": "high",
+      "segment_ref": "s2"
+    },
+    {
+      "id": "v4a",
       "type": "footage",
       "query": "deep ocean pressure submarine",
-      "keywords": ["underwater deep sea", "submersible descending", "crushing depth"],
+      "keywords": ["underwater deep sea", "submersible descending"],
       "start": 13.7,
-      "duration": 6.0,
+      "duration": 2.0,
       "position": "fullscreen",
       "motion": "zoom_out",
       "segment_ref": "s3"
     },
     {
-      "id": "v5",
+      "id": "v4b",
+      "type": "footage",
+      "query": "crushing depth dark ocean",
+      "keywords": ["crushing depth", "abyssal trench dark"],
+      "start": 15.7,
+      "duration": 2.0,
+      "position": "fullscreen",
+      "motion": "kenburns",
+      "segment_ref": "s3"
+    },
+    {
+      "id": "v4c",
+      "type": "footage",
+      "query": "submersible hull pressure stress",
+      "keywords": ["deep sea vehicle", "pressure gauge underwater"],
+      "start": 17.7,
+      "duration": 2.0,
+      "position": "fullscreen",
+      "motion": "parallax",
+      "segment_ref": "s3"
+    },
+    {
+      "id": "v5a",
       "type": "infographic",
       "query": "temperature comparison chart planets",
       "keywords": ["thermometer data visualization", "heat scale animation"],
       "start": 19.7,
-      "duration": 6.3,
-      "position": "fullscreen",
+      "duration": 2.1,
+      "position": "auto",
       "motion": "none",
       "priority": "high",
       "segment_ref": "s4",
       "must_include": ["temperature"]
     },
     {
-      "id": "v6",
+      "id": "v5b",
+      "type": "footage",
+      "query": "molten metal pouring liquid",
+      "keywords": ["molten lead flow", "liquid metal pour"],
+      "start": 21.8,
+      "duration": 2.1,
+      "position": "auto",
+      "motion": "zoom_in",
+      "priority": "high",
+      "segment_ref": "s4"
+    },
+    {
+      "id": "v5c",
+      "type": "footage",
+      "query": "extreme heat haze industrial",
+      "keywords": ["heat shimmer", "scorching furnace glow"],
+      "start": 23.9,
+      "duration": 2.1,
+      "position": "auto",
+      "motion": "kenburns",
+      "priority": "high",
+      "segment_ref": "s4"
+    },
+    {
+      "id": "v6a",
       "type": "footage",
       "query": "carbon dioxide greenhouse gas",
-      "keywords": ["industrial smoke atmosphere", "heat haze", "co2 emissions"],
+      "keywords": ["industrial smoke atmosphere", "co2 emissions"],
       "start": 26.0,
-      "duration": 6.0,
-      "position": "fullscreen",
+      "duration": 2.0,
+      "position": "auto",
       "motion": "kenburns",
       "segment_ref": "s5"
     },
     {
-      "id": "v7",
+      "id": "v6b",
+      "type": "motion_graphics",
+      "query": "greenhouse effect heat trap diagram",
+      "keywords": ["heat retention animation", "infrared trapped atmosphere"],
+      "start": 28.0,
+      "duration": 2.0,
+      "position": "auto",
+      "motion": "parallax",
+      "segment_ref": "s5"
+    },
+    {
+      "id": "v6c",
+      "type": "footage",
+      "query": "heat haze desert sun",
+      "keywords": ["heat haze", "thermal shimmer air"],
+      "start": 30.0,
+      "duration": 2.0,
+      "position": "auto",
+      "motion": "zoom_in",
+      "segment_ref": "s5"
+    },
+    {
+      "id": "v7a",
       "type": "footage",
       "query": "earth from space",
       "keywords": ["blue planet earth orbit", "earth horizon sunrise"],
       "start": 32.0,
-      "duration": 5.5,
-      "position": "fullscreen",
+      "duration": 1.9,
+      "position": "auto",
       "motion": "zoom_in",
       "priority": "high",
       "segment_ref": "s6"
     },
     {
-      "id": "v8",
+      "id": "v7b",
+      "type": "footage",
+      "query": "early earth cloudy ocean world",
+      "keywords": ["young earth oceans", "habitable planet clouds"],
+      "start": 33.9,
+      "duration": 1.9,
+      "position": "auto",
+      "motion": "kenburns",
+      "priority": "high",
+      "segment_ref": "s6"
+    },
+    {
+      "id": "v7c",
+      "type": "footage",
+      "query": "venus and earth comparison space",
+      "keywords": ["twin planets contrast", "venus earth side by side"],
+      "start": 35.8,
+      "duration": 1.7,
+      "position": "auto",
+      "motion": "parallax",
+      "priority": "high",
+      "segment_ref": "s6"
+    },
+    {
+      "id": "v8a",
       "type": "motion_graphics",
-      "query": "abstract particles loop dark blue",
+      "query": "abstract particles loop dark void",
       "keywords": ["minimal motion background", "particle field loop"],
       "start": 37.5,
-      "duration": 4.5,
-      "position": "fullscreen",
+      "duration": 2.2,
+      "position": "auto",
+      "motion": "parallax",
+      "allow_magnific": false
+    },
+    {
+      "id": "v8b",
+      "type": "motion_graphics",
+      "query": "crimson pulse particles dark",
+      "keywords": ["subtle red particle drift", "void background motion"],
+      "start": 39.7,
+      "duration": 2.3,
+      "position": "auto",
       "motion": "parallax",
       "allow_magnific": false
     }
@@ -201,8 +370,8 @@
     "size": 74,
     "position": "center_bottom",
     "max_chars_per_line": 22,
-    "highlight_color": "#FFD400",
-    "text_color": "#FFFFFF",
+    "highlight_color": "#E11D48",
+    "text_color": "#F1F5F9",
     "stroke": true,
     "uppercase": false
   },
@@ -211,9 +380,9 @@
     "logo": "brand/logo.png",
     "logo_position": "top_left",
     "lower_third": false,
-    "color_primary": "#0F62FE",
-    "color_accent": "#FFD400",
-    "color_background": "#050608",
+    "color_primary": "#E11D48",
+    "color_accent": "#F43F5E",
+    "color_background": "#050508",
     "font_family": "Inter",
     "outro_card": true,
     "safe_area": true,
