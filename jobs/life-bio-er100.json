@@ -495,5 +495,5 @@
     "manual_review_ok": true
   },
   "_pipeline_note": "hybrid modes; local Magnific Freepik broll staged; no Pulse Ring",
-  "_render_bump": "broll-staged-retrigger"
+  "_render_bump": "soft-check-retrigger"
 }
