@@ -77,12 +77,12 @@
     "tone": "meta_irony"
   },
   "avatar": {
-    "look_id": "37fa8301e2dd46b2a8d11d4b766a6a50",
+    "look_id": "54172d7a5b2946ed8a592dee955fb0c7",
     "look_id_edit": "48f0bd5e217548ed8bbdfb67e5c1efc9",
     "look_id_edit_studio": "eca97e9fe55f40799b25943fdc1a1599",
-    "look_id_prev_studio": "54172d7a5b2946ed8a592dee955fb0c7",
+    "look_id_prev": "37fa8301e2dd46b2a8d11d4b766a6a50",
     "look_id_neon_desk_host": "bbcc4667fbb14ec69a73b34f455cda54",
-    "_comment_looks": "SELECTED: D1 Tattooed studio. Rectangular SPLIT/FULL_HOST (no Pulse Ring). Avatar V + NIKITA2.",
+    "_comment_looks": "SELECTED default: 54172d7a… (studio). Prev: 37fa8301…. Rectangular SPLIT/FULL_HOST (no Pulse Ring). Avatar V + NIKITA2.",
     "group_id": "d0573be250724c23bed61037f1c7490d",
     "engine": "avatar_v",
     "motion_prompt": "Lively sci-pop host talking to camera with energy. Natural eyebrow raises on the question, slight forward lean on the punchline, small expressive head tilts, soft ironic smile. Micro head turns and blinks only — no big hand gestures in close face shots. Curious and sharp, not stiff."
