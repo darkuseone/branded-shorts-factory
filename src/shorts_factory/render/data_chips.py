@@ -48,24 +48,35 @@ def extract_chips(spec: Spec, *, limit: int = MAX_CHIPS) -> list[DataChip]:
     hook_end = spec.hook.end if spec.hook else 0.0
     climax = spec.cta.start if spec.cta else max(0.0, spec.duration_target - 3.5)
 
-    # Pass 1: OSK trio + Phase 1 — real UI over footage, not baked AI text.
-    priority = ("OCT4", "SOX2", "KLF4", "Phase 1")
+    # Pass 1: one OSK chip (combined) + Phase 1 — avoid same-track overlaps.
     for segment in spec.all_segments:
         if spec.hook is not None and segment.id == spec.hook.id:
             continue
         if segment.start < hook_end or segment.end > climax - 0.5:
             continue
-        labels = [lab for lab in _labels_in(segment.text) if lab in priority]
-        for i, label in enumerate(labels):
-            key = label.upper()
-            if key in seen:
-                continue
-            start = segment.start + 0.4 + 0.7 * i
-            duration = min(1.9, max(1.2, segment.duration - 0.7 * i - 0.3))
-            if start + 0.5 > climax:
-                continue
-            chips.append(DataChip(text=label, start=start, duration=duration))
-            seen.add(key)
+        labels = [lab for lab in _labels_in(segment.text) if lab in ("OCT4", "SOX2", "KLF4")]
+        if len(labels) >= 2:
+            text = " · ".join(labels)
+            key = text.upper()
+            if key not in seen:
+                chips.append(
+                    DataChip(
+                        text=text,
+                        start=segment.start + 0.45,
+                        duration=min(2.6, segment.duration - 0.6),
+                    )
+                )
+                seen.add(key)
+                seen.update(lab.upper() for lab in labels)
+                if len(chips) >= limit:
+                    return chips
+        elif "Phase 1" in _labels_in(segment.text) and "PHASE 1" not in seen:
+            chips.append(
+                DataChip(
+                    text="Phase 1", start=segment.start + 0.45, duration=min(2.2, segment.duration - 0.5)
+                )
+            )
+            seen.add("PHASE 1")
             if len(chips) >= limit:
                 return chips
 
