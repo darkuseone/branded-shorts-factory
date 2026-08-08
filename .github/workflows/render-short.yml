@@ -47,6 +47,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Pick the scenario
         id: pick
@@ -54,9 +56,18 @@ jobs:
           if [ -n "${{ inputs.spec }}" ]; then
             SPEC="${{ inputs.spec }}"
           else
-            # Avatar push: jobs/<id>/avatar.mp4 → jobs/<id>.json
-            AVATAR=$(git diff --name-only --diff-filter=d '${{ github.event.before }}' '${{ github.sha }}' \
-                     -- 'jobs/**/avatar.mp4' 'jobs/**/avatar.webm' | tail -n 1)
+            BEFORE="${{ github.event.before }}"
+            SHA="${{ github.sha }}"
+            AVATAR=""
+            if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] \
+               && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+              AVATAR=$(git diff --name-only --diff-filter=d "$BEFORE" "$SHA" \
+                       -- 'jobs/**/avatar.mp4' 'jobs/**/avatar.webm' | tail -n 1)
+            fi
+            if [ -z "$AVATAR" ]; then
+              AVATAR=$(git show --name-only --pretty='' "$SHA" \
+                       -- 'jobs/**/avatar.mp4' 'jobs/**/avatar.webm' | tail -n 1)
+            fi
             if [ -n "$AVATAR" ]; then
               ID=$(basename "$(dirname "$AVATAR")")
               SPEC="jobs/${ID}.json"
