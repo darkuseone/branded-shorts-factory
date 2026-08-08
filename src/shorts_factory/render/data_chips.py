@@ -1,8 +1,8 @@
 """Data chips — minimal JetBrains Mono number callouts for sci-pop Shorts.
 
 Extracts a few hard numbers / clinical labels from the narration and places
-short panel chips that rise with a UI blip. Never more than three per video;
-never in the hook or the CTA. Keeps the frame clean: one fact, one chip, one job.
+short panel chips. Never more than three per video; never overlapping on the
+same HyperFrames track; never in the hook or the CTA.
 """
 
 from __future__ import annotations
@@ -28,10 +28,8 @@ _CHIP_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Prefer crisp clinical labels over raw number scraping when present.
 _LABEL_ORDER = ("OCT4", "SOX2", "KLF4", "ER-100", "Phase 1", "NAION")
-
-MAX_CHIPS = 4
+MAX_CHIPS = 3
 
 
 @dataclass(frozen=True)
@@ -48,70 +46,67 @@ def extract_chips(spec: Spec, *, limit: int = MAX_CHIPS) -> list[DataChip]:
     hook_end = spec.hook.end if spec.hook else 0.0
     climax = spec.cta.start if spec.cta else max(0.0, spec.duration_target - 3.5)
 
-    # Pass 1: one OSK chip (combined) + Phase 1 — avoid same-track overlaps.
-    for segment in spec.all_segments:
-        if spec.hook is not None and segment.id == spec.hook.id:
-            continue
-        if segment.start < hook_end or segment.end > climax - 0.5:
-            continue
-        labels = [lab for lab in _labels_in(segment.text) if lab in ("OCT4", "SOX2", "KLF4")]
-        if len(labels) >= 2:
-            text = " · ".join(labels)
-            key = text.upper()
-            if key not in seen:
-                chips.append(
-                    DataChip(
-                        text=text,
-                        start=segment.start + 0.45,
-                        duration=min(2.6, segment.duration - 0.6),
-                    )
-                )
-                seen.add(key)
-                seen.update(lab.upper() for lab in labels)
-                if len(chips) >= limit:
-                    return chips
-        elif "Phase 1" in _labels_in(segment.text) and "PHASE 1" not in seen:
-            chips.append(
-                DataChip(
-                    text="Phase 1", start=segment.start + 0.45, duration=min(2.2, segment.duration - 0.5)
-                )
-            )
-            seen.add("PHASE 1")
-            if len(chips) >= limit:
-                return chips
+    def try_add(text: str, start: float, duration: float, *, also_seen: tuple[str, ...] = ()) -> bool:
+        if len(chips) >= limit:
+            return False
+        key = text.upper()
+        if key in seen:
+            return False
+        end = start + duration
+        if start + 0.4 > climax:
+            return False
+        for existing in chips:
+            if start < existing.start + existing.duration and existing.start < end:
+                return False
+        chips.append(DataChip(text=text, start=start, duration=duration))
+        seen.add(key)
+        for extra in also_seen:
+            seen.add(extra.upper())
+        return True
 
-    # Pass 2: other clinical tokens / numbers.
     for segment in spec.all_segments:
         if spec.hook is not None and segment.id == spec.hook.id:
             continue
         if segment.start < hook_end or segment.end > climax - 0.5:
             continue
-        for label in _labels_in(segment.text):
-            key = label.upper()
-            if key in seen:
-                continue
-            start = segment.start + 0.45
-            duration = min(2.0, max(1.3, segment.duration * 0.4))
-            if start + 0.5 > climax:
-                continue
-            chips.append(DataChip(text=label, start=start, duration=duration))
-            seen.add(key)
-            if len(chips) >= limit:
-                return chips
-        match = _CHIP_RE.search(segment.text)
-        if not match:
-            continue
-        label = _clean_chip(match.group(1))
-        if len(label) < 2 or len(label) > 42 or label.upper() in seen:
-            continue
-        start = segment.start + min(0.55, max(0.25, segment.duration * 0.2))
-        duration = min(2.4, max(1.6, segment.duration * 0.45))
-        if start + duration > climax:
-            continue
-        chips.append(DataChip(text=label, start=start, duration=duration))
-        seen.add(label.upper())
+
+        osk = [lab for lab in _labels_in(segment.text) if lab in ("OCT4", "SOX2", "KLF4")]
+        if len(osk) >= 2:
+            try_add(
+                " · ".join(osk),
+                segment.start + 0.45,
+                min(2.6, max(1.6, segment.duration - 0.6)),
+                also_seen=tuple(osk),
+            )
+
+        if "Phase 1" in _labels_in(segment.text):
+            try_add("Phase 1", segment.start + 0.45, min(2.2, max(1.5, segment.duration - 0.5)))
+
+        if "ER-100" in _labels_in(segment.text):
+            try_add("ER-100", segment.start + 0.45, min(2.0, max(1.4, segment.duration * 0.4)))
+
         if len(chips) >= limit:
             break
+
+    if len(chips) < limit:
+        for segment in spec.all_segments:
+            if spec.hook is not None and segment.id == spec.hook.id:
+                continue
+            if segment.start < hook_end or segment.end > climax - 0.5:
+                continue
+            match = _CHIP_RE.search(segment.text)
+            if not match:
+                continue
+            label = _clean_chip(match.group(1))
+            if len(label) < 2 or len(label) > 42:
+                continue
+            try_add(
+                label,
+                segment.start + min(0.55, max(0.25, segment.duration * 0.2)),
+                min(2.4, max(1.6, segment.duration * 0.45)),
+            )
+            if len(chips) >= limit:
+                break
 
     return chips
 
@@ -121,7 +116,6 @@ def _labels_in(text: str) -> list[str]:
     found: list[str] = []
     for label in _LABEL_ORDER:
         token = label.upper().replace(" ", "").replace("-", "")
-        # Allow ER-100 / ER100
         hay = upper.replace("-", "")
         if token.replace("-", "") in hay:
             found.append(label)
