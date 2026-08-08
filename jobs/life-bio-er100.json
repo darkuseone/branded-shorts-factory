@@ -1,0 +1,375 @@
+{
+  "id": "life-bio-er100",
+  "title": "Учёные взламывают код старения прямо сейчас",
+  "topic": "Life Biosciences ER-100 first patient dosed Phase 1 epigenetic reprogramming OSK optic neuropathies",
+  "rubric": "наука",
+  "language": "ru",
+  "duration_target": 48,
+
+  "hook": {
+    "id": "hook",
+    "text": "Учёные прямо сейчас взламывают код старения. Не в фантастике — в клинике.",
+    "start": 0,
+    "duration": 4.0,
+    "emphasis": "high",
+    "mode": "full_host",
+    "on_camera": true
+  },
+
+  "script": [
+    {
+      "id": "s1",
+      "text": "Life Biosciences ввела первому человеку терапию ER-100: частичный эпигенетический ресет клеток.",
+      "start": 4.0,
+      "duration": 5.0,
+      "mode": "split"
+    },
+    {
+      "id": "s2",
+      "text": "Три фактора — OCT4, SOX2, KLF4. Они возвращают клеткам более молодой паттерн экспрессии генов.",
+      "start": 9.0,
+      "duration": 5.0,
+      "emphasis": "high",
+      "mode": "full_footage"
+    },
+    {
+      "id": "s3",
+      "text": "Старт — не бессмертие, а зрение: глаукома и NAION. Phase 1 проверяет безопасность.",
+      "start": 14.0,
+      "duration": 5.0,
+      "mode": "split"
+    },
+    {
+      "id": "s4",
+      "text": "Идея простая и дерзкая: если старение — потеря информации, её можно переписать.",
+      "start": 19.0,
+      "duration": 5.0,
+      "emphasis": "high",
+      "mode": "full_host",
+      "on_camera": true
+    },
+    {
+      "id": "s5",
+      "text": "Мыши уже возвращали зрение. Теперь вопрос — сработает ли это в человеке.",
+      "start": 24.0,
+      "duration": 5.0,
+      "mode": "full_footage"
+    },
+    {
+      "id": "s6",
+      "text": "Пока рано праздновать вечную жизнь. Но код впервые открыли на клинической двери.",
+      "start": 29.0,
+      "duration": 5.0,
+      "mode": "split"
+    },
+    {
+      "id": "s7",
+      "text": "Если старость — баг в коде… мы готовы его править?",
+      "start": 34.0,
+      "duration": 5.5,
+      "emphasis": "high",
+      "mode": "full_host",
+      "on_camera": true
+    }
+  ],
+
+  "voice_settings": {
+    "provider": "elevenlabs",
+    "model": "eleven_v3",
+    "language": "ru"
+  },
+
+  "avatar": {
+    "enabled": true,
+    "provider": "heygen",
+    "avatar_id": "37fa8301e2dd46b2a8d11d4b766a6a50",
+    "version": "avatar_5",
+    "position": "fullscreen",
+    "scale": 1.0,
+    "background": "transparent",
+    "segments": []
+  },
+
+  "visuals": [
+    {
+      "id": "v1a",
+      "type": "generated",
+      "query": "epigenetic aging clock glowing in deep void",
+      "keywords": ["cellular aging clock", "biological clock crimson light", "dna clock sci-doc"],
+      "start": 0,
+      "duration": 2.0,
+      "position": "auto",
+      "motion": "zoom_in",
+      "priority": "critical",
+      "segment_ref": "hook",
+      "allow_magnific": true,
+      "must_avoid": ["cartoon", "watermark", "text overlay"]
+    },
+    {
+      "id": "v1b",
+      "type": "footage",
+      "query": "dna double helix close up",
+      "keywords": ["dna strand animation", "genetic helix dark", "molecular dna"],
+      "start": 2.0,
+      "duration": 2.0,
+      "position": "auto",
+      "motion": "kenburns",
+      "priority": "high",
+      "segment_ref": "hook"
+    },
+    {
+      "id": "v2a",
+      "type": "footage",
+      "query": "gene therapy vial laboratory",
+      "keywords": ["biotech syringe vial", "clinical lab injection", "pharma research lab"],
+      "start": 4.0,
+      "duration": 2.5,
+      "position": "auto",
+      "motion": "parallax",
+      "segment_ref": "s1"
+    },
+    {
+      "id": "v2b",
+      "type": "footage",
+      "query": "clinical trial laboratory scientists",
+      "keywords": ["medical research lab", "biotech cleanroom", "first in human trial"],
+      "start": 6.5,
+      "duration": 2.5,
+      "position": "auto",
+      "motion": "kenburns",
+      "segment_ref": "s1",
+      "priority": "high"
+    },
+    {
+      "id": "v3a",
+      "type": "infographic",
+      "query": "OSK transcription factors OCT4 SOX2 KLF4",
+      "keywords": ["yamanaka factors diagram", "three gene factors icons", "epigenetic reprogramming schematic"],
+      "start": 9.0,
+      "duration": 2.5,
+      "position": "fullscreen",
+      "motion": "none",
+      "priority": "critical",
+      "segment_ref": "s2",
+      "allow_magnific": true,
+      "must_include": ["factors"]
+    },
+    {
+      "id": "v3b",
+      "type": "motion_graphics",
+      "query": "dna methylation reset animation",
+      "keywords": ["epigenetic marks reset", "gene expression youthful", "chromatin remodeling"],
+      "start": 11.5,
+      "duration": 2.5,
+      "position": "fullscreen",
+      "motion": "parallax",
+      "priority": "high",
+      "segment_ref": "s2",
+      "allow_magnific": true
+    },
+    {
+      "id": "v4a",
+      "type": "footage",
+      "query": "human eye optic nerve retina",
+      "keywords": ["retinal ganglion cells", "optic nerve close up", "glaucoma eye exam"],
+      "start": 14.0,
+      "duration": 2.5,
+      "position": "auto",
+      "motion": "zoom_in",
+      "segment_ref": "s3"
+    },
+    {
+      "id": "v4b",
+      "type": "infographic",
+      "query": "clinical trial phase 1 safety badge",
+      "keywords": ["phase one trial icon", "safety first medical", "clinical stages diagram"],
+      "start": 16.5,
+      "duration": 2.5,
+      "position": "auto",
+      "motion": "none",
+      "priority": "high",
+      "segment_ref": "s3",
+      "allow_magnific": true
+    },
+    {
+      "id": "v5a",
+      "type": "generated",
+      "query": "abstract information theory aging data stream deep void",
+      "keywords": ["epigenetic information loss", "neural field crimson", "code of life abstract"],
+      "start": 19.0,
+      "duration": 2.5,
+      "position": "auto",
+      "motion": "parallax",
+      "priority": "high",
+      "segment_ref": "s4",
+      "allow_magnific": true
+    },
+    {
+      "id": "v5b",
+      "type": "footage",
+      "query": "dna code scrolling dark screen",
+      "keywords": ["genetic code terminal", "bioinformatics screen", "genome sequence"],
+      "start": 21.5,
+      "duration": 2.5,
+      "position": "auto",
+      "motion": "pan_left",
+      "segment_ref": "s4"
+    },
+    {
+      "id": "v6a",
+      "type": "footage",
+      "query": "laboratory mouse research eye",
+      "keywords": ["lab mouse close up", "animal vision research", "biomedical mouse"],
+      "start": 24.0,
+      "duration": 2.5,
+      "position": "fullscreen",
+      "motion": "kenburns",
+      "segment_ref": "s5",
+      "must_avoid": ["gore", "cartoon"]
+    },
+    {
+      "id": "v6b",
+      "type": "footage",
+      "query": "human iris macro close up",
+      "keywords": ["eye iris detail", "human pupil macro", "vision closeup"],
+      "start": 26.5,
+      "duration": 2.5,
+      "position": "fullscreen",
+      "motion": "zoom_in",
+      "priority": "high",
+      "segment_ref": "s5"
+    },
+    {
+      "id": "v7a",
+      "type": "footage",
+      "query": "clinical doorway light threshold",
+      "keywords": ["hospital corridor light", "research facility door", "threshold light beam"],
+      "start": 29.0,
+      "duration": 2.5,
+      "position": "auto",
+      "motion": "kenburns",
+      "segment_ref": "s6"
+    },
+    {
+      "id": "v7b",
+      "type": "footage",
+      "query": "dna helix against dark background",
+      "keywords": ["genetic helix crimson rim", "molecular biology abstract", "epigenome concept"],
+      "start": 31.5,
+      "duration": 2.5,
+      "position": "auto",
+      "motion": "parallax",
+      "segment_ref": "s6"
+    },
+    {
+      "id": "v8a",
+      "type": "generated",
+      "query": "bug in biological code metaphor deep void crimson",
+      "keywords": ["code glitch biology", "rewrite aging metaphor", "digital dna error"],
+      "start": 34.0,
+      "duration": 3.0,
+      "position": "auto",
+      "motion": "zoom_in",
+      "priority": "critical",
+      "segment_ref": "s7",
+      "allow_magnific": true
+    },
+    {
+      "id": "v_meme",
+      "type": "meme",
+      "query": "shock jaw drop reaction",
+      "keywords": ["шок", "вау", "челюсть", "поворот"],
+      "start": 37.0,
+      "duration": 1.3,
+      "position": "fullscreen",
+      "motion": "none",
+      "priority": "high",
+      "segment_ref": "s7"
+    },
+    {
+      "id": "v9a",
+      "type": "footage",
+      "query": "futuristic biotechnology abstract",
+      "keywords": ["biotech future dark", "cellular rejuvenation abstract", "longevity science visual"],
+      "start": 38.3,
+      "duration": 3.2,
+      "position": "fullscreen",
+      "motion": "kenburns",
+      "segment_ref": "s7"
+    },
+    {
+      "id": "v9b",
+      "type": "footage",
+      "query": "deep space void particles",
+      "keywords": ["dark particles floating", "cosmic dust crimson", "void atmosphere"],
+      "start": 41.5,
+      "duration": 3.2,
+      "position": "fullscreen",
+      "motion": "zoom_out",
+      "segment_ref": "s7"
+    },
+    {
+      "id": "v9c",
+      "type": "footage",
+      "query": "abstract molecular structure dark",
+      "keywords": ["molecule render dark", "protein structure sci-fi", "cellular matrix"],
+      "start": 44.7,
+      "duration": 3.3,
+      "position": "fullscreen",
+      "motion": "kenburns",
+      "segment_ref": "s7",
+      "notes": "CTA bed"
+    }
+  ],
+
+  "music": {
+    "track": "Biotic Pulse",
+    "volume": 0.14,
+    "ducking": true,
+    "duck_to": 0.045,
+    "fade_in": 0.4,
+    "fade_out": 1.2
+  },
+
+  "audio_fx": [
+    { "type": "impact", "at": 0.05, "intensity": 0.78, "duration": 0.85 },
+    { "type": "whoosh", "at": 3.95, "intensity": 0.55, "duration": 0.65 },
+    { "type": "whoosh", "at": 8.95, "intensity": 0.5, "duration": 0.6 },
+    { "type": "thump", "at": 19.3, "intensity": 0.5, "duration": 0.5 },
+    { "type": "riser", "at": 32.0, "intensity": 0.62, "duration": 2.2 },
+    { "type": "pop", "at": 39.5, "intensity": 0.5, "duration": 0.5 }
+  ],
+
+  "captions": {
+    "enabled": true,
+    "style": "karaoke",
+    "position": "center_bottom",
+    "max_chars_per_line": 22,
+    "stroke": true,
+    "uppercase": false
+  },
+
+  "brand_elements": {},
+
+  "cta": {
+    "text": "Подпишись — сигнал из будущего",
+    "start": 39.5,
+    "duration": 5.0,
+    "style": "badge"
+  },
+
+  "memes": {
+    "enabled": true,
+    "tags": ["шок", "вау", "челюсть", "поворот"],
+    "max_count": 1,
+    "max_duration": 1.3
+  },
+
+  "constraints": {
+    "magnific_token_budget": 14,
+    "allow_generative": true,
+    "require_vision_qa": false,
+    "min_visual_score": 0.45,
+    "manual_review_ok": true
+  }
+}
