@@ -331,7 +331,7 @@ def main() -> int:
     work.mkdir(parents=True, exist_ok=True)
 
     make_news_cards(broll / "news")
-    cuts = build_dense_cut_list(broll_dir=broll, duration=42.0)
+    cuts = build_dense_cut_list(broll_dir=broll, duration=50.0)
     (work / "cuts.json").write_text(json.dumps(cuts_to_json(cuts), indent=2), encoding="utf-8")
     print(f"cuts={len(cuts)}")
 
@@ -352,10 +352,10 @@ def main() -> int:
                 prefer = "photo" if (idx + int(t)) % 2 == 0 else "video"
                 asset = pick_for_themes(
                     assets,
-                    ["ai", "hacker", "access", "neon", "network", "ransomware"],
+                    ["openai", "huggingface", "schema", "arrow", "exploit", "hacker", "hf", "access"],
                     used=used,
                     prefer=prefer,
-                ) or pick_for_themes(assets, ["cyber", "ai"], used=used)
+                ) or pick_for_themes(assets, ["openai", "hf", "exploit"], used=used)
                 if asset is None:
                     break
                 used.add(str(asset))
@@ -406,19 +406,20 @@ def main() -> int:
             str(out),
         ]
     )
-    # Trim / pad to exactly 42s
+    # Trim / pad to exactly 50s (full VO + soft CTA settle after speech)
+    target_dur = 50.0
     probe = subprocess.check_output(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(out)],
         text=True,
     ).strip()
     dur = float(probe or 0.0)
-    if abs(dur - 42.0) > 0.15:
-        padded = work / "aleko-master-42.mp4"
-        if dur < 42.0:
-            pad = 42.0 - dur
+    if abs(dur - target_dur) > 0.15:
+        padded = work / "aleko-master-pad.mp4"
+        if dur < target_dur:
+            pad = target_dur - dur
             vf = f"tpad=stop_mode=clone:stop_duration={pad:.3f}"
         else:
-            vf = "trim=duration=42,setpts=PTS-STARTPTS"
+            vf = f"trim=duration={target_dur:.3f},setpts=PTS-STARTPTS"
         run(
             [
                 "ffmpeg",
@@ -428,7 +429,7 @@ def main() -> int:
                 "-vf",
                 vf,
                 "-t",
-                "42",
+                f"{target_dur:.3f}",
                 "-an",
                 "-c:v",
                 "libx264",
@@ -444,7 +445,7 @@ def main() -> int:
             ]
         )
         padded.replace(out)
-        probe = "42.000000"
+        probe = f"{target_dur:.6f}"
     print("baked", out, "duration", probe, "segments", len(segment_files))
     return 0
 

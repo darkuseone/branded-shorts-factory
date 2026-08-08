@@ -67,10 +67,19 @@ def score_asset(path: Path, themes: Iterable[str]) -> float:
             if len(word) < 3:
                 continue
             if word in tokens or any(word in t for t in tokens):
-                score += 2.0
+                score += 3.0
             elif word[:4] in "".join(tokens):
-                score += 0.5
-    # Prefer larger / sharper looking files lightly.
+                score += 0.8
+    parts = {p.lower() for p in path.parts}
+    # Prefer real news photos + schematics over decorative / generated stock.
+    if "real" in parts:
+        score += 6.0
+    if "infographic" in parts or "news" in parts:
+        score += 5.0
+    if tokens & {"schema", "arrow", "openai", "huggingface", "hf", "sandbox", "exploit", "dataset", "zeroday"}:
+        score += 4.0
+    if "stock" in parts:
+        score -= 2.0
     try:
         size_mb = path.stat().st_size / (1024 * 1024)
         score += min(2.0, size_mb / 8.0)
@@ -97,13 +106,15 @@ def list_staged_assets(broll_dir: Path) -> list[Path]:
     for path in sorted(broll_dir.rglob("*")):
         if not path.is_file():
             continue
+        # `_unused` / other underscore dirs are parked generated plates.
+        if any(part.startswith("_") for part in path.relative_to(broll_dir).parts):
+            continue
         if path.stem.lower() in skip_stems:
             continue
         if path.suffix.lower() not in IMAGE_EXTS | VIDEO_EXTS:
             continue
         if path.stat().st_size < 32_768:
             continue
-        # Prefer stock/news plates; deprioritize tiny cached graphics later via score.
         found.append(path)
     return found
 
@@ -140,26 +151,26 @@ def build_dense_cut_list(
     """
     assets = list_staged_assets(broll_dir)
     host_windows = host_windows or [
-        # Aether v3 hybrid: FULL_HOST / SPLIT denser than Aleko v1
+        # Aether v3: host anchors + room for meaning-matched plates / schemas
         (0.0, 2.0, "host_full"),
-        (5.0, 8.0, "split"),
-        (10.2, 13.0, "split"),
-        (16.0, 19.0, "split"),
-        (22.0, 25.0, "split"),
-        (28.0, 31.0, "split"),
-        (34.0, 37.0, "host_full"),
-        (39.5, 42.0, "host_full"),
+        (5.5, 8.0, "split"),
+        (10.5, 13.0, "split"),
+        (17.0, 19.5, "split"),
+        (23.0, 25.5, "split"),
+        (29.0, 31.5, "split"),
+        (35.0, 38.5, "host_full"),
+        (47.0, 50.0, "host_full"),
     ]
 
-    # Theme packs mapped roughly to Aether script beats.
+    # Noun-rigid themes: filenames in real/ + infographic/ must win these beats.
     beat_themes: list[tuple[float, float, list[str]]] = [
-        (2.0, 5.0, ["news", "hf", "breach", "soc", "ransomware"]),
-        (8.0, 10.2, ["openai", "ai", "access", "neon"]),
-        (13.0, 16.0, ["exploit", "network", "hacker", "binary", "zeroday"]),
-        (19.0, 22.0, ["access", "breach", "hud", "ransomware"]),
-        (25.0, 28.0, ["cheat", "dataset", "news", "newspaper"]),
-        (31.0, 34.0, ["server", "swarm", "neon", "mind", "hacker"]),
-        (37.0, 39.5, ["ai", "mind", "neon", "threat"]),
+        (2.0, 5.5, ["hf", "soc", "breach", "news", "huggingface", "five", "days", "timeline"]),
+        (8.0, 10.5, ["openai", "admit", "arrow", "huggingface", "schema", "gpt"]),
+        (13.0, 17.0, ["exploit", "sandbox", "chain", "hacker", "terminal", "zeroday"]),
+        (19.5, 23.0, ["access", "denied", "proxy", "circuit", "openai", "escape"]),
+        (25.5, 29.0, ["cheat", "dataset", "swarm", "hf", "huggingface", "monitors"]),
+        (31.5, 35.0, ["server", "openai", "hack", "swarm", "code", "gpt"]),
+        (38.5, 47.0, ["schema", "arrow", "openai", "huggingface", "ai", "question"]),
     ]
 
     cuts: list[FootageCut] = []

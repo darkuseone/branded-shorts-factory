@@ -234,7 +234,16 @@ CHANNEL_SFX_BY_ROLE: dict[str, tuple[str, ...]] = {
     "ui": ("35917__altemark__claves2",),
     "click": ("35917__altemark__claves2",),
     "thump": ("35926__altemark__tom1",),
-    "pop": ("35924__altemark__snare3",),
+    # Soft subscribe bell (thumbpiano) instead of snare pop.
+    "pop": (
+        "35273__linse__thumbpiano_gb_1",
+        "35274__linse__thumbpiano_gb_2",
+        "35265__linse__thumbpiano_d_1",
+    ),
+    "bell": (
+        "35273__linse__thumbpiano_gb_1",
+        "35274__linse__thumbpiano_gb_2",
+    ),
     "riser": ("air-effect-single-sharp",),
     "power_down": ("35917__altemark__claves2",),
     "power_up": ("35917__altemark__claves2",),

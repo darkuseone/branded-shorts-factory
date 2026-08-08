@@ -55,6 +55,11 @@ _MOTION_KEYFRAMES = {
     "pan_right": ("scale(1.12) translateX(-3%)", "scale(1.12) translateX(3%)"),
     "parallax": ("scale(1.08) translateY(2%)", "scale(1.14) translateY(-2%)"),
     "none": ("scale(1.02)", "scale(1.02)"),
+    # Smooth fast 3D-ish subscribe pop (perspective + rotateX + settle).
+    "subscribe_3d": (
+        "perspective(900px) rotateX(34deg) translateY(64px) scale(0.72)",
+        "perspective(900px) rotateX(0deg) translateY(0px) scale(1)",
+    ),
 }
 
 
@@ -188,6 +193,9 @@ class CompositionWriter:
             f'data-start="{data_start:.3f}" data-duration="{data_duration:.3f}" '
             f'data-track-index="{element.track}"'
         )
+        role = element.props.get("role")
+        if role:
+            attrs += f' data-role="{html.escape(str(role))}"'
 
         if element.kind in {"video", "avatar"}:
             src = self._media_src(element.src)
@@ -377,10 +385,18 @@ class CompositionWriter:
             )
 
         # Timing: a single full-length animation with percentage stops.
-        fade_in = min(0.35, element.duration * 0.3)
-        fade_out = min(0.35, element.duration * 0.3)
+        role = element.props.get("role", "")
+        if role == "subscribe" or element.props.get("motion") == "subscribe_3d":
+            # Fast but readable 3D pop (~0.55s), soft fade-out.
+            fade_in = min(0.55, max(0.35, element.duration * 0.22))
+            fade_out = min(0.28, element.duration * 0.18)
+        else:
+            fade_in = min(0.35, element.duration * 0.3)
+            fade_out = min(0.35, element.duration * 0.3)
         p0 = _pct(element.start, duration)
         p1 = _pct(element.start + fade_in, duration)
+        # Settle keyframe shortly after entrance for subscribe bounce feel.
+        p1b = _pct(element.start + fade_in + min(0.12, element.duration * 0.05), duration)
         p2 = _pct(element.end - fade_out, duration)
         p3 = _pct(element.end, duration)
 
@@ -388,21 +404,39 @@ class CompositionWriter:
             motion_from, motion_to = _MOTION_KEYFRAMES.get(
                 element.props.get("motion", "none"), _MOTION_KEYFRAMES["none"]
             )
-            # The move itself runs between p1 and p2; CSS interpolates linearly
-            # between those stops, so the fades never eat into the motion.
-            keyframes.append(
-                _keyframes(
-                    name,
-                    [
-                        (0.0, f"opacity:0;transform:{motion_from};"),
-                        (p0, f"opacity:0;transform:{motion_from};"),
-                        (p1, f"opacity:1;transform:{motion_from};"),
-                        (p2, f"opacity:1;transform:{motion_to};"),
-                        (p3, f"opacity:0;transform:{motion_to};"),
-                        (100.0, f"opacity:0;transform:{motion_to};"),
-                    ],
+            if element.props.get("motion") == "subscribe_3d":
+                # Overshoot settle: enter → slightly large → final.
+                overshoot = "perspective(900px) rotateX(-4deg) translateY(-4px) scale(1.06)"
+                keyframes.append(
+                    _keyframes(
+                        name,
+                        [
+                            (0.0, f"opacity:0;transform:{motion_from};"),
+                            (p0, f"opacity:0;transform:{motion_from};"),
+                            (p1, f"opacity:1;transform:{overshoot};"),
+                            (p1b, f"opacity:1;transform:{motion_to};"),
+                            (p2, f"opacity:1;transform:{motion_to};"),
+                            (p3, f"opacity:0;transform:{motion_to};"),
+                            (100.0, f"opacity:0;transform:{motion_to};"),
+                        ],
+                    )
                 )
-            )
+            else:
+                # The move itself runs between p1 and p2; CSS interpolates linearly
+                # between those stops, so the fades never eat into the motion.
+                keyframes.append(
+                    _keyframes(
+                        name,
+                        [
+                            (0.0, f"opacity:0;transform:{motion_from};"),
+                            (p0, f"opacity:0;transform:{motion_from};"),
+                            (p1, f"opacity:1;transform:{motion_from};"),
+                            (p2, f"opacity:1;transform:{motion_to};"),
+                            (p3, f"opacity:0;transform:{motion_to};"),
+                            (100.0, f"opacity:0;transform:{motion_to};"),
+                        ],
+                    )
+                )
         elif element.kind == "avatar":
             if self.ring.visible:
                 # Visibility is driven by the ring wrapper; keep the video opaque.
@@ -766,22 +800,33 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   font-weight: 800;
   box-shadow: 0 18px 60px rgba(0,0,0,.45);
 }}
+/* 3D subscribe pill — crimson depth + soft specular edge */
+.clip.image[data-role="subscribe"],
+img.clip[data-role="subscribe"] {{
+  transform-style: preserve-3d;
+  filter: drop-shadow(0 18px 40px rgba(225, 29, 72, 0.55));
+}}
 .subscribe-inner {{
   display: inline-flex;
   align-items: center;
   gap: 14px;
-  padding: 18px 36px;
+  padding: 20px 40px;
   border-radius: 999px;
-  background: var(--primary);
+  background: linear-gradient(180deg, #F43F5E 0%, #E11D48 55%, #9F1239 100%);
   color: #fff;
-  font-size: 40px;
+  font-size: 42px;
   font-weight: 800;
   letter-spacing: 0.01em;
-  box-shadow: 0 14px 40px rgba(255, 42, 60, 0.45), 0 0 0 1px rgba(255,255,255,0.12);
+  box-shadow:
+    0 16px 42px rgba(225, 29, 72, 0.55),
+    0 2px 0 rgba(255,255,255,0.28) inset,
+    0 -6px 14px rgba(0,0,0,0.35) inset,
+    0 0 0 1px rgba(255,255,255,0.12);
+  transform-style: preserve-3d;
 }}
 .subscribe-bell {{
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: #fff;
   box-shadow: inset 0 -6px 0 rgba(0,0,0,.12);

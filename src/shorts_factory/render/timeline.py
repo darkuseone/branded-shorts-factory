@@ -459,18 +459,19 @@ def _add_brand(timeline: Timeline, spec: Spec) -> None:
 
 
 def _add_cta(timeline: Timeline, spec: Spec) -> None:
-    """CTA text then a subscribe badge image in the last ~2s (no same-track overlap).
+    """Subscribe badge in the last window with room for a smooth 3D pop-in.
 
-    HyperFrames often drops late CSS-only text chips; a pre-baked PNG with an
-    explicit layout box paints reliably in the last two seconds.
+    Prefer a dedicated subscribe window (≥2.6s) so entrance animation can play
+    without colliding with the last spoken line.
     """
-    sub_start = max(0.0, spec.duration_target - 2.0)
+    # Soft settle window: last 3.0s by default (override via cta.start).
+    sub_start = max(0.0, spec.duration_target - 3.0)
     if spec.cta and spec.cta.text:
         cta_start = spec.cta.start
-        # Keep CTA off the subscribe window so HyperFrames does not see overlap.
+        # Keep any text CTA off the subscribe window.
         cta_end = min(spec.cta.end, sub_start)
         cta_duration = cta_end - cta_start
-        if cta_duration >= 0.5:
+        if cta_duration >= 0.5 and spec.cta.style != "badge":
             timeline.add(
                 Element(
                     id="cta",
@@ -488,12 +489,12 @@ def _add_cta(timeline: Timeline, spec: Spec) -> None:
                 )
             )
         else:
-            # CTA lands in the last 2s — show only subscribe badge.
+            # Badge-style CTA: use the earlier of scripted CTA start / last-3s.
             sub_start = min(sub_start, cta_start)
 
-    sub_duration = max(1.2, spec.duration_target - sub_start)
+    sub_duration = max(2.6, spec.duration_target - sub_start)
     badge = Path(__file__).resolve().parents[3] / "brand" / "subscribe-badge.png"
-    badge_w, badge_h = 440, 100
+    badge_w, badge_h = 480, 120
     if badge.is_file():
         timeline.add(
             Element(
@@ -506,8 +507,9 @@ def _add_cta(timeline: Timeline, spec: Spec) -> None:
                 props={
                     "role": "subscribe",
                     "absolute_clock": True,
+                    "motion": "subscribe_3d",
                     "layout": {
-                        "top": VIDEO_HEIGHT - BOTTOM_UI_RESERVE - badge_h - 28,
+                        "top": VIDEO_HEIGHT - BOTTOM_UI_RESERVE - badge_h - 36,
                         "left": (VIDEO_WIDTH - badge_w) // 2,
                         "width": badge_w,
                         "height": badge_h,

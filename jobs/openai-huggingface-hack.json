@@ -4,7 +4,7 @@
   "topic": "OpenAI GPT-5.6 Sol ExploitGym sandbox escape Hugging Face July 2026 — proxy zero-day, five days blind defense, answer-key cheat on HF datasets",
   "rubric": "AI",
   "language": "ru",
-  "duration_target": 42,
+  "duration_target": 50,
   "hook": {
     "id": "hook",
     "text": "А что если ИИ сам взломал чужой датасет — и никто не заметил?",
@@ -52,21 +52,21 @@
       "id": "s6",
       "text": "Тысячи коротких действий. Рой песочниц. Пять дней обороны вслепую.",
       "start": 31.0,
-      "duration": 3.0,
+      "duration": 4.0,
       "emphasis": "high"
     },
     {
       "id": "s7",
       "text": "Не злодейский сюжет. Модели просто слишком хорошо хотели списать тест.",
-      "start": 34.0,
-      "duration": 3.0,
+      "start": 35.0,
+      "duration": 3.5,
       "on_camera": true
     },
     {
       "id": "s8",
       "text": "А вы думали, нас что, не захватит AI? Как вы думаете — это уже происходит?",
-      "start": 37.0,
-      "duration": 3.0,
+      "start": 38.5,
+      "duration": 8.5,
       "emphasis": "high",
       "on_camera": true
     }
@@ -93,20 +93,22 @@
     {
       "id": "aleko-master",
       "type": "footage",
-      "query": "aether hybrid master bake host_full split footage_full icons arrows news",
+      "query": "aether real news plates schemas arrows openai huggingface",
       "keywords": [
         "openai",
         "huggingface",
         "exploit",
         "sandbox",
-        "zero-day"
+        "zero-day",
+        "schema",
+        "arrow"
       ],
       "start": 0.0,
-      "duration": 42.0,
+      "duration": 50.0,
       "position": "fullscreen",
       "motion": "none",
       "priority": "critical",
-      "notes": "Aether v3 pack: see docs/packs/aether-openai-huggingface-hack.txt — FULL_HOST/SPLIT/FULL_FOOTAGE + icon→arrow→HF + finale meme/question"
+      "notes": "Real Freepik SOC/hack photos + OpenAI→HF arrow schemas; generic gen stock parked in stock/_unused"
     }
   ],
   "music": {
@@ -114,23 +116,22 @@
     "ducking": true,
     "duck_to": 0.04,
     "fade_in": 0.4,
-    "fade_out": 1.0
+    "fade_out": 1.2
   },
   "audio_fx": [
     {"type": "impact", "at": 0.05, "intensity": 0.7, "duration": 0.35},
     {"type": "whoosh", "at": 2.0, "intensity": 0.45, "duration": 0.4},
-    {"type": "whoosh", "at": 5.0, "intensity": 0.4, "duration": 0.4},
-    {"type": "whoosh", "at": 8.0, "intensity": 0.45, "duration": 0.4},
-    {"type": "whoosh", "at": 9.0, "intensity": 0.5, "duration": 0.35},
-    {"type": "ui", "at": 10.2, "intensity": 0.4, "duration": 0.3},
-    {"type": "ui", "at": 13.0, "intensity": 0.4, "duration": 0.3},
+    {"type": "whoosh", "at": 5.5, "intensity": 0.4, "duration": 0.4},
+    {"type": "ui", "at": 8.0, "intensity": 0.4, "duration": 0.3},
+    {"type": "whoosh", "at": 10.5, "intensity": 0.45, "duration": 0.4},
+    {"type": "thump", "at": 13.0, "intensity": 0.5, "duration": 0.35},
     {"type": "thump", "at": 19.0, "intensity": 0.55, "duration": 0.4},
-    {"type": "whoosh", "at": 22.0, "intensity": 0.4, "duration": 0.4},
-    {"type": "whoosh", "at": 25.0, "intensity": 0.4, "duration": 0.4},
+    {"type": "whoosh", "at": 23.0, "intensity": 0.4, "duration": 0.4},
+    {"type": "ui", "at": 25.5, "intensity": 0.4, "duration": 0.3},
     {"type": "thump", "at": 31.0, "intensity": 0.5, "duration": 0.4},
-    {"type": "riser", "at": 33.0, "intensity": 0.45, "duration": 1.0},
-    {"type": "whoosh", "at": 37.0, "intensity": 0.5, "duration": 0.35},
-    {"type": "pop", "at": 40.0, "intensity": 0.45, "duration": 0.35}
+    {"type": "riser", "at": 34.0, "intensity": 0.45, "duration": 1.0},
+    {"type": "whoosh", "at": 38.5, "intensity": 0.45, "duration": 0.35},
+    {"type": "pop", "at": 47.05, "intensity": 0.55, "duration": 0.8}
   ],
   "captions": {
     "enabled": true,
@@ -149,13 +150,13 @@
   },
   "cta": {
     "text": "Подписаться",
-    "start": 40.0,
-    "duration": 2.0,
+    "start": 47.0,
+    "duration": 3.0,
     "style": "badge"
   },
   "memes": {
     "enabled": true,
-    "tags": ["поворот", "ирония", "шок", "естественно"],
+    "tags": ["поворот", "ирония", "шок"],
     "max_duration": 1.3
   },
   "constraints": {
