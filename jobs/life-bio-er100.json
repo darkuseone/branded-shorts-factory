@@ -494,5 +494,6 @@
     "min_visual_score": 0.35,
     "manual_review_ok": true
   },
-  "_pipeline_note": "hybrid modes; local Magnific Freepik broll staged; no Pulse Ring"
+  "_pipeline_note": "hybrid modes; local Magnific Freepik broll staged; no Pulse Ring",
+  "_render_bump": "broll-staged-retrigger"
 }
