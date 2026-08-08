@@ -10,7 +10,7 @@ from shorts_factory.render.host_presence import (
     orbital_arcs_svg,
     plan_host,
 )
-from shorts_factory.render.timeline import Timeline, build_timeline
+from shorts_factory.render.timeline import Timeline
 from shorts_factory.spec import parse_spec
 
 
@@ -118,7 +118,7 @@ def test_orbitals_are_thin_not_neon_ring():
     svg = orbital_arcs_svg(primary="#E11D48")
     assert "host-orbitals" in svg
     assert "pulse-ring" not in svg
-    assert "stroke-width=\"1" in svg or "stroke-width=\"1.5" in svg
+    assert 'stroke-width="1' in svg or 'stroke-width="1.5' in svg
 
 
 def test_composition_has_host_wrap_no_pulse_ring(tmp_path):

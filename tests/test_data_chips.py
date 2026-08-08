@@ -43,14 +43,70 @@ def test_extract_chips_finds_numbers_outside_hook():
             },
         ],
         visuals=[
-            {"id": "v1", "type": "footage", "query": "venus clouds", "start": 0, "duration": 2.0, "position": "auto"},
-            {"id": "v2", "type": "footage", "query": "venus orbit", "start": 2.0, "duration": 2.0, "position": "auto"},
-            {"id": "v3", "type": "footage", "query": "pressure gauge", "start": 4.0, "duration": 2.5, "position": "auto"},
-            {"id": "v4", "type": "footage", "query": "deep ocean", "start": 6.5, "duration": 2.5, "position": "auto"},
-            {"id": "v5", "type": "footage", "query": "heat haze", "start": 9.0, "duration": 2.5, "position": "fullscreen"},
-            {"id": "v6", "type": "footage", "query": "molten lead", "start": 11.5, "duration": 2.5, "position": "fullscreen"},
-            {"id": "v7", "type": "footage", "query": "venus surface", "start": 14.0, "duration": 3.0, "position": "auto"},
-            {"id": "v8", "type": "footage", "query": "greenhouse effect", "start": 17.0, "duration": 3.0, "position": "auto"},
+            {
+                "id": "v1",
+                "type": "footage",
+                "query": "venus clouds",
+                "start": 0,
+                "duration": 2.0,
+                "position": "auto",
+            },  # noqa: E501
+            {
+                "id": "v2",
+                "type": "footage",
+                "query": "venus orbit",
+                "start": 2.0,
+                "duration": 2.0,
+                "position": "auto",
+            },  # noqa: E501
+            {
+                "id": "v3",
+                "type": "footage",
+                "query": "pressure gauge",
+                "start": 4.0,
+                "duration": 2.5,
+                "position": "auto",
+            },  # noqa: E501
+            {
+                "id": "v4",
+                "type": "footage",
+                "query": "deep ocean",
+                "start": 6.5,
+                "duration": 2.5,
+                "position": "auto",
+            },  # noqa: E501
+            {
+                "id": "v5",
+                "type": "footage",
+                "query": "heat haze",
+                "start": 9.0,
+                "duration": 2.5,
+                "position": "fullscreen",
+            },  # noqa: E501
+            {
+                "id": "v6",
+                "type": "footage",
+                "query": "molten lead",
+                "start": 11.5,
+                "duration": 2.5,
+                "position": "fullscreen",
+            },  # noqa: E501
+            {
+                "id": "v7",
+                "type": "footage",
+                "query": "venus surface",
+                "start": 14.0,
+                "duration": 3.0,
+                "position": "auto",
+            },  # noqa: E501
+            {
+                "id": "v8",
+                "type": "footage",
+                "query": "greenhouse effect",
+                "start": 17.0,
+                "duration": 3.0,
+                "position": "auto",
+            },  # noqa: E501
         ],
         cta={"text": "Подпишись", "start": 17, "duration": 2.5},
     )

@@ -238,9 +238,9 @@ class CompositionWriter:
         return (
             f'<div id="host_wrap" class="host-wrap" style="z-index:30;">'
             f'<div class="host-frame" style="position:absolute;'
-            f'top:{layout["top"]}px;left:{layout["left"]}px;'
+            f"top:{layout['top']}px;left:{layout['left']}px;"
             f'width:{layout["width"]}px;height:{layout["height"]}px;">'
-            f'{orbital_arcs_svg(primary=primary)}'
+            f"{orbital_arcs_svg(primary=primary)}"
             f'<div class="host-video">'
             f'<video {attrs} src="{src}" muted playsinline preload="auto"{loop}></video>'
             f"</div></div></div>"
@@ -296,7 +296,7 @@ class CompositionWriter:
                     else ""
                 ),
                 caption_glow=_caption_glow_css(brand.color_primary),
-            )
+            ),
         ]
 
         for element in self.timeline.visual_elements:

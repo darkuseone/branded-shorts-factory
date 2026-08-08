@@ -112,11 +112,8 @@ def verify_output(spec_path: Path, output: Path, composition_dir: Path | None) -
     if means and max(m for _, m in means) < 25:
         errors.append(f"all sampled frames near-black: {means}")
     by_t = {t: m for t, m in means}
-    if by_t.get(1.0, 0) and by_t.get(33.0, 0):
-        if by_t[33.0] < by_t[1.0] + 15:
-            errors.append(
-                f"mid/late b-roll looks dead (t1={by_t[1.0]:.1f}, t33={by_t[33.0]:.1f})"
-            )
+    if by_t.get(1.0, 0) and by_t.get(33.0, 0) and by_t[33.0] < by_t[1.0] + 15:
+        errors.append(f"mid/late b-roll looks dead (t1={by_t[1.0]:.1f}, t33={by_t[33.0]:.1f})")
 
     if composition_dir is not None:
         errors.extend(verify_composition_css(composition_dir))

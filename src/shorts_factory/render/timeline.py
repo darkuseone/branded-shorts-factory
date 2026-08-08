@@ -211,10 +211,7 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
         is_full = position in {"fullscreen", "background"}
         # Memes punch over b-roll on their own track so they never fight
         # fullscreen footage or data chips (HyperFrames forbids same-track overlap).
-        if visual.type == "meme":
-            track = TRACK_MEME
-        else:
-            track = TRACK_BROLL if is_full else TRACK_OVERLAY
+        track = TRACK_MEME if visual.type == "meme" else TRACK_BROLL if is_full else TRACK_OVERLAY
 
         props: dict[str, Any] = {
             "layout": layout,
@@ -226,7 +223,10 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
             "position": position,
         }
         # Dim/hide b-roll under FULL_HOST so the presenter owns the frame.
-        segment = spec.segment_by_id(visual.segment_ref) if visual.segment_ref else spec.segment_at(visual.start)
+        if visual.segment_ref:
+            segment = spec.segment_by_id(visual.segment_ref)
+        else:
+            segment = spec.segment_at(visual.start)
         if segment is not None and segment.mode == "full_host" and visual.type != "meme":
             props["dim"] = True
         if asset.is_video:

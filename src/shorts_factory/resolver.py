@@ -313,9 +313,7 @@ class VisualResolver:
         matches = sorted(
             path
             for path in folder.iterdir()
-            if path.is_file()
-            and path.stem == visual.id
-            and path.suffix.lower() in extensions
+            if path.is_file() and path.stem == visual.id and path.suffix.lower() in extensions
         )
         if not matches:
             return None

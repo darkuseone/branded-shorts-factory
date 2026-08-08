@@ -55,7 +55,7 @@ def resolved_for(spec, fake_media: Path, outcome: str = "accepted") -> list[Reso
 
 
 def test_timeline_places_every_visual_on_a_video_track(minimal_spec, fake_media):
-    from shorts_factory.render.timeline import TRACK_OVERLAY, TRACK_MEME
+    from shorts_factory.render.timeline import TRACK_MEME, TRACK_OVERLAY
 
     timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, fake_media))
     placed = [

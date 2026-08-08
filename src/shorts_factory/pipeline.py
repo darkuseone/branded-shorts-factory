@@ -15,6 +15,7 @@ Full local path still works: ``build`` does prepare + avatar API + render.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import shutil
 import subprocess
@@ -39,8 +40,8 @@ from .logging_utils import get_logger, stage
 from .qa.gate import QAReport
 from .render.audio_mix import build_mix
 from .render.composition import CompositionWriter
-from .render.hyperframes import HyperFramesRunner, RenderResult
 from .render.host_presence import HostPlan, plan_host
+from .render.hyperframes import HyperFramesRunner, RenderResult
 from .render.timeline import Timeline, build_timeline, use_mixed_audio
 from .resolver import ResolvedVisual, VisualResolver
 from .spec import Spec, SpecIssue
@@ -251,9 +252,7 @@ class Pipeline:
 
         with stage("compose", log) as info:
             composition_dir = self.settings.paths.composition / spec.id
-            writer = CompositionWriter(
-                spec, result.timeline, composition_dir, host=plan_host(spec)
-            )
+            writer = CompositionWriter(spec, result.timeline, composition_dir, host=plan_host(spec))
             composition = writer.write()
             result.composition_dir = composition.directory
             info["media"] = composition.media_files
@@ -377,10 +376,8 @@ class Pipeline:
                 log.warning("could not extract avatar audio: %s", exc, extra={"stage": "voice"})
                 return []
             voice_path = target
-            try:
+            with contextlib.suppress(OSError):
                 shutil.copy2(target, job_dir / "voice_from_avatar.mp3")
-            except OSError:
-                pass
         else:
             target = self.settings.paths.voice / f"{spec.id}_from_avatar.mp3"
             target.parent.mkdir(parents=True, exist_ok=True)

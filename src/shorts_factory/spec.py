@@ -989,7 +989,8 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
         ),
         highlight_color=_string(captions_data, "highlight_color", "captions", col, default=DEFAULT_PRIMARY)
         or DEFAULT_PRIMARY,
-        text_color=_string(captions_data, "text_color", "captions", col, default=DEFAULT_TEXT) or DEFAULT_TEXT,
+        text_color=_string(captions_data, "text_color", "captions", col, default=DEFAULT_TEXT)
+        or DEFAULT_TEXT,
         stroke=_bool(captions_data, "stroke", "captions", col, True),
         uppercase=_bool(captions_data, "uppercase", "captions", col, False),
     )
@@ -1010,7 +1011,9 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
         or DEFAULT_PRIMARY,
         color_accent=_string(brand_data, "color_accent", "brand_elements", col, default=DEFAULT_ACCENT)
         or DEFAULT_ACCENT,
-        color_background=_string(brand_data, "color_background", "brand_elements", col, default=DEFAULT_BACKGROUND)
+        color_background=_string(
+            brand_data, "color_background", "brand_elements", col, default=DEFAULT_BACKGROUND
+        )
         or DEFAULT_BACKGROUND,
         font_family=_string(brand_data, "font_family", "brand_elements", col, default="Inter") or "Inter",
         intro_sting=_bool(brand_data, "intro_sting", "brand_elements", col, False),
