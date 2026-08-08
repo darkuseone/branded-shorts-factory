@@ -4,7 +4,7 @@
   "topic": "Life Biosciences ER-100 first patient dosed Phase 1 epigenetic reprogramming OSK optic neuropathies",
   "rubric": "наука",
   "language": "ru",
-  "duration_target": 48,
+  "duration_target": 52,
   "hook": {
     "id": "hook",
     "text": "Учёные прямо сейчас взламывают код старения. Не в фантастике — в клинике.",
@@ -82,13 +82,13 @@
     "version": "avatar_5",
     "position": "fullscreen",
     "scale": 1.0,
-    "background": "transparent",
+    "background": "studio",
     "segments": []
   },
   "visuals": [
     {
       "id": "v1a",
-      "type": "footage",
+      "type": "infographic",
       "query": "epigenetic aging clock glowing crimson rim light",
       "keywords": [
         "cellular aging clock",
@@ -101,7 +101,7 @@
       "motion": "zoom_in",
       "priority": "critical",
       "segment_ref": "hook",
-      "allow_magnific": false,
+      "allow_magnific": true,
       "must_avoid": [
         "cartoon",
         "watermark",
@@ -123,7 +123,7 @@
       "motion": "kenburns",
       "priority": "high",
       "segment_ref": "hook",
-      "allow_magnific": false
+      "allow_magnific": true
     },
     {
       "id": "v2a",
@@ -139,7 +139,7 @@
       "position": "auto",
       "motion": "parallax",
       "segment_ref": "s1",
-      "allow_magnific": false
+      "allow_magnific": true
     },
     {
       "id": "v2b",
@@ -156,11 +156,11 @@
       "motion": "kenburns",
       "segment_ref": "s1",
       "priority": "high",
-      "allow_magnific": false
+      "allow_magnific": true
     },
     {
       "id": "v3a",
-      "type": "footage",
+      "type": "infographic",
       "query": "OSK transcription factors OCT4 SOX2 KLF4",
       "keywords": [
         "yamanaka factors diagram",
@@ -173,14 +173,14 @@
       "motion": "none",
       "priority": "critical",
       "segment_ref": "s2",
-      "allow_magnific": false,
+      "allow_magnific": true,
       "must_include": [
         "factors"
       ]
     },
     {
       "id": "v3b",
-      "type": "footage",
+      "type": "infographic",
       "query": "dna methylation reset animation",
       "keywords": [
         "epigenetic marks reset",
@@ -193,7 +193,7 @@
       "motion": "parallax",
       "priority": "high",
       "segment_ref": "s2",
-      "allow_magnific": false
+      "allow_magnific": true
     },
     {
       "id": "v4a",
@@ -209,11 +209,11 @@
       "position": "auto",
       "motion": "zoom_in",
       "segment_ref": "s3",
-      "allow_magnific": false
+      "allow_magnific": true
     },
     {
       "id": "v4b",
-      "type": "footage",
+      "type": "infographic",
       "query": "clinical trial phase 1 safety badge",
       "keywords": [
         "phase one trial icon",
@@ -226,7 +226,7 @@
       "motion": "none",
       "priority": "high",
       "segment_ref": "s3",
-      "allow_magnific": false
+      "allow_magnific": true
     },
     {
       "id": "v5a",
@@ -243,7 +243,7 @@
       "motion": "parallax",
       "priority": "high",
       "segment_ref": "s4",
-      "allow_magnific": false
+      "allow_magnific": true
     },
     {
       "id": "v5b",
@@ -259,7 +259,7 @@
       "position": "auto",
       "motion": "pan_left",
       "segment_ref": "s4",
-      "allow_magnific": false
+      "allow_magnific": true
     },
     {
       "id": "v6a",
@@ -279,7 +279,7 @@
         "gore",
         "cartoon"
       ],
-      "allow_magnific": false
+      "allow_magnific": true
     },
     {
       "id": "v6b",
@@ -296,7 +296,7 @@
       "motion": "zoom_in",
       "priority": "high",
       "segment_ref": "s5",
-      "allow_magnific": false
+      "allow_magnific": true
     },
     {
       "id": "v7a",
@@ -312,7 +312,7 @@
       "position": "auto",
       "motion": "kenburns",
       "segment_ref": "s6",
-      "allow_magnific": false
+      "allow_magnific": true
     },
     {
       "id": "v7b",
@@ -328,7 +328,7 @@
       "position": "auto",
       "motion": "parallax",
       "segment_ref": "s6",
-      "allow_magnific": false
+      "allow_magnific": true
     },
     {
       "id": "v8a",
@@ -345,7 +345,7 @@
       "motion": "zoom_in",
       "priority": "critical",
       "segment_ref": "s7",
-      "allow_magnific": false
+      "allow_magnific": true
     },
     {
       "id": "v_meme",
@@ -363,7 +363,7 @@
       "motion": "none",
       "priority": "high",
       "segment_ref": "s7",
-      "allow_magnific": false
+      "allow_magnific": true
     },
     {
       "id": "v9a",
@@ -375,11 +375,11 @@
         "longevity science visual"
       ],
       "start": 38.3,
-      "duration": 2.2,
+      "duration": 2.4,
       "position": "fullscreen",
       "motion": "kenburns",
       "segment_ref": "s7",
-      "allow_magnific": false
+      "allow_magnific": true
     },
     {
       "id": "v9b",
@@ -390,12 +390,12 @@
         "cosmic dust crimson",
         "void atmosphere"
       ],
-      "start": 41.5,
-      "duration": 2.2,
+      "start": 40.7,
+      "duration": 2.4,
       "position": "fullscreen",
       "motion": "zoom_out",
       "segment_ref": "s7",
-      "allow_magnific": false
+      "allow_magnific": true
     },
     {
       "id": "v9c",
@@ -406,13 +406,42 @@
         "protein structure sci-fi",
         "cellular matrix"
       ],
-      "start": 44.7,
+      "start": 43.1,
+      "duration": 2.4,
+      "position": "fullscreen",
+      "motion": "kenburns",
+      "segment_ref": "s7",
+      "notes": "CTA bed",
+      "allow_magnific": true
+    },
+    {
+      "id": "v9d",
+      "type": "footage",
+      "query": "futuristic biotechnology abstract",
+      "keywords": [
+        "biotech future"
+      ],
+      "start": 45.5,
+      "duration": 3.2,
+      "position": "fullscreen",
+      "motion": "kenburns",
+      "segment_ref": "s7",
+      "allow_magnific": true
+    },
+    {
+      "id": "v9e",
+      "type": "footage",
+      "query": "abstract molecular structure dark",
+      "keywords": [
+        "molecule"
+      ],
+      "start": 48.7,
       "duration": 3.3,
       "position": "fullscreen",
       "motion": "kenburns",
       "segment_ref": "s7",
       "notes": "CTA bed",
-      "allow_magnific": false
+      "allow_magnific": true
     }
   ],
   "music": {
@@ -450,7 +479,7 @@
     },
     {
       "type": "pop",
-      "at": 39.5,
+      "at": 43.0,
       "intensity": 0.5,
       "duration": 0.35
     }
@@ -476,8 +505,8 @@
   },
   "cta": {
     "text": "Подпишись — сигнал из будущего",
-    "start": 39.5,
-    "duration": 5.0,
+    "start": 43.0,
+    "duration": 6.0,
     "style": "badge"
   },
   "memes": {
@@ -492,12 +521,12 @@
     "max_duration": 1.3
   },
   "constraints": {
-    "magnific_token_budget": 0,
-    "allow_generative": false,
+    "magnific_token_budget": 2000,
+    "allow_generative": true,
     "require_vision_qa": false,
     "min_visual_score": 0.35,
     "manual_review_ok": true
   },
-  "_pipeline_note": "hybrid modes; local Magnific Freepik broll staged; no Pulse Ring",
-  "_render_bump": "skip-check-docker"
+  "_pipeline_note": "studio avatar 54172d7a + Magnific infographics/stills as kenburns broll; 40/60 host; no logo/orbitals; strip avatar audio",
+  "_render_bump": "studio-avatar-52s-v1"
 }
