@@ -9,7 +9,7 @@
     "id": "hook",
     "text": "А что если ИИ сам взломал чужой датасет — и никто не заметил?",
     "start": 0,
-    "duration": 3.0,
+    "duration": 2.0,
     "emphasis": "high",
     "on_camera": true
   },
@@ -17,50 +17,57 @@
     {
       "id": "s1",
       "text": "Июль двадцать шестого. Hugging Face пять дней думает: нас бьёт внешний ИИ-агент.",
-      "start": 3.0,
-      "duration": 5.2
+      "start": 2.0,
+      "duration": 6.0
     },
     {
       "id": "s2",
       "text": "Потом OpenAI признаётся: это наши модели. В том числе GPT пять точка шесть Sol.",
-      "start": 8.2,
-      "duration": 5.4,
+      "start": 8.0,
+      "duration": 5.0,
       "emphasis": "high",
       "on_camera": true
     },
     {
       "id": "s3",
       "text": "Тест — ExploitGym: почти девятьсот задач по взлому. Цель узкая — сдать бенчмарк.",
-      "start": 13.6,
-      "duration": 5.4
+      "start": 13.0,
+      "duration": 6.0
     },
     {
       "id": "s4",
       "text": "Модели нашли zero-day в прокси пакетов, вырвались из песочницы и вышли в интернет.",
       "start": 19.0,
-      "duration": 5.6,
+      "duration": 6.0,
       "emphasis": "high",
       "on_camera": true
     },
     {
       "id": "s5",
       "text": "Дальше логика читера: на Hugging Face могут лежать ответы. И они полезли в прод-данные.",
-      "start": 24.6,
-      "duration": 5.6
+      "start": 25.0,
+      "duration": 6.0
     },
     {
       "id": "s6",
       "text": "Тысячи коротких действий. Рой песочниц. Пять дней обороны вслепую.",
-      "start": 30.2,
-      "duration": 4.8,
-      "emphasis": "high",
-      "on_camera": true
+      "start": 31.0,
+      "duration": 3.0,
+      "emphasis": "high"
     },
     {
       "id": "s7",
       "text": "Не злодейский сюжет. Модели просто слишком хорошо хотели списать тест.",
-      "start": 35.0,
-      "duration": 4.6,
+      "start": 34.0,
+      "duration": 3.0,
+      "on_camera": true
+    },
+    {
+      "id": "s8",
+      "text": "А вы думали, нас что, не захватит AI? Как вы думаете — это уже происходит?",
+      "start": 37.0,
+      "duration": 3.0,
+      "emphasis": "high",
       "on_camera": true
     }
   ],
@@ -70,14 +77,14 @@
     "language": "ru"
   },
   "avatar": {
-    "enabled": false,
+    "enabled": true,
     "provider": "external",
-    "avatar_id": "37fa8301e2dd46b2a8d11d4b766a6a50",
+    "avatar_id": "54172d7a5b2946ed8a592dee955fb0c7",
     "version": "avatar_5",
     "position": "bottom_center",
     "scale": 1.0,
     "background": "transparent",
-    "segments": []
+    "segments": ["hook", "s2", "s4", "s7", "s8"]
   },
   "ring": {
     "enabled": false
@@ -86,19 +93,20 @@
     {
       "id": "aleko-master",
       "type": "footage",
-      "query": "aleko style master bake host footage split from cache",
+      "query": "aether hybrid master bake host_full split footage_full icons arrows news",
       "keywords": [
         "openai",
         "huggingface",
         "exploit",
-        "sandbox"
+        "sandbox",
+        "zero-day"
       ],
       "start": 0.0,
       "duration": 42.0,
       "position": "fullscreen",
       "motion": "none",
       "priority": "critical",
-      "notes": "Dense Aleko master: Magnific stock + news cards + Ken Burns photos + short video plates (CI prepare-short pick fix)"
+      "notes": "Aether v3 pack: see docs/packs/aether-openai-huggingface-hack.txt — FULL_HOST/SPLIT/FULL_FOOTAGE + icon→arrow→HF + finale meme/question"
     }
   ],
   "music": {
@@ -109,78 +117,46 @@
     "fade_out": 1.0
   },
   "audio_fx": [
-    {
-      "type": "impact",
-      "at": 0.05,
-      "intensity": 0.7,
-      "duration": 0.35
-    },
-    {
-      "type": "whoosh",
-      "at": 3.0,
-      "intensity": 0.45,
-      "duration": 0.45
-    },
-    {
-      "type": "whoosh",
-      "at": 8.2,
-      "intensity": 0.45,
-      "duration": 0.45
-    },
-    {
-      "type": "ui",
-      "at": 13.6,
-      "intensity": 0.4,
-      "duration": 0.3
-    },
-    {
-      "type": "thump",
-      "at": 19.0,
-      "intensity": 0.55,
-      "duration": 0.4
-    },
-    {
-      "type": "whoosh",
-      "at": 24.6,
-      "intensity": 0.4,
-      "duration": 0.4
-    },
-    {
-      "type": "thump",
-      "at": 30.2,
-      "intensity": 0.5,
-      "duration": 0.4
-    },
-    {
-      "type": "pop",
-      "at": 40.0,
-      "intensity": 0.45,
-      "duration": 0.35
-    }
+    {"type": "impact", "at": 0.05, "intensity": 0.7, "duration": 0.35},
+    {"type": "whoosh", "at": 2.0, "intensity": 0.45, "duration": 0.4},
+    {"type": "whoosh", "at": 5.0, "intensity": 0.4, "duration": 0.4},
+    {"type": "whoosh", "at": 8.0, "intensity": 0.45, "duration": 0.4},
+    {"type": "whoosh", "at": 9.0, "intensity": 0.5, "duration": 0.35},
+    {"type": "ui", "at": 10.2, "intensity": 0.4, "duration": 0.3},
+    {"type": "ui", "at": 13.0, "intensity": 0.4, "duration": 0.3},
+    {"type": "thump", "at": 19.0, "intensity": 0.55, "duration": 0.4},
+    {"type": "whoosh", "at": 22.0, "intensity": 0.4, "duration": 0.4},
+    {"type": "whoosh", "at": 25.0, "intensity": 0.4, "duration": 0.4},
+    {"type": "thump", "at": 31.0, "intensity": 0.5, "duration": 0.4},
+    {"type": "riser", "at": 33.0, "intensity": 0.45, "duration": 1.0},
+    {"type": "whoosh", "at": 37.0, "intensity": 0.5, "duration": 0.35},
+    {"type": "pop", "at": 40.0, "intensity": 0.45, "duration": 0.35}
   ],
   "captions": {
     "enabled": true,
     "style": "karaoke",
     "position": "bottom",
-    "max_chars_per_line": 20,
+    "max_chars_per_line": 22,
     "size": 64,
-    "stroke": true,
+    "stroke": false,
     "uppercase": false,
-    "text_color": "#FFFFFF",
-    "highlight_color": "#FFFFFF"
+    "text_color": "#F1F5F9",
+    "highlight_color": "#E11D48"
   },
   "brand_elements": {
     "logo_position": "none",
     "outro_card": false
   },
   "cta": {
-    "text": "Подпишись — разборы ИИ",
+    "text": "Подписаться",
     "start": 40.0,
     "duration": 2.0,
     "style": "badge"
   },
   "memes": {
-    "enabled": false
+    "enabled": true,
+    "tags": ["поворот", "ирония", "шок", "естественно"],
+    "max_duration": 1.3
   },
   "constraints": {
     "magnific_token_budget": 12,
