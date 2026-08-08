@@ -15,6 +15,7 @@ Full local path still works: ``build`` does prepare + avatar API + render.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import shutil
 import subprocess
@@ -385,10 +386,8 @@ class Pipeline:
                 log.warning("could not extract avatar audio: %s", exc, extra={"stage": "voice"})
                 return []
             voice_path = target
-            try:
+            with contextlib.suppress(OSError):
                 shutil.copy2(target, job_dir / "voice_from_avatar.mp3")
-            except OSError:
-                pass
         else:
             target = self.settings.paths.voice / f"{spec.id}_from_avatar.mp3"
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -452,7 +451,11 @@ class Pipeline:
                 # Peak-align the freshly cached file the same way as the bank.
                 profile = analyze(path, ffmpeg=self.settings.ffmpeg_cmd)
                 peak_at = float(getattr(profile, "peak_at", 0.0) or 0.0) if profile else 0.0
-                duration = float(getattr(profile, "duration", fx.duration) or fx.duration) if profile else fx.duration
+                duration = (
+                    float(getattr(profile, "duration", fx.duration) or fx.duration)
+                    if profile
+                    else fx.duration
+                )
                 from .voice.audio_design import align_start, fx_volume
 
                 filled_online.append(
@@ -493,9 +496,7 @@ class Pipeline:
                     f"and could not be filled online/generated: {self.voice_client.unavailable_reason()}"
                 )
 
-        result.sfx_clips = sorted(
-            from_library + filled_online + generated, key=lambda clip: clip.start
-        )
+        result.sfx_clips = sorted(from_library + filled_online + generated, key=lambda clip: clip.start)
 
     def _generate_avatar(self, spec: Spec, result: RunResult) -> None:
         """Load or render the presenter for the window it is supposed to speak in."""
@@ -519,7 +520,7 @@ class Pipeline:
             # Pulse Ring EXIT→hidden→RETURN covers the silent windows; the
             # avatar file may still span the full range for external tracks.
             result.warnings.append(
-                "avatar.segments leave gaps ("
+                "avatar.segments are not contiguous — leave gaps ("
                 + ", ".join(f"{a:g}–{b:g}s" for a, b in gaps)
                 + "); ring EXIT hides the presenter for fullscreen payoff"
             )

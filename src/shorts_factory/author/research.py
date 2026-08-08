@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote_plus
@@ -115,7 +115,7 @@ def research_topic(
     Offline / failure: returns curated seed claims for known topics and notes.
     """
     settings = settings or Settings.from_env()
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     pack = ResearchPack(topic=topic, queried_at=now)
     if seed_claims:
         pack.claims.extend(seed_claims[:max_claims])

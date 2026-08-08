@@ -189,8 +189,18 @@ def test_missing_asset_files_are_skipped_not_crashed(minimal_spec, tmp_path):
     resolved = resolved_for(minimal_spec, tmp_path / "gone.mp4")
     timeline = build_timeline(minimal_spec, resolved)
     result = CompositionWriter(minimal_spec, timeline, tmp_path / "comp").write()
-    assert result.media_files == 0
-    assert "<video" not in result.index_html.read_text(encoding="utf-8")
+    html = result.index_html.read_text(encoding="utf-8")
+    # Real <video …> tags carry a leading space before attrs; CSS comments may
+    # mention "<video>" as prose and must not trip this check.
+    assert "<video " not in html
+    assert "playsinline" not in html
+    # Brand fonts are still staged for offline captions; clip media must not land.
+    media_dir = result.directory / "media"
+    clip_exts = {".mp4", ".webm", ".mov", ".m4v", ".mp3", ".wav", ".m4a"}
+    if media_dir.is_dir():
+        assert not any(path.suffix.lower() in clip_exts for path in media_dir.iterdir())
+    else:
+        assert result.media_files == 0
 
 
 def test_keyframe_percentages_stay_within_bounds(minimal_spec, fake_media, tmp_path):

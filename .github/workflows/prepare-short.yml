@@ -37,15 +37,26 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Pick the scenario
         id: pick
         run: |
+          set -euo pipefail
           if [ -n "${{ inputs.spec }}" ]; then
             SPEC="${{ inputs.spec }}"
           else
-            SPEC=$(git diff --name-only --diff-filter=d '${{ github.event.before }}' '${{ github.sha }}' \
-                   -- 'jobs/*.json' | tail -n 1)
+            BEFORE="${{ github.event.before }}"
+            SHA="${{ github.sha }}"
+            SPEC=""
+            if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+              SPEC=$(git diff --name-only --diff-filter=d "$BEFORE" "$SHA" -- 'jobs/*.json' 2>/dev/null | tail -n 1 || true)
+            fi
+            if [ -z "${SPEC:-}" ]; then
+              # Shallow history, force-push, or merge where the path filter still fired.
+              SPEC=$(ls jobs/*.json 2>/dev/null | head -n 1 || true)
+            fi
           fi
           if [ -z "$SPEC" ] || [ ! -f "$SPEC" ]; then
             echo "::error::No scenario JSON found (looked for '$SPEC')"

@@ -23,13 +23,16 @@ def test_sfx_sidechain_and_duck_db_in_filter_graph(tmp_path: Path):
     def fake_run(command, **_kwargs):
         captured["command"] = list(command)
         out.write_bytes(b"ok")
+
         class Result:
             returncode = 0
             stderr = ""
+
         return Result()
 
-    with patch("shorts_factory.render.audio_mix.is_available", return_value=True), patch(
-        "shorts_factory.render.audio_mix.subprocess.run", side_effect=fake_run
+    with (
+        patch("shorts_factory.render.audio_mix.is_available", return_value=True),
+        patch("shorts_factory.render.audio_mix.subprocess.run", side_effect=fake_run),
     ):
         result = build_mix(
             out,

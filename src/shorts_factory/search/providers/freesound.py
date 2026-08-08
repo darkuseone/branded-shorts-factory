@@ -8,6 +8,7 @@ license preference (CC0 > CC-BY), and the same envelope classifier used by
 
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 from pathlib import Path
@@ -133,9 +134,13 @@ def fill_from_freesound(
     for entry in client.find_for_role(role):
         license_text = str(entry.get("license") or "").lower()
         # Prefer CC0; still accept CC-BY.
-        if "creative commons 0" not in license_text and "cc0" not in license_text:
-            if "attribution" not in license_text and "by" not in license_text:
-                continue
+        if (
+            "creative commons 0" not in license_text
+            and "cc0" not in license_text
+            and "attribution" not in license_text
+            and "by" not in license_text
+        ):
+            continue
         dest = bank_dir / cache_name(role, entry)
         if dest.exists() and accept_for_role(dest, role, ffmpeg=ffmpeg):
             return dest
@@ -145,10 +150,8 @@ def fill_from_freesound(
         if accept_for_role(downloaded, role, ffmpeg=ffmpeg):
             log.info("freesound accepted %s for role=%s", downloaded.name, role)
             return downloaded
-        try:
+        with contextlib.suppress(OSError):
             downloaded.unlink(missing_ok=True)
-        except OSError:
-            pass
     return None
 
 
@@ -194,8 +197,6 @@ def fill_from_pixabay_catalog(
             continue
         if accept_for_role(dest, role, ffmpeg=ffmpeg):
             return dest
-        try:
+        with contextlib.suppress(OSError):
             dest.unlink(missing_ok=True)
-        except OSError:
-            pass
     return None

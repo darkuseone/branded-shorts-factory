@@ -39,9 +39,7 @@ def test_load_pixabay_catalog_reads_items(tmp_path: Path):
 def test_fill_from_pixabay_skips_empty_urls(tmp_path: Path):
     catalog = [{"id": "empty", "roles": ["ui"], "url": ""}]
     http = MagicMock()
-    result = fill_from_pixabay_catalog(
-        "ui", catalog=catalog, bank_dir=tmp_path, http=http, ffmpeg="ffmpeg"
-    )
+    result = fill_from_pixabay_catalog("ui", catalog=catalog, bank_dir=tmp_path, http=http, ffmpeg="ffmpeg")
     assert result is None
     http.download.assert_not_called()
 

@@ -189,7 +189,12 @@ class HyperFramesRunner:
         # HyperFrames prints cgroup SystemMemory notes to stderr and sometimes
         # exits non-zero even when lint/check found no real errors.
         if not ok and step in {"lint", "check", "render"} and _only_system_memory_noise(stdout, stderr):
-            log.info("%s: ignoring SystemMemory cgroup note (exit %d)", step, completed.returncode, extra={"stage": "render"})
+            log.info(
+                "%s: ignoring SystemMemory cgroup note (exit %d)",
+                step,
+                completed.returncode,
+                extra={"stage": "render"},
+            )
             ok = True
         result = StepResult(
             step=step,

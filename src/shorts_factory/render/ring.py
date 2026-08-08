@@ -461,8 +461,8 @@ def lightning_overlay_svg(config: RingConfig, size: int) -> str:
     return (
         f'<svg class="ring-lightning" viewBox="{view}" width="{size}" height="{int(size * 0.7)}" '
         f'aria-hidden="true" style="position:absolute;left:0;top:{-int(size * 0.42)}px;'
-        f'pointer-events:none;overflow:visible;'
-        f'mask-image:radial-gradient(ellipse 70% 90% at 50% 100%,#000 18%,#fff 55%);'
+        f"pointer-events:none;overflow:visible;"
+        f"mask-image:radial-gradient(ellipse 70% 90% at 50% 100%,#000 18%,#fff 55%);"
         f'-webkit-mask-image:radial-gradient(ellipse 70% 90% at 50% 100%,#000 18%,#fff 55%);">'
         f"{''.join(lines)}{dots}{orbs}</svg>"
     )

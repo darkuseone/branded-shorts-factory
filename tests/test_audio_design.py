@@ -277,4 +277,3 @@ def test_meme_visual_earns_branded_whoosh_in_and_out():
     beats = collect_beats(spec)
     meme_whooshes = [beat for beat in beats if beat.reason.startswith("meme_")]
     assert len(meme_whooshes) == 2
-

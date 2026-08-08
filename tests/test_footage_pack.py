@@ -38,7 +38,11 @@ def test_dense_cut_list_uses_staged_stock(tmp_path: Path) -> None:
     (tmp_path / "news" / "news_hf_attack.jpg").write_bytes(jpeg)
     (tmp_path / "top-02.mp4").write_bytes(b"\x00" * 40_000)
 
-    cuts = build_dense_cut_list(broll_dir=tmp_path, duration=20.0, host_windows=[(0.0, 2.0, "host_full"), (16.0, 20.0, "host_full")])
+    cuts = build_dense_cut_list(
+        broll_dir=tmp_path,
+        duration=20.0,
+        host_windows=[(0.0, 2.0, "host_full"), (16.0, 20.0, "host_full")],
+    )
     assert any(c.kind == "host_full" for c in cuts)
     footage = [c for c in cuts if c.kind in {"photo", "video"}]
     assert footage, "expected footage plates between host windows"

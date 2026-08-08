@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from shorts_factory.author.research import ResearchPack, load_research, research_topic, save_research
+from shorts_factory.author.research import load_research, research_topic, save_research
 from shorts_factory.author.scriptcraft import validate_hook, validate_script_craft
 from shorts_factory.config import Settings
 

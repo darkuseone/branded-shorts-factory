@@ -237,10 +237,7 @@ def _add_visuals(timeline: Timeline, spec: Spec, resolved: list[ResolvedVisual])
         elif position == "split":
             layout = dict(_POSITION_LAYOUT["split"])
         is_full = position in {"fullscreen", "background"}
-        if visual.type == "meme":
-            track = TRACK_MEME
-        else:
-            track = TRACK_BROLL if is_full else TRACK_OVERLAY
+        track = TRACK_MEME if visual.type == "meme" else (TRACK_BROLL if is_full else TRACK_OVERLAY)
 
         props: dict[str, Any] = {
             "layout": layout,
@@ -290,7 +287,7 @@ def _add_avatar(timeline: Timeline, spec: Spec, avatar: AvatarClip | None, start
         return
     from dataclasses import replace
 
-    from .ring import RingConfig, host_bottom_box, host_fullscreen_box, plan_ring
+    from .ring import RingConfig, plan_ring
 
     ring_on = bool(spec.ring.enabled)
     cfg = replace(RingConfig(), enabled=ring_on, continuous_on_vo=True)
@@ -389,10 +386,7 @@ def _aleko_host_layout(spec: Spec, segment: Any) -> dict[str, Any]:
         and (visual.start + visual.duration) > segment.start + 0.05
         and visual.position in {"split", "top"}
     ]
-    if overlapping:
-        layout = host_bottom_box()
-    else:
-        layout = host_fullscreen_box()
+    layout = host_bottom_box() if overlapping else host_fullscreen_box()
     layout["scale"] = spec.avatar.scale
     return layout
 

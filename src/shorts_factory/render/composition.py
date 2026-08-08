@@ -198,9 +198,7 @@ class CompositionWriter:
             trim_attr = f' data-trim-start="{trim:.3f}"' if trim > 0 else ""
             if element.kind == "avatar" and self.ring.visible:
                 return self._avatar_with_ring(attrs + trim_attr, src, loop)
-            return (
-                f'<video {attrs}{trim_attr} src="{src}" muted playsinline preload="auto"{loop}></video>'
-            )
+            return f'<video {attrs}{trim_attr} src="{src}" muted playsinline preload="auto"{loop}></video>'
 
         if element.kind == "image":
             src = self._media_src(element.src)
@@ -231,7 +229,7 @@ class CompositionWriter:
                 inner = (
                     f'<span class="subscribe-inner">'
                     f'<span class="subscribe-bell" aria-hidden="true"></span>'
-                    f'{html.escape(element.text)}'
+                    f"{html.escape(element.text)}"
                     f"</span>"
                 )
             else:
@@ -255,7 +253,8 @@ class CompositionWriter:
             f'<div id="pulse_ring" class="pulse-ring-wrap" '
             f'style="left:{box["left"]}px;top:{box["top"]}px;width:{size}px;height:{size}px;">'
             f"{lightning_overlay_svg(cfg, size)}"
-            f'<div class="pulse-ring-oval" style="transform:scaleY({scale_y:.3f});transform-origin:center bottom;">'
+            f'<div class="pulse-ring-oval" '
+            f'style="transform:scaleY({scale_y:.3f});transform-origin:center bottom;">'
             f'<div class="pulse-ring-breath">'
             f'<div class="pulse-ring-halo" aria-hidden="true"></div>'
             f'<div class="pulse-ring-neon" aria-hidden="true"></div>'
@@ -315,7 +314,7 @@ class CompositionWriter:
                     if captions.stroke
                     else ""
                 ),
-            )
+            ),
         ]
 
         for element in self.timeline.visual_elements:

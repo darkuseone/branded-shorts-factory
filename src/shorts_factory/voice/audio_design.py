@@ -162,9 +162,7 @@ def collect_beats(spec: Spec) -> list[Beat]:
         from ..render.data_chips import extract_chips
 
         for chip in extract_chips(spec):
-            beats.append(
-                Beat(at=chip.start, role="ui", intensity=0.4, duration=0.35, reason="data_chip")
-            )
+            beats.append(Beat(at=chip.start, role="ui", intensity=0.4, duration=0.35, reason="data_chip"))
     except Exception:  # noqa: BLE001 — chips are optional punctuation
         pass
 
@@ -224,7 +222,15 @@ def apply_voice_guard(beats: list[Beat], spec: Spec, *, guard: float = 0.4) -> l
             if start <= at < end:
                 at = end
                 break
-        out.append(Beat(at=at, role=beat.role, intensity=beat.intensity, duration=beat.duration, reason=beat.reason))
+        out.append(
+            Beat(
+                at=at,
+                role=beat.role,
+                intensity=beat.intensity,
+                duration=beat.duration,
+                reason=beat.reason,
+            )
+        )
     return out
 
 

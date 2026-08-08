@@ -82,9 +82,12 @@ class LibraryItem:
         if any(token in blob for token in ("doppler", "passing-car", "train", "traffic")):
             return False
         # Hot real-world beds (e.g. −6 LUFS car pass) must not punch cuts.
-        if self.lufs > -12.0 and any(token in blob for token in ("car", "pass", "whoosh")):
-            if "doppler" in blob or "passing" in blob:
-                return False
+        if (
+            self.lufs > -12.0
+            and any(token in blob for token in ("car", "pass", "whoosh"))
+            and ("doppler" in blob or "passing" in blob)
+        ):
+            return False
         # Without a scan we cannot know — trust the tags and let the picker decide.
         return True if not shape else bool(self.tags)
 
@@ -261,9 +264,9 @@ class SfxLibrary(_FolderLibrary):
         if allow:
             for name in allow:
                 for item in self.items:
-                    if item.name.lower() == name.lower() or name.lower() in item.name.lower():
-                        if not _sfx_blacklisted(item):
-                            return item
+                    name_match = item.name.lower() == name.lower() or name.lower() in item.name.lower()
+                    if name_match and not _sfx_blacklisted(item):
+                        return item
 
         wanted = list(SFX_SYNONYMS.get(fx_type, (fx_type,)))
         if extra_tags:

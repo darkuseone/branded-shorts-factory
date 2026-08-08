@@ -51,9 +51,7 @@ def validate_hook(text: str, duration: float) -> list[HookIssue]:
     if duration > HOOK_HARD_MAX:
         issues.append(HookIssue("error", f"hook duration {duration:.1f}s exceeds hard max {HOOK_HARD_MAX}s"))
     elif duration > HOOK_IDEAL_MAX:
-        issues.append(
-            HookIssue("warning", f"hook {duration:.1f}s is past the ideal 3s swipe window")
-        )
+        issues.append(HookIssue("warning", f"hook {duration:.1f}s is past the ideal 3s swipe window"))
     words = cleaned.split()
     if len(words) > 18:
         issues.append(HookIssue("warning", "hook is wordy; aim for one punchy sentence"))
