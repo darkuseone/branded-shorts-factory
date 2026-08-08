@@ -231,11 +231,7 @@ class CompositionWriter:
             src = self._media_src(element.src)
             if not src:
                 return ""
-            return (
-                f'<div id="wrap_{element.id}" class="media-shell">'
-                f'<img {attrs} src="{src}" alt="">'
-                f"</div>"
-            )
+            return f'<div id="wrap_{element.id}" class="media-shell"><img {attrs} src="{src}" alt=""></div>'
 
         if element.kind == "logo":
             src = self._media_src(element.src)
@@ -368,8 +364,7 @@ class CompositionWriter:
             rules.append(
                 f"position:absolute;top:{layout['top']}px;left:{layout['left']}px;"
                 f"width:{layout['width']}px;height:{layout['height']}px;"
-                f"z-index:10;overflow:hidden;"
-                + (f"border-radius:{radius}px;" if radius else "")
+                f"z-index:10;overflow:hidden;" + (f"border-radius:{radius}px;" if radius else "")
             )
             # Inner clip fills the shell; object-fit lives on the media node.
             keyframes.append(
