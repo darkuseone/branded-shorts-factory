@@ -140,19 +140,26 @@ def build_dense_cut_list(
     """
     assets = list_staged_assets(broll_dir)
     host_windows = host_windows or [
-        (0.0, 2.2, "host_full"),
-        (8.2, 10.6, "split"),
-        (19.0, 21.4, "split"),
-        (30.2, 32.4, "split"),
-        (36.5, 42.0, "host_full"),
+        # Aether v3 hybrid: FULL_HOST / SPLIT denser than Aleko v1
+        (0.0, 2.0, "host_full"),
+        (5.0, 8.0, "split"),
+        (10.2, 13.0, "split"),
+        (16.0, 19.0, "split"),
+        (22.0, 25.0, "split"),
+        (28.0, 31.0, "split"),
+        (34.0, 37.0, "host_full"),
+        (39.5, 42.0, "host_full"),
     ]
 
-    # Theme packs mapped roughly to script beats.
+    # Theme packs mapped roughly to Aether script beats.
     beat_themes: list[tuple[float, float, list[str]]] = [
-        (2.2, 8.2, ["breach", "soc", "news", "ransomware", "server", "neon", "hacker", "hf"]),
-        (10.6, 19.0, ["ai", "openai", "access", "exploit", "network", "mind", "code", "zeroday"]),
-        (21.4, 30.2, ["dataset", "cheat", "news", "ai_server", "brute", "newspaper", "hud"]),
-        (32.4, 36.5, ["swarm", "neon", "hacker", "mind", "threat", "binary"]),
+        (2.0, 5.0, ["news", "hf", "breach", "soc", "ransomware"]),
+        (8.0, 10.2, ["openai", "ai", "access", "neon"]),
+        (13.0, 16.0, ["exploit", "network", "hacker", "binary", "zeroday"]),
+        (19.0, 22.0, ["access", "breach", "hud", "ransomware"]),
+        (25.0, 28.0, ["cheat", "dataset", "news", "newspaper"]),
+        (31.0, 34.0, ["server", "swarm", "neon", "mind", "hacker"]),
+        (37.0, 39.5, ["ai", "mind", "neon", "threat"]),
     ]
 
     cuts: list[FootageCut] = []
@@ -177,10 +184,8 @@ def build_dense_cut_list(
         nonlocal photo_i
         t = start
         alternate_photo = True
-        while t < end - 0.25:
+        while t < end - 0.05:
             remaining = end - t
-            if remaining < 1.05:
-                break
             prefer = "photo" if alternate_photo else "video"
             asset = pick_for_themes(assets, themes, used=used, prefer=prefer)
             if asset is None:
@@ -191,7 +196,18 @@ def build_dense_cut_list(
             if asset is None:
                 break
             kind = "photo" if asset.suffix.lower() in IMAGE_EXTS else "video"
-            if kind == "photo":
+            if remaining < 1.2:
+                # Always seal the tail of a gap — never leave a silent hole.
+                kind = "photo"
+                photo = pick_for_themes(assets, themes, used=used, prefer="photo") or pick_for_themes(
+                    assets, themes, prefer="photo", allow_reuse=True
+                )
+                if photo is not None:
+                    asset = photo
+                motion = motion_for_photo(photo_i)
+                photo_i += 1
+                dur = remaining
+            elif kind == "photo":
                 dur = min(remaining, 2.0 if remaining > 2.5 else max(1.15, remaining))
                 motion = motion_for_photo(photo_i)
                 photo_i += 1
@@ -224,6 +240,22 @@ def build_dense_cut_list(
             )
             t += dur
             alternate_photo = not alternate_photo
+        # Hard seal: if still short, pad with a reused photo.
+        if t < end - 0.05:
+            photo = pick_for_themes(assets, themes, prefer="photo", allow_reuse=True)
+            if photo is not None:
+                cuts.append(
+                    FootageCut(
+                        path=str(photo),
+                        start=t,
+                        duration=end - t,
+                        kind="photo",
+                        motion=motion_for_photo(photo_i),
+                        theme=",".join(themes[:3]),
+                        layout="fullscreen",
+                    )
+                )
+                photo_i += 1
 
     cursor = 0.0
     for hs, he, layout in sorted(host_windows, key=lambda x: x[0]):

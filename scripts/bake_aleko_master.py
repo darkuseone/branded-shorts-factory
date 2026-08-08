@@ -411,6 +411,40 @@ def main() -> int:
         ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(out)],
         text=True,
     ).strip()
+    dur = float(probe or 0.0)
+    if abs(dur - 42.0) > 0.15:
+        padded = work / "aleko-master-42.mp4"
+        if dur < 42.0:
+            pad = 42.0 - dur
+            vf = f"tpad=stop_mode=clone:stop_duration={pad:.3f}"
+        else:
+            vf = "trim=duration=42,setpts=PTS-STARTPTS"
+        run(
+            [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(out),
+                "-vf",
+                vf,
+                "-t",
+                "42",
+                "-an",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "veryfast",
+                "-crf",
+                "18",
+                "-pix_fmt",
+                "yuv420p",
+                "-r",
+                str(FPS),
+                str(padded),
+            ]
+        )
+        padded.replace(out)
+        probe = "42.000000"
     print("baked", out, "duration", probe, "segments", len(segment_files))
     return 0
 
