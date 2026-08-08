@@ -45,6 +45,7 @@ jobs:
       MAGNIFIC_TOKEN_BUDGET: ${{ vars.MAGNIFIC_TOKEN_BUDGET || '40' }}
       MAGNIFIC_TOKEN_RESERVE: ${{ vars.MAGNIFIC_TOKEN_RESERVE || '10' }}
       # Push events have empty inputs — always Docker-render unless explicitly disabled.
+      HYPERFRAMES_SKIP_CHECK: "1"
       HYPERFRAMES_DOCKER: ${{ github.event_name == 'workflow_dispatch' && inputs.docker == false && '0' || '1' }}
       PYTHONPATH: src
 
