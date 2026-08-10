@@ -42,6 +42,7 @@ from .render.audio_mix import build_mix
 from .render.composition import CompositionWriter
 from .render.host_presence import HostPlan, plan_host
 from .render.hyperframes import HyperFramesRunner, RenderResult
+from .render.rhythm import RetimeReport, retime_visuals
 from .render.timeline import Timeline, build_timeline, use_mixed_audio
 from .resolver import ResolvedVisual, VisualResolver
 from .spec import Spec, SpecIssue
@@ -76,6 +77,7 @@ class RunResult:
     spec_issues: list[SpecIssue] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     meme_decision: MemeDecision | None = None
+    rhythm: RetimeReport | None = None
 
     @property
     def rendered(self) -> bool:
@@ -105,6 +107,7 @@ class RunResult:
             "spec_issues": [str(issue) for issue in self.spec_issues],
             "warnings": self.warnings,
             "qa": self.qa.to_dict(),
+            "rhythm": self.rhythm.to_dict() if self.rhythm else None,
             "budget": self.budget.to_dict() if self.budget else None,
             "search": {item.visual.id: item.search.to_dict() for item in self.resolved if item.search},
             "voice": {
@@ -155,6 +158,10 @@ class Pipeline:
         result = RunResult(spec_id=spec.id, spec_issues=list(issues or []), budget=self.budget)
         self._apply_brand(spec, result)
         self._apply_meme_policy(spec, result)
+        # No voice yet on this path, so the retimer works from the scenario's
+        # own segment timings — still content-driven, just without the word
+        # alignment that lets cuts land between words.
+        result.rhythm = retime_visuals(spec, [])
         self._resolve_visuals(spec, result)
         result.captions = build_cues(spec.all_segments, [], spec.captions)
         result.music = self._resolve_music(spec, result)
@@ -196,6 +203,12 @@ class Pipeline:
             info["clips"] = len(result.voice_clips)
             info["fx"] = len(result.sfx_clips)
 
+        with stage("rhythm", log) as info:
+            result.rhythm = retime_visuals(spec, result.voice_clips)
+            result.warnings.extend(result.rhythm.notes)
+            info["median_s"] = round(result.rhythm.median_s, 2)
+            info["spread_s"] = result.rhythm.spread_s
+
         with stage("visuals", log) as info:
             self._resolve_visuals(spec, result)
             info["qa"] = result.qa.summary()
@@ -232,6 +245,12 @@ class Pipeline:
         with stage("avatar", log) as info:
             self._generate_avatar(spec, result)
             info["ok"] = result.avatar is not None
+
+        with stage("rhythm", log) as info:
+            result.rhythm = retime_visuals(spec, result.voice_clips)
+            result.warnings.extend(result.rhythm.notes)
+            info["median_s"] = round(result.rhythm.median_s, 2)
+            info["spread_s"] = result.rhythm.spread_s
 
         with stage("visuals", log) as info:
             self._resolve_visuals(spec, result)

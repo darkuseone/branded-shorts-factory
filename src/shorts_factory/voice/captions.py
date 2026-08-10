@@ -86,7 +86,7 @@ def _one_word_at_a_time(
     return cues
 
 
-def _estimate_words(segment: ScriptSegment) -> list[WordTiming]:
+def estimate_words(segment: ScriptSegment) -> list[WordTiming]:
     """Spread a segment's words over its duration, weighted by word length."""
     words = segment.text.split()
     if not words:
@@ -124,7 +124,7 @@ def build_cues(
         else:
             timings = [
                 WordTiming(word.word, word.start + segment.start, word.end + segment.start)
-                for word in _estimate_words(segment)
+                for word in estimate_words(segment)
             ]
         if not timings:
             continue

@@ -195,3 +195,207 @@ def test_shotlist_survives_a_round_trip(shotlist, tmp_path):
     reloaded = type(shotlist).load(path)
     assert reloaded.total_duration_s == shotlist.total_duration_s
     assert len(reloaded.shots) == len(shotlist.shots)
+
+
+# --------------------------------------------------------------------------- #
+# Retiming the shipping pipeline (§8 applied to shorts_factory)
+# --------------------------------------------------------------------------- #
+
+
+def _spec_with(segments, visuals):
+    """A spec built straight from the pieces retiming cares about."""
+    from shorts_factory.spec import (
+        AvatarSettings,
+        BrandElements,
+        CaptionSettings,
+        Constraints,
+        MemeSettings,
+        MusicSettings,
+        Spec,
+        VoiceSettings,
+    )
+
+    return Spec(
+        id="rhythm",
+        title="rhythm",
+        duration_target=sum(segment.duration for segment in segments),
+        language="ru",
+        topic="rhythm",
+        hook=segments[0],
+        script=list(segments[1:]),
+        voice=VoiceSettings(),
+        avatar=AvatarSettings(),
+        visuals=list(visuals),
+        music=MusicSettings(),
+        audio_fx=[],
+        captions=CaptionSettings(),
+        brand=BrandElements(),
+        cta=None,
+        memes=MemeSettings(),
+        constraints=Constraints(),
+    )
+
+
+def _segment(id_, text, start, duration):
+    from shorts_factory.spec import ScriptSegment
+
+    return ScriptSegment(id=id_, text=text, start=start, duration=duration)
+
+
+def _visual(id_, segment_ref, start, duration, type_="footage"):
+    from shorts_factory.spec import Visual
+
+    return Visual(
+        id=id_,
+        type=type_,
+        query="anything",
+        keywords=["anything"],
+        start=start,
+        duration=duration,
+        segment_ref=segment_ref,
+    )
+
+
+def test_a_slide_show_becomes_an_edit():
+    """The defect, stated as a test: equal durations everywhere.
+
+    The scenario hand-wrote 1.8s for every slot, which is why the first cut
+    changed picture on a metronome. After retiming the lengths have to differ,
+    and differ for a reason — the frame carrying the number is the long one.
+    """
+    from shorts_factory.render.rhythm import retime_visuals
+
+    segments = [
+        _segment("hook", "Модель сама взломала чужой сервис.", 0.0, 4.0),
+        _segment("s1", "Их тестировали на девятьсот задач по взлому.", 4.0, 6.0),
+    ]
+    visuals = [
+        _visual("v1", "hook", 0.0, 2.0),
+        _visual("v2", "hook", 2.0, 2.0),
+        _visual("v3", "s1", 4.0, 2.0),
+        _visual("v4", "s1", 6.0, 2.0),
+        _visual("v5", "s1", 8.0, 2.0),
+    ]
+    spec = _spec_with(segments, visuals)
+
+    report = retime_visuals(spec, [])
+
+    lengths = [visual.duration for visual in spec.visuals]
+    assert report.retimed == 5
+    assert len(set(lengths)) > 1, f"every shot is still {lengths[0]}s: {lengths}"
+    assert report.spread_s >= 0.25, f"the cut would still read as a slide show: {lengths}"
+
+
+def test_the_median_lands_in_the_measured_band():
+    """1.2-2.2s is the reference band from config/rhythm.yaml, not a taste.
+
+    Measured on the real scenario, because the median is as much a property of
+    how many slots the author wrote as of how the seconds are shared out: N
+    slots over M seconds have a median of M/N whatever the retimer does.
+    """
+    from pathlib import Path as _Path
+
+    from shorts_factory.render.rhythm import load_band, retime_visuals
+    from shorts_factory.spec import load_spec
+
+    scenario = _Path(__file__).resolve().parents[1] / "jobs" / "openai-huggingface-hack.json"
+    spec, _issues = load_spec(scenario)
+    band = load_band()
+
+    report = retime_visuals(spec, [])
+
+    assert band.median_min <= report.median_s <= band.median_max, report.to_dict()
+    assert report.spread_s > 0.5, f"the shipping scenario still cuts like a slide show: {report.to_dict()}"
+    assert not report.notes, report.notes
+
+
+def test_an_impossible_median_is_reported_rather_than_faked():
+    """Three slots over nine seconds cannot average two seconds a shot."""
+    from shorts_factory.render.rhythm import retime_visuals
+
+    segments = [_segment("s1", "Очень длинный кусок текста без единой паузы.", 0.0, 9.0)]
+    visuals = [_visual("v1", "s1", 0.0, 3.0), _visual("v2", "s1", 3.0, 3.0), _visual("v3", "s1", 6.0, 3.0)]
+    spec = _spec_with(segments, visuals)
+
+    report = retime_visuals(spec, [])
+
+    assert report.notes, "a median this far off the band has to be said out loud"
+    assert "slots" in report.notes[0]
+
+
+def test_a_frame_that_has_to_be_read_is_held_longer():
+    """An infographic is not cut at the speed of b-roll — it carries numbers."""
+    from shorts_factory.render.rhythm import retime_visuals
+
+    segments = [_segment("s1", "Здесь приводится статистика по инциденту.", 0.0, 6.0)]
+    visuals = [
+        _visual("v1", "s1", 0.0, 2.0),
+        _visual("v2", "s1", 2.0, 2.0, type_="infographic"),
+        _visual("v3", "s1", 4.0, 2.0),
+    ]
+    spec = _spec_with(segments, visuals)
+
+    retime_visuals(spec, [])
+
+    chart = next(visual for visual in spec.visuals if visual.type == "infographic")
+    others = [visual.duration for visual in spec.visuals if visual.type != "infographic"]
+    assert chart.duration > max(others), "the chart is gone before it can be read"
+
+
+def test_the_voice_keeps_its_place():
+    """Retiming may reshape a segment; it may not slide it off the narration."""
+    from shorts_factory.render.rhythm import retime_visuals
+
+    segments = [
+        _segment("hook", "Первый кусок текста.", 0.0, 4.0),
+        _segment("s1", "Второй кусок текста, немного длиннее.", 4.0, 6.0),
+    ]
+    visuals = [
+        _visual("v1", "hook", 0.0, 2.0),
+        _visual("v2", "hook", 2.0, 2.0),
+        _visual("v3", "s1", 4.0, 3.0),
+        _visual("v4", "s1", 7.0, 3.0),
+    ]
+    spec = _spec_with(segments, visuals)
+
+    retime_visuals(spec, [])
+
+    for segment in segments:
+        slots = [visual for visual in spec.visuals if visual.segment_ref == segment.id]
+        assert slots[0].start == pytest.approx(segment.start, abs=0.01)
+        last = slots[-1]
+        assert last.start + last.duration == pytest.approx(segment.start + segment.duration, abs=0.05)
+        for earlier, later in zip(slots, slots[1:], strict=False):
+            assert earlier.start + earlier.duration == pytest.approx(later.start, abs=0.01), (
+                "a gap or an overlap opened between two shots"
+            )
+
+
+def test_cuts_land_between_words_when_the_alignment_is_real():
+    """With measured word timings the picture never changes mid-word."""
+    from pathlib import Path as _Path
+
+    from shorts_factory.render.rhythm import retime_visuals
+    from shorts_factory.voice.elevenlabs import VoiceClip, WordTiming
+
+    segments = [_segment("s1", "раз два три четыре пять шесть", 0.0, 6.0)]
+    visuals = [_visual("v1", "s1", 0.0, 2.0), _visual("v2", "s1", 2.0, 2.0), _visual("v3", "s1", 4.0, 2.0)]
+    spec = _spec_with(segments, visuals)
+    edges = [1.0, 2.1, 3.05, 4.0, 5.2, 6.0]
+    clip = VoiceClip(
+        segment_id="s1",
+        path=_Path("voice.mp3"),
+        start=0.0,
+        duration=6.0,
+        text=segments[0].text,
+        words=[
+            WordTiming(word, edges[index - 1] if index else 0.0, edge)
+            for index, (word, edge) in enumerate(zip(segments[0].text.split(), edges, strict=True))
+        ],
+    )
+
+    retime_visuals(spec, [clip])
+
+    cuts = [round(visual.start + visual.duration, 3) for visual in spec.visuals[:-1]]
+    for cut in cuts:
+        assert any(abs(cut - edge) < 0.001 for edge in edges), f"cut at {cut}s falls inside a word"
