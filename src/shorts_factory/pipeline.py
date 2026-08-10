@@ -82,6 +82,15 @@ class RunResult:
         return self.output is not None and self.output.exists()
 
     @property
+    def broll_coverage(self) -> float:
+        """Fraction of the video with real footage behind it, 0.0-1.0."""
+        if self.timeline is None or not self.timeline.duration:
+            return 0.0
+        from .render.timeline import covered_seconds
+
+        return min(1.0, covered_seconds(self.timeline) / self.timeline.duration)
+
+    @property
     def needs_review(self) -> bool:
         return bool(self.qa.manual_review) or bool(self.qa.rejected)
 

@@ -198,11 +198,7 @@ def build_timeline(
     _resolve_cta_outro_clash(timeline)
     _add_audio(timeline, spec, voice_clips or [], sfx_clips or [], music_path)
 
-    covered = sum(
-        element.duration
-        for element in timeline.elements
-        if element.track in {TRACK_BACKGROUND, TRACK_BROLL} and element.kind in {"video", "image"}
-    )
+    covered = covered_seconds(timeline)
     if covered < spec.duration_target * 0.9:
         timeline.warnings.append(
             f"only {covered:.1f}s of {spec.duration_target:.1f}s has b-roll; "
@@ -447,6 +443,20 @@ def _add_cta(timeline: Timeline, spec: Spec) -> None:
                 "url": spec.cta.url,
             },
         )
+    )
+
+
+def covered_seconds(timeline: Timeline) -> float:
+    """Seconds of the video with real footage behind them.
+
+    Anything not covered falls back to the brand backdrop — a legitimate rung
+    on the degradation ladder, but the run has to be able to say how far down
+    it went.
+    """
+    return sum(
+        element.duration
+        for element in timeline.elements
+        if element.track in {TRACK_BACKGROUND, TRACK_BROLL} and element.kind in {"video", "image"}
     )
 
 

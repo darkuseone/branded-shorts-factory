@@ -15,6 +15,7 @@ from shorts_factory.cli import main
 from shorts_factory.generative.budget import TokenBudget
 from shorts_factory.media.download import Downloader, LocalAsset
 from shorts_factory.pipeline import Pipeline
+from shorts_factory.qa.gate import VisualQA
 from shorts_factory.qa.vision import VisionVerdict
 from shorts_factory.render.hyperframes import HyperFramesRunner, RenderResult, StepResult
 from shorts_factory.resolver import VisualResolver
@@ -351,3 +352,78 @@ def test_cli_help_lists_every_command(command, capsys):
     with pytest.raises(SystemExit) as excinfo:
         main([command, "--help"])
     assert excinfo.value.code == 0
+
+
+# --------------------------------------------------------------------------- #
+# What counts as a successful run
+# --------------------------------------------------------------------------- #
+
+
+def _result_with(coverage: float, *, rendered: bool = True, tmp_path=None):
+    """A RunResult whose b-roll coverage is exactly `coverage`."""
+    from unittest.mock import PropertyMock, patch
+
+    from shorts_factory.pipeline import RunResult
+
+    result = RunResult(spec_id="x")
+    if rendered:
+        output = tmp_path / "out.mp4"
+        output.write_bytes(b"\x00" * 32)
+        result.output = output
+    return result, patch.object(RunResult, "broll_coverage", new_callable=PropertyMock, return_value=coverage)
+
+
+def test_a_video_with_most_of_its_footage_is_a_success(tmp_path):
+    """§4.6: the video always ships. A few slots on the brand backdrop is a
+    warning, not a failure — marking a finished, usable Short red hides the
+    difference between that and nothing rendering at all."""
+    from shorts_factory.cli import _succeeded
+
+    result, coverage = _result_with(0.77, tmp_path=tmp_path)
+    with coverage:
+        for slot in ("v07", "v13", "v17", "v23", "v25"):
+            result.qa.add(VisualQA(visual_id=slot, outcome="rejected"))
+        assert _succeeded(result, "render")
+
+
+def test_a_video_that_is_mostly_backdrop_is_a_failure(tmp_path):
+    from shorts_factory.cli import _succeeded
+
+    result, coverage = _result_with(0.26, tmp_path=tmp_path)
+    with coverage:
+        assert not _succeeded(result, "render")
+
+
+def test_no_video_is_always_a_failure(tmp_path):
+    from shorts_factory.cli import _succeeded
+
+    result, coverage = _result_with(1.0, rendered=False, tmp_path=tmp_path)
+    with coverage:
+        assert not _succeeded(result, "render")
+
+
+def test_plan_still_fails_on_any_unfilled_slot(tmp_path):
+    """Nothing renders in a plan, so unfilled slots are the whole signal."""
+    from shorts_factory.cli import _succeeded
+
+    result, coverage = _result_with(1.0, rendered=False, tmp_path=tmp_path)
+    with coverage:
+        result.qa.add(VisualQA(visual_id="v07", outcome="rejected"))
+        assert not _succeeded(result, "plan")
+        result.qa.results.clear()
+        assert _succeeded(result, "plan")
+
+
+def test_coverage_is_measured_against_the_timeline(minimal_spec, tmp_path):
+    from shorts_factory.pipeline import RunResult
+    from shorts_factory.render.timeline import build_timeline
+
+    from .test_render import resolved_for
+
+    clip = tmp_path / "clip.mp4"
+    clip.write_bytes(b"\x00" * 4096)
+
+    result = RunResult(spec_id=minimal_spec.id)
+    assert result.broll_coverage == 0.0, "no timeline means nothing is covered"
+    result.timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, clip))
+    assert 0.0 < result.broll_coverage <= 1.0

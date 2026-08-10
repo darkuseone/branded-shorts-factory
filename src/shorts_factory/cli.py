@@ -231,10 +231,30 @@ def _doctor(settings: Settings) -> int:
 # --------------------------------------------------------------------------- #
 
 
+#: Below this much real footage the Short is not worth shipping — the brand
+#: backdrop is filling more of the screen than the material is.
+MIN_BROLL_COVERAGE = 0.70
+
+
 def _succeeded(result: RunResult, command: str) -> bool:
+    """Whether the run produced something worth shipping.
+
+    The degradation ladder (§4.6) says the video always ships: an unfilled
+    slot falls back to the brand backdrop rather than stopping the run. So a
+    render that produced a Short with most of its footage in place is a
+    success with warnings, not a failure — treating every unfilled slot as
+    fatal marked a finished, usable video red and hid the difference between
+    "five abstract shots went to the backdrop" and "nothing rendered".
+
+    Below the coverage floor it is a failure, because at that point the
+    backdrop is the video.
+    """
     if command in {"plan", "prepare"}:
+        # Nothing is rendered here, so unfilled slots are the whole signal.
         return not result.qa.rejected
-    return result.rendered and not result.qa.rejected
+    if not result.rendered:
+        return False
+    return result.broll_coverage >= MIN_BROLL_COVERAGE
 
 
 def _print_summary(result: RunResult, command: str) -> None:
