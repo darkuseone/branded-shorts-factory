@@ -32,7 +32,11 @@ concurrency:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    # A 25-shot Short with live search genuinely needs about an hour: the last
+    # measured run spent ~48 min filling slots and 11 min in HyperFrames. At 90
+    # the job was killed mid-render — and a killed job runs no cleanup, so
+    # there was no artifact, no report and no diagnosis, only a log that stops.
+    timeout-minutes: 150
 
     env:
       # HeyGen is intentionally omitted — avatar comes from jobs/<id>/avatar.*
@@ -46,6 +50,9 @@ jobs:
       MAGNIFIC_TOKEN_RESERVE: ${{ vars.MAGNIFIC_TOKEN_RESERVE || '10' }}
       # Push events have empty inputs — always Docker-render unless explicitly disabled.
       HYPERFRAMES_SKIP_CHECK: "1"
+      # The pipeline's own budget stops it reaching for slow optional tiers in
+      # time to still finish, well inside the step cap below.
+      RUN_WALLCLOCK_MINUTES: ${{ vars.RUN_WALLCLOCK_MINUTES || '55' }}
       HYPERFRAMES_DOCKER: ${{ github.event_name == 'workflow_dispatch' && inputs.docker == false && '0' || '1' }}
       PYTHONPATH: src
 
@@ -105,8 +112,14 @@ jobs:
       - name: Validate
         run: python -m shorts_factory validate "${{ steps.pick.outputs.spec }}"
 
+      # Capped below the job so a slow render fails this step instead of
+      # killing the job. The difference matters: a failed step still runs the
+      # summary, the artifact uploads and the explainer, so a timeout comes
+      # with a diagnosis and whatever was produced. A killed job leaves
+      # nothing at all.
       - name: Render (external avatar)
         id: build
+        timeout-minutes: 115
         run: |
           set -o pipefail
           mkdir -p build
