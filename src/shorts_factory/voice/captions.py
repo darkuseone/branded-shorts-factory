@@ -46,6 +46,46 @@ class CaptionCue:
         }
 
 
+def _one_word_at_a_time(
+    timings: list[WordTiming], settings: CaptionSettings, segment_id: str
+) -> list[CaptionCue]:
+    """One word on screen at a time, changing with the voice.
+
+    No line is ever assembled, so there is nothing to wrap and nothing to run
+    off the frame — the failure mode the line styles kept producing. A word
+    holds until the next one starts, which closes the gaps that made subtitles
+    look like they were flickering in and out.
+
+    Cues never overlap: a word too short to read borrows time from the one
+    after it, and the borrowing is given up as soon as the drift from the
+    voice would become audible — being a frame late is invisible, being a
+    third of a second late is a subtitle for the wrong word.
+    """
+    cues: list[CaptionCue] = []
+    cursor = 0.0
+    for index, timing in enumerate(timings):
+        word = timing.word.strip()
+        if not word:
+            continue
+        start = max(timing.start, cursor)
+        if start - timing.start > MAX_DRIFT_S:
+            start = timing.start
+        # Hold until the next word takes over; the last one keeps its own end.
+        following = timings[index + 1].start if index + 1 < len(timings) else timing.end
+        end = max(following, start + MIN_WORD_S)
+        cursor = end
+        cues.append(
+            CaptionCue(
+                text=word.upper() if settings.uppercase else word,
+                start=start,
+                end=end,
+                words=[CaptionWord(word, start, end)],
+                segment_id=segment_id,
+            )
+        )
+    return cues
+
+
 def _estimate_words(segment: ScriptSegment) -> list[WordTiming]:
     """Spread a segment's words over its duration, weighted by word length."""
     words = segment.text.split()
@@ -94,8 +134,20 @@ def build_cues(
     return cues
 
 
+#: A word shown for less than this reads as a flicker; neighbours are held
+#: fractionally longer instead so the eye can land on each one.
+MIN_WORD_S = 0.22
+
+#: How far a held word may push the next one behind the voice before the hold
+#: is abandoned. Past this the subtitle stops being late and starts being wrong.
+MAX_DRIFT_S = 0.18
+
+
 def _group(timings: list[WordTiming], settings: CaptionSettings, segment_id: str) -> list[CaptionCue]:
-    """Break a word stream into lines that respect the character budget."""
+    """Break a word stream into what goes on screen at once."""
+    if settings.style == "word":
+        return _one_word_at_a_time(timings, settings, segment_id)
+
     limit = max(8, settings.max_chars_per_line)
     lines: list[list[WordTiming]] = []
     current: list[WordTiming] = []

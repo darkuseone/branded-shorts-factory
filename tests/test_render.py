@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -9,8 +10,9 @@ import pytest
 
 from shorts_factory.media.download import LocalAsset
 from shorts_factory.qa.gate import VisualQA
-from shorts_factory.render.composition import CompositionWriter
+from shorts_factory.render.composition import CompositionWriter, _pct
 from shorts_factory.render.timeline import (
+    SAFE_MARGIN,
     TRACK_AUDIO_MUSIC,
     TRACK_AVATAR,
     TRACK_BROLL,
@@ -384,7 +386,100 @@ def test_captions_stay_inside_the_safe_area(minimal_spec, fake_media, tmp_path):
 
     caption_css = html.split(".caption {")[1].split("}")[0]
     assert "overflow-wrap: anywhere" in caption_css, "an unbreakable word runs off the edge"
-    assert f"width: {timeline.width}px" not in caption_css, "caption is as wide as the whole frame"
+    assert f"padding: 0 calc({SAFE_MARGIN}px * 2)" in caption_css, f"text runs to the bezel: {caption_css}"
+
+
+def test_a_caption_is_centred_by_its_box_not_by_a_transform(minimal_spec, fake_media, tmp_path):
+    """Why the subtitles drifted off frame.
+
+    Every element carries one full-length animation, attached with fill:both,
+    and that animation writes `transform`. A `translateX(-50%)` living in the
+    class is therefore overwritten the instant the element is animated — which
+    left the block's *left* edge at mid-frame with the text hanging off the
+    right side. Centring has to come from something an animation cannot touch.
+    """
+    cues = [CaptionCue(text="слово", start=1.0, end=2.0, words=[CaptionWord("слово", 1.0, 2.0)])]
+    timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, fake_media), captions=cues)
+    CompositionWriter(minimal_spec, timeline, tmp_path / "comp").write()
+    html = (tmp_path / "comp" / "index.html").read_text(encoding="utf-8")
+
+    for selector in (".caption {", ".text {"):
+        block = re.sub(r"/\*.*?\*/", "", html.split(selector)[1].split("}")[0], flags=re.S)
+        assert "translateX(-50%)" not in block, f"{selector} centring is one transform away from gone"
+        assert "left: 0" in block and "right: 0" in block, f"{selector} is not pinned to both edges"
+
+
+def test_word_style_shows_one_word_at_a_time(minimal_spec):
+    """The requested subtitle: a single word, changing with the voice."""
+    from shorts_factory.spec import ScriptSegment
+    from shorts_factory.voice.elevenlabs import VoiceClip, WordTiming
+
+    minimal_spec.captions.style = "word"
+    segment = ScriptSegment(id="s1", text="искусственный интеллект уже здесь", start=0.0, duration=2.0)
+    clip = VoiceClip(
+        segment_id="s1",
+        path=Path("voice.mp3"),
+        start=0.0,
+        duration=2.0,
+        text=segment.text,
+        words=[
+            WordTiming("искусственный", 0.0, 0.6),
+            WordTiming("интеллект", 0.6, 1.1),
+            WordTiming("уже", 1.1, 1.25),
+            WordTiming("здесь", 1.25, 2.0),
+        ],
+    )
+    cues = build_cues([segment], [clip], minimal_spec.captions)
+
+    assert [cue.text for cue in cues] == ["искусственный", "интеллект", "уже", "здесь"]
+    assert all(len(cue.words) == 1 for cue in cues), "a cue carries more than one word"
+    for earlier, later in zip(cues, cues[1:], strict=False):
+        assert earlier.end <= later.start + 1e-6, (
+            f"'{earlier.text}' is still on screen when '{later.text}' arrives"
+        )
+    # "уже" is spoken in 0.15s; it must still be readable.
+    assert min(cue.duration for cue in cues) >= 0.2
+
+
+def test_word_captions_are_white_with_a_thin_black_outline(minimal_spec, fake_media, tmp_path):
+    """The look that was asked for, in the stylesheet rather than in a promise."""
+    import re
+
+    minimal_spec.captions.style = "word"
+    cues = [CaptionCue(text="слово", start=1.0, end=1.4, words=[CaptionWord("слово", 1.0, 1.4)])]
+    timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, fake_media), captions=cues)
+    CompositionWriter(minimal_spec, timeline, tmp_path / "comp").write()
+    html = (tmp_path / "comp" / "index.html").read_text(encoding="utf-8")
+
+    caption_css = html.split(".caption {")[1].split("}")[0]
+    assert "--caption-color: #FFFFFF" in html, "the word is not white"
+    stroke = re.search(r"-webkit-text-stroke:\s*(\d+)px\s*#000000", caption_css)
+    assert stroke, f"no black outline: {caption_css}"
+    assert 2 <= int(stroke.group(1)) <= 4, "an outline this heavy is a slab, not a line"
+    assert minimal_spec.brand.color_primary not in caption_css, "brand glow tints white glyphs"
+
+
+def test_one_word_replaces_the_next_without_a_dissolve(minimal_spec, fake_media, tmp_path):
+    """Cue N ends where cue N+1 starts, so a cross-fade overlaps two words."""
+    minimal_spec.captions.style = "word"
+    cues = [
+        CaptionCue(text="раз", start=1.0, end=1.4, words=[CaptionWord("раз", 1.0, 1.4)]),
+        CaptionCue(text="два", start=1.4, end=1.9, words=[CaptionWord("два", 1.4, 1.9)]),
+    ]
+    timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, fake_media), captions=cues)
+    CompositionWriter(minimal_spec, timeline, tmp_path / "comp").write()
+    html = (tmp_path / "comp" / "index.html").read_text(encoding="utf-8")
+
+    frames = html.split("@keyframes anim_cap_000")[1].split("@keyframes")[0]
+    on = [
+        float(percent)
+        for percent, opacity in re.findall(r"([\d.]+)%\{opacity:([\d.]+)", frames)
+        if float(opacity) == 1.0
+    ]
+    assert on, f"the word never becomes visible: {frames}"
+    # Visible for the cue and nothing more: the first full-opacity stop is the
+    # cue's own start, not a ramp that began while the previous word was up.
+    assert min(on) == pytest.approx(_pct(1.0, timeline.duration), abs=0.05)
 
 
 def test_a_spoken_word_hands_the_highlight_back(minimal_spec, fake_media, tmp_path):

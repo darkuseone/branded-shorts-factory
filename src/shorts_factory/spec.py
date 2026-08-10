@@ -38,7 +38,7 @@ POSITIONS = frozenset(
 )
 MOTIONS = frozenset({"none", "kenburns", "parallax", "zoom_in", "zoom_out", "pan_left", "pan_right"})
 PRIORITIES = frozenset({"low", "normal", "high", "critical"})
-CAPTION_STYLES = frozenset({"karaoke", "word_pop", "line", "none"})
+CAPTION_STYLES = frozenset({"word", "karaoke", "word_pop", "line", "none"})
 CARD_TEMPLATES = frozenset(
     {
         "BIG_NUMBER",

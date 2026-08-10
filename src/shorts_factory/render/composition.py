@@ -427,6 +427,7 @@ class CompositionWriter:
         brand = self.spec.brand
         captions = self.spec.captions
         anchor = _CAPTION_ANCHORS.get(captions.position, _CAPTION_ANCHORS["center_bottom"])
+        skin = _caption_skin(captions, brand)
 
         blocks: list[str] = [
             self._brand_font_css(),
@@ -439,16 +440,12 @@ class CompositionWriter:
                 font=FONT_STACK.format(family=brand.font_family),
                 safe_margin=SAFE_MARGIN,
                 bottom_reserve=BOTTOM_UI_RESERVE,
-                caption_size=captions.size,
-                caption_color=captions.text_color,
+                caption_size=skin["size"],
+                caption_color=skin["color"],
                 caption_highlight=captions.highlight_color,
                 caption_top=anchor["top"],
-                caption_stroke=(
-                    "-webkit-text-stroke: 1.5px rgba(5,5,8,.65); paint-order: stroke fill;"
-                    if captions.stroke
-                    else ""
-                ),
-                caption_glow=_caption_glow_css(brand.color_primary),
+                caption_stroke=skin["stroke"],
+                caption_glow=skin["glow"],
             ),
         ]
 
@@ -562,6 +559,12 @@ class CompositionWriter:
                         ],
                     )
                 )
+        elif element.kind == "caption" and self.spec.captions.style == "word":
+            # One word at a time means each cue ends exactly where the next
+            # begins. A cross-fade there would put two words on top of each
+            # other for a moment, so the switch is a cut: full opacity from
+            # the first frame of the cue to a frame before the last.
+            keyframes.append(_keyframes(name, _word_cut_stops(element, duration)))
         else:
             enter, exit_ = _entrance_for(element)
             keyframes.append(
@@ -745,6 +748,33 @@ def _keyframes(name: str, stops: list[tuple[float, str]]) -> str:
     return f"@keyframes {name}{{{''.join(parts)}}}"
 
 
+#: How long the word takes to settle out of its pop. Short enough that a
+#: 0.22s cue still lands on its resting size before it is replaced.
+WORD_POP_S = 0.07
+
+#: One frame at 30fps. The cue is taken off screen this much early so the
+#: outgoing and incoming word never share a frame.
+WORD_GAP_S = 1.0 / 30.0
+
+
+def _word_cut_stops(element: Element, duration: float) -> list[tuple[float, str]]:
+    """Hard on, small pop, hard off — the timing of a spoken word."""
+    settle = min(element.start + WORD_POP_S, element.end)
+    leave = max(element.end - WORD_GAP_S, settle)
+    on = _pct(element.start, duration)
+    return [
+        (0.0, "opacity:0;transform:scale(.84);"),
+        (max(on - 0.0001, 0.0), "opacity:0;transform:scale(.84);"),
+        (on, "opacity:1;transform:scale(1.10);"),
+        (_pct(settle, duration), "opacity:1;transform:scale(1);"),
+        # Listed before the hold so that on a cue too short to separate them,
+        # de-duplication keeps the stop that takes the word off screen.
+        (_pct(element.end, duration), "opacity:0;transform:scale(1);"),
+        (_pct(leave, duration), "opacity:1;transform:scale(1);"),
+        (100.0, "opacity:0;"),
+    ]
+
+
 def _entrance_for(element: Element) -> tuple[str, str]:
     role = element.props.get("role", "")
     if role == "cta":
@@ -752,7 +782,9 @@ def _entrance_for(element: Element) -> tuple[str, str]:
     if role == "outro":
         return "scale(.94)", "scale(1.02)"
     if role == "data_chip":
-        return "translateY(28px) translateX(-50%)", "translateY(-8px) translateX(-50%)"
+        # No translateX here: the chip is placed by its left inset, and a
+        # transform written by the animation would drag it out of the frame.
+        return "translateY(28px)", "translateY(-8px)"
     if element.kind == "caption":
         # Opacity-only — translateY/scale on captions reads as text jumping.
         return "none", "none"
@@ -790,14 +822,19 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   pointer-events: none;
 }}
 .caption {{
-  left: 50%;
+  /* Centred by the box, never by `transform`. Every element carries an
+     entrance animation that writes `transform` with fill:both, so a
+     translateX(-50%) sitting in the class is overwritten the moment the
+     animation is attached — which put the block's *left* edge at mid-frame
+     and ran the text off the side. Left/right insets cannot be overwritten. */
+  left: 0;
+  right: 0;
   top: {caption_top};
-  transform: translateX(-50%);
   /* The safe area, not the whole frame: a line as wide as the video has its
      first and last glyph on the bezel, and anything unbreakable ran clean off
      the edge. */
-  width: calc({width}px - {safe_margin}px * 4);
-  max-width: calc({width}px - {safe_margin}px * 4);
+  width: {width}px;
+  padding: 0 calc({safe_margin}px * 2);
   overflow-wrap: anywhere;
   word-break: normal;
   hyphens: auto;
@@ -812,8 +849,8 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
 }}
 .caption .w {{ display: inline-block; }}
 .text {{
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
   width: {width}px;
   padding: 0 {safe_margin}px;
   text-align: center;
@@ -825,7 +862,7 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   top: auto;
   bottom: calc({bottom_reserve}px + 420px);
   left: {safe_margin}px;
-  transform: none;
+  right: auto;
   width: auto;
   max-width: 78%;
   padding: 0;
@@ -902,6 +939,44 @@ _HOST_BASE_CSS = """\
   transform-origin: center 18%;
 }}
 """
+
+
+#: One word alone on screen carries the frame, so it is set larger than a
+#: line of the same subtitle would be — but not so large that an ordinary
+#: long word has to wrap.
+WORD_SIZE_FACTOR = 1.3
+WORD_SIZE_CAP = 96
+
+
+def _caption_skin(captions, brand) -> dict[str, str | int]:
+    """How the subtitle is painted, per style.
+
+    `word` is the requested look: one word at a time, plain white with a thin
+    black outline. The brand halo is deliberately absent — a crimson glow on
+    white glyphs at this size tints the whole word pink over bright footage,
+    and the outline is what actually keeps it readable.
+    """
+    if captions.style == "word":
+        size = min(int(round(captions.size * WORD_SIZE_FACTOR)), WORD_SIZE_CAP)
+        # Thin: a hair over 3% of the cap height, which reads as a drawn edge
+        # rather than a black slab around the letters.
+        stroke_px = max(2, round(size * 0.035))
+        return {
+            "size": size,
+            "color": "#FFFFFF",
+            "stroke": (
+                f"-webkit-text-stroke: {stroke_px}px #000000; paint-order: stroke fill; text-wrap: balance;"
+            ),
+            "glow": "0 2px 6px rgba(0,0,0,.55), 0 8px 26px rgba(0,0,0,.40)",
+        }
+    return {
+        "size": captions.size,
+        "color": captions.text_color,
+        "stroke": (
+            "-webkit-text-stroke: 1.5px rgba(5,5,8,.65); paint-order: stroke fill;" if captions.stroke else ""
+        ),
+        "glow": _caption_glow_css(brand.color_primary),
+    }
 
 
 def _caption_glow_css(primary: str) -> str:
