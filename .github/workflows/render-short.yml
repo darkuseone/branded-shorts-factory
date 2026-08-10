@@ -61,7 +61,8 @@ jobs:
           python3 scripts/pick_scenario.py \
             --spec "${{ inputs.spec }}" \
             --before "${{ github.event.before }}" \
-            --sha "${{ github.sha }}"
+            --sha "${{ github.sha }}" \
+            --require-avatar
 
       - uses: actions/setup-python@v5
         with:

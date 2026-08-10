@@ -18,11 +18,14 @@ The rules, in order:
    nothing to disambiguate, and refusing to render it helps nobody.
 4. Otherwise, fail and say exactly what was found.
 
-Whatever is chosen must have a committed avatar clip beside it, because this
-workflow renders with an external avatar and never calls HeyGen.
+With `--require-avatar`, whatever is chosen must also have a committed avatar
+clip beside it. Render Short passes it, because it renders with an external
+avatar and never calls HeyGen; Prepare Short does not, because it runs to
+produce the material that avatar is made from.
 
 Usage:
     python3 scripts/pick_scenario.py [--spec PATH] [--before SHA] [--sha SHA]
+                                     [--require-avatar]
 
 Writes `spec=` and `id=` to $GITHUB_OUTPUT when that is set, and prints them.
 """
@@ -151,11 +154,17 @@ def main() -> int:
     parser.add_argument("--spec", default="")
     parser.add_argument("--before", default="")
     parser.add_argument("--sha", default="")
+    parser.add_argument(
+        "--require-avatar",
+        action="store_true",
+        help="fail unless a committed avatar clip sits beside the scenario "
+        "(Render needs one; Prepare runs before it exists)",
+    )
     args = parser.parse_args()
 
     path, scenario_id = resolve(args.spec.strip(), args.before.strip(), args.sha.strip())
 
-    if avatar_for(scenario_id) is None:
+    if args.require_avatar and avatar_for(scenario_id) is None:
         raise SystemExit(
             f"::error::jobs/{scenario_id}/avatar.mp4 is missing — this workflow "
             "renders with an external avatar, so the clip has to be committed"

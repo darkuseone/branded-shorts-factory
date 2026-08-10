@@ -4,10 +4,12 @@ name: Prepare Short
 # Push a scenario JSON → synthesise voice + word timings + search/QA.
 # Download the artifact, feed voice.mp3 into HeyGen MCP in chat, commit
 # jobs/<id>/avatar.mp4, then the Render Short workflow finishes the MP4.
+# Manual only. This runs a full voice + search + QA pass — tens of minutes and
+# real ElevenLabs and stock calls — and it exists to produce the material for a
+# HeyGen avatar that does not exist yet. Firing it on every scenario edit spent
+# that on scenarios whose avatar was already committed, and raced Render Short
+# for the same job.
 on:
-  push:
-    paths:
-      - "jobs/**.json"
   workflow_dispatch:
     inputs:
       spec:
@@ -43,29 +45,10 @@ jobs:
       - name: Pick the scenario
         id: pick
         run: |
-          if [ -n "${{ inputs.spec }}" ]; then
-            SPEC="${{ inputs.spec }}"
-          else
-            BEFORE="${{ github.event.before }}"
-            SHA="${{ github.sha }}"
-            if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] \
-               && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
-              SPEC=$(git diff --name-only --diff-filter=d "$BEFORE" "$SHA" -- 'jobs/*.json' | tail -n 1)
-            fi
-            if [ -z "$SPEC" ]; then
-              SPEC=$(git show --name-only --pretty='' "$SHA" -- 'jobs/*.json' | tail -n 1)
-            fi
-            if [ -z "$SPEC" ]; then
-              SPEC=$(ls -1t jobs/*.json 2>/dev/null | head -n 1)
-            fi
-          fi
-          if [ -z "$SPEC" ] || [ ! -f "$SPEC" ]; then
-            echo "::error::No scenario JSON found (looked for '$SPEC')"
-            exit 1
-          fi
-          echo "spec=$SPEC" >> "$GITHUB_OUTPUT"
-          echo "id=$(python3 -c "import json;print(json.load(open('$SPEC'))['id'])")" >> "$GITHUB_OUTPUT"
-          echo "Preparing $SPEC"
+          python3 scripts/pick_scenario.py \
+            --spec "${{ inputs.spec }}" \
+            --before "${{ github.event.before }}" \
+            --sha "${{ github.sha }}"
 
       - uses: actions/setup-python@v5
         with:
