@@ -104,6 +104,10 @@ class Budgets:
     grok_vision_calls: int = 60
     escalate_below_score: float = 0.62
     accept_above_score: float = 0.80
+    #: Wall clock for one run (§19). Past it the run stops reaching for slow
+    #: optional tiers and finishes with what it has, rather than being killed
+    #: from outside with nothing to show. 0 disables the guard.
+    wallclock_minutes: int = 35
 
 
 @dataclass(frozen=True)
@@ -219,6 +223,7 @@ class Settings:
                 grok_vision_calls=_env_int(env, "GROK_VISION_CALL_BUDGET", 60),
                 escalate_below_score=_env_float(env, "ESCALATE_BELOW_SCORE", 0.62),
                 accept_above_score=_env_float(env, "ACCEPT_ABOVE_SCORE", 0.80),
+                wallclock_minutes=_env_int(env, "RUN_WALLCLOCK_MINUTES", 35),
             ),
             paths=Paths(project_root, work),
             offline=_env_bool(env, "SHORTS_OFFLINE", False),

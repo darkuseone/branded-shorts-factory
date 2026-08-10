@@ -99,9 +99,11 @@ jobs:
       - name: Render (external avatar)
         id: build
         run: |
+          set -o pipefail
+          mkdir -p build
           ARGS=""
           if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="--dry-run"; fi
-          python -m shorts_factory $ARGS render "${{ steps.pick.outputs.spec }}"
+          python -m shorts_factory $ARGS render "${{ steps.pick.outputs.spec }}" 2>&1 | tee build/render.log
 
       - name: Verify output (catch dead b-roll / missing host modes)
         if: success() && inputs.dry_run != true
@@ -152,3 +154,10 @@ jobs:
           path: build/composition/**
           if-no-files-found: ignore
           retention-days: 7
+
+      # Last on purpose. Two upload steps emit ~80 lines of boilerplate each,
+      # so a failure explained before them is invisible to anything reading
+      # the tail — which is every log reader there is.
+      - name: Why it failed
+        if: failure()
+        run: python3 scripts/explain_failure.py "${{ steps.pick.outputs.id }}"

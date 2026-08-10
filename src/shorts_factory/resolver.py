@@ -16,6 +16,7 @@ from dataclasses import dataclass
 
 from .assets.library import MemeLibrary
 from .config import Settings
+from .deadline import Deadline
 from .errors import BudgetExceededError
 from .generative.budget import TokenBudget
 from .generative.grok_imagine import GrokImagineClient
@@ -77,6 +78,7 @@ class VisualResolver:
         vision: GrokVisionGate | None = None,
         budget: TokenBudget | None = None,
         memes: MemeLibrary | None = None,
+        deadline: Deadline | None = None,
     ):
         self.settings = settings
         self.aggregator = aggregator or SearchAggregator(settings)
@@ -86,6 +88,7 @@ class VisualResolver:
         self.vision = vision or GrokVisionGate(settings)
         self.budget = budget or TokenBudget.from_budgets(settings.budgets)
         self.memes = memes or MemeLibrary(settings.paths.meme_library)
+        self.deadline = deadline or Deadline.from_minutes(settings.budgets.wallclock_minutes)
 
     # -- public API ---------------------------------------------------------
 
@@ -162,6 +165,16 @@ class VisualResolver:
                 )
                 decision = follow_up
 
+        if decision.action == "magnific_generate" and not self.deadline.allows_slow_step():
+            # A generation polls for minutes. Starting one with the run's clock
+            # nearly gone trades a finished video for a killed job (§4.6).
+            log.warning(
+                "%s: skipping generation, wall clock nearly spent",
+                visual.id,
+                extra={"stage": "resolve"},
+            )
+            decision = type(decision)("accept_free", "wall clock nearly spent", decision.hero)
+
         if decision.action == "magnific_generate":
             escalated = True
             generated = self._generate_magnific(spec, visual, outcome.plan, hero=decision.hero)
@@ -171,6 +184,14 @@ class VisualResolver:
                 decision = type(decision)(
                     "grok_fallback", "magnific generation produced nothing", decision.hero
                 )
+
+        if decision.action == "grok_fallback" and not self.deadline.allows_slow_step():
+            log.warning(
+                "%s: skipping Grok generation, wall clock nearly spent",
+                visual.id,
+                extra={"stage": "resolve"},
+            )
+            decision = type(decision)("accept_free", "wall clock nearly spent", decision.hero)
 
         if decision.action == "grok_fallback":
             escalated = True
