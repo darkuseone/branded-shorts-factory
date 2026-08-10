@@ -53,13 +53,23 @@ def test_banned_subject_is_fatal():
 
 
 def test_missing_required_subject_costs_score():
+    """Same asset either way, so the difference measured is the penalty.
+
+    This used to compare two different titles, one of which was simply a
+    better subject match — which measured subject coverage, not the
+    must_include penalty, and inverted as soon as coverage was recalibrated.
+    """
     visual = make_visual(must_include=["temperature"])
     plan = build_query_plan(visual)
     with_term = check_native(
-        asset_for(title="venus temperature chart", tags=["temperature", "venus"]), visual, plan, "Венера"
+        asset_for(title="planet venus in space", tags=["temperature"]), visual, plan, "Венера"
     )
-    without_term = check_native(asset_for(), visual, plan, "Венера")
+    without_term = check_native(
+        asset_for(title="planet venus in space", tags=["surface"]), visual, plan, "Венера"
+    )
     assert with_term.score > without_term.score
+    assert any("temperature" in issue for issue in without_term.issues)
+    assert not any("temperature" in issue for issue in with_term.issues)
 
 
 def test_low_resolution_is_flagged():
@@ -221,3 +231,72 @@ def test_report_summary_counts_every_bucket():
     assert report.vision_checked == 1
     assert not report.is_renderable()
     assert "1 accepted" in report.summary()
+
+
+# --------------------------------------------------------------------------- #
+# Calibration — the gate must not argue with its own boilerplate
+# --------------------------------------------------------------------------- #
+
+
+def test_subject_coverage_saturates_instead_of_demanding_every_word():
+    """A stock title is a few words; a six-word query cannot be echoed whole.
+
+    Nineteen of twenty-five slots came back empty with an empty issue list —
+    nothing was wrong with the assets, the arithmetic simply could not reach
+    the threshold for a multi-word query.
+    """
+    visual = make_visual(query="security operations center", keywords=[])
+    plan = build_query_plan(visual)
+    verdict = check_native(
+        asset_for(title="Security Room With Monitors", tags=["security", "operations", "monitor"]),
+        visual,
+        plan,
+        "Центр мониторинга безопасности.",
+    )
+    assert verdict.passed, f"score {verdict.score:.3f}, issues {verdict.issues}"
+
+
+def test_expander_modifiers_are_not_part_of_the_bar():
+    """The search layer appends "well lit laboratory" to footage queries.
+
+    Scoring assets against that made an AI-security script read as a science
+    lab, after which every honest tech clip was rejected for "reading as
+    tech".
+    """
+    visual = make_visual(query="hacker laptop dark", keywords=["penetration testing"], type="footage")
+    plan = build_query_plan(visual)
+    assert any("laboratory" in q for q in plan.queries), "modifier still expected in the fan"
+    assert not any("laboratory" in term for term in plan.author_terms)
+
+    verdict = check_native(
+        asset_for(title="Man Typing On Laptop In Dark Room", tags=["laptop", "hacker", "dark"]),
+        visual,
+        plan,
+        "Их тестировали на бенчмарке по взлому.",
+    )
+    assert verdict.passed, f"score {verdict.score:.3f}, issues {verdict.issues}"
+
+
+def test_the_lexicon_cannot_veto_an_asset_that_matches_the_query():
+    """One stray word swings the classifier: "chart" reads as finance."""
+    visual = make_visual(query="venus temperature", keywords=[])
+    plan = build_query_plan(visual)
+    verdict = check_native(
+        asset_for(title="venus temperature chart", tags=["venus", "temperature"]),
+        visual,
+        plan,
+        "Венера",
+    )
+    assert not any("reads as" in issue for issue in verdict.issues)
+
+
+def test_an_off_topic_asset_is_still_rejected():
+    """The calibration must not have turned the gate into a rubber stamp."""
+    visual = make_visual(query="security operations center", keywords=[])
+    plan = build_query_plan(visual)
+    for title, tags in (
+        ("Woman Doing Yoga On The Beach", ["yoga", "beach", "wellness"]),
+        ("Fresh Vegetables On A Wooden Table", ["food", "cooking", "kitchen"]),
+    ):
+        verdict = check_native(asset_for(title=title, tags=tags), visual, plan, "Центр мониторинга.")
+        assert not verdict.passed, f"{title} scored {verdict.score:.3f}"

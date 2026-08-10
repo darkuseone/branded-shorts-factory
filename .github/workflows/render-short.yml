@@ -77,6 +77,14 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends ffmpeg
 
+      # Infographic cards are HTML screenshotted by Playwright. Without this
+      # the card silently fails to render and the slot falls through to stock
+      # search — which is how two of them ended up hunting Pexels for a chart.
+      - name: Install Playwright and Chromium
+        run: |
+          python -m pip install --upgrade pip playwright
+          python -m playwright install --with-deps chromium
+
       - name: Install HyperFrames skills
         run: npx --yes skills add heygen-com/hyperframes
 

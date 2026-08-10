@@ -301,6 +301,15 @@ NEUTRAL_DOMAINS = frozenset({"abstract"})
 #: Below this, the asset is not credibly about the same thing as the narration.
 PASS_THRESHOLD = 0.42
 
+#: Fraction of the primary query an asset should echo before its subject
+#: coverage counts as complete, and the floor in absolute words.
+PRIMARY_COVERAGE = 0.5
+PRIMARY_MIN_HITS = 2
+
+#: Above this much subject coverage, the domain classifier may not overrule
+#: the author's own words.
+DOMAIN_VETO_FLOOR = 0.5
+
 
 @dataclass
 class NativeVerdict:
@@ -348,7 +357,7 @@ def check_native(
 
     metadata = candidate.searchable_text.lower()
     asset_tokens = set(tokenize(metadata))
-    plan_tokens = set(plan.all_terms)
+    plan_tokens = set(plan.author_terms)
     context_tokens = set()
     for token in tokenize(context):
         translated = translate_term(token) or token
@@ -359,13 +368,22 @@ def check_native(
         # cannot be judged here, so defer to the vision gate rather than block.
         notes.append("no metadata; deferring to the vision gate")
         lexical = 0.5
+        primary_hit = 0.0
     else:
         # The primary query carries most of the weight: the expanded fan
         # contains type modifiers ("cinematic 4k") that no honest asset is
         # obliged to mention. Missing context words are not held against an
         # asset either, so their weight is dropped when there are none.
         primary_tokens = set(tokenize(plan.primary))
-        primary_hit = len(asset_tokens & primary_tokens) / len(primary_tokens) if primary_tokens else 0.0
+        # Coverage saturates instead of demanding the whole query. A stock
+        # title is three to six words; asking it to echo every token of
+        # "security operations centre monitors red alert" is impossible by
+        # construction, and the gate was rejecting exact matches with an empty
+        # issue list — the surest sign the arithmetic, not the asset, was
+        # wrong. Echoing about half the subject words means it is on topic.
+        matched = len(asset_tokens & primary_tokens)
+        target = max(PRIMARY_MIN_HITS, round(len(primary_tokens) * PRIMARY_COVERAGE))
+        primary_hit = min(matched / target, 1.0) if primary_tokens else 0.0
         breadth = len(asset_tokens & plan_tokens) / max(len(plan_tokens), 1)
         components = [(0.55, primary_hit), (0.20, breadth)]
         if context_tokens:
@@ -377,10 +395,24 @@ def check_native(
     score = lexical
 
     # --- domain conflict -------------------------------------------------
-    subject = f"{context} {' '.join(plan.queries)}"
-    wanted = domains_of(subject) - NEUTRAL_DOMAINS
+    # Domain conflict is a blunt instrument — it multiplies the score by 0.25 —
+    # so it only fires when the script itself says what the domain is. The
+    # expanded query fan carries cosmetic modifiers the search layer appends
+    # ("well lit laboratory"), and classifying from those made an AI-security
+    # story read as science_lab, after which every honest tech clip was thrown
+    # out for "reading as tech": the gate arguing with its own boilerplate.
+    # When nothing confidently classifies the subject, nothing is rejected for
+    # it either.
+    wanted = domains_of(context) - NEUTRAL_DOMAINS
+    if not wanted:
+        wanted = domains_of(plan.primary) - NEUTRAL_DOMAINS
     got = domains_of(metadata) - NEUTRAL_DOMAINS
-    if wanted and got and not (wanted & got):
+    # The classifier is a guess over a hand-written lexicon and one stray word
+    # swings it: "venus temperature chart" reads as finance because of
+    # "chart". The author's own query words are the ground truth, so an asset
+    # that already echoes the subject cannot be vetoed by a lexicon hunch.
+    lexicon_may_veto = primary_hit < DOMAIN_VETO_FLOOR
+    if wanted and got and lexicon_may_veto and not (wanted & got):
         conflict = (
             f"asset reads as {'/'.join(sorted(got))} but the script is about {'/'.join(sorted(wanted))}"
         )

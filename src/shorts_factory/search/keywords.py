@@ -380,11 +380,29 @@ class QueryPlan:
     must_include: list[str] = field(default_factory=list)
     must_avoid: list[str] = field(default_factory=list)
 
+    #: Queries the author wrote — the primary plus their own alternates,
+    #: before any cosmetic modifier was appended.
+    authored: list[str] = field(default_factory=list)
+
     @property
     def all_terms(self) -> list[str]:
-        """Every distinct token across the plan — the vocabulary QA scores against."""
+        """Every distinct token across the plan, expander modifiers included."""
+        return self._terms(self.queries)
+
+    @property
+    def author_terms(self) -> list[str]:
+        """Only what the author asked for.
+
+        QA scores against this, not against `all_terms`. The expander appends
+        look-and-feel modifiers ("cinematic 4k", "well lit laboratory") that no
+        honest stock title is obliged to mention, and judging an asset against
+        them means judging it against our own boilerplate.
+        """
+        return self._terms(self.authored or [self.primary])
+
+    def _terms(self, queries: list[str]) -> list[str]:
         seen: dict[str, None] = {}
-        for query in self.queries:
+        for query in queries:
             for token in tokenize(query):
                 seen.setdefault(token, None)
         return list(seen)
@@ -482,6 +500,10 @@ def build_query_plan(visual: Visual, spec: Spec | None = None) -> QueryPlan:
     for term in english:
         add(term)
 
+    # Everything queued so far is the author's own wording; what follows is
+    # look-and-feel the expander adds, and QA must not score assets against it.
+    authored = list(queries)
+
     for modifier in _TYPE_MODIFIERS.get(visual.type, ())[:2]:
         add(f"{primary} {modifier}")
 
@@ -507,6 +529,7 @@ def build_query_plan(visual: Visual, spec: Spec | None = None) -> QueryPlan:
         visual_id=visual.id,
         primary=primary,
         queries=queries,
+        authored=authored,
         context=context,
         warnings=warnings,
         must_include=[t.lower() for t in visual.must_include],
