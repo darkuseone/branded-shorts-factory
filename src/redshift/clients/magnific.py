@@ -188,6 +188,47 @@ class MagnificClient(BaseClient):
         destination.write_bytes(payload)
         return destination
 
+    # -- upscaling ----------------------------------------------------------
+
+    def upscale(self, source_url: str, *, factor: int = 2, allow_paid: bool = False) -> str | None:
+        """Lift a small asset to usable size, cheap model first.
+
+        A 1080p landscape clip cropped to 9:16 is 607 wide against a 1080-wide
+        frame, and letting the browser stretch it is the worst version of this
+        — an upscaler at least knows what it is looking at. The free model is
+        tried first and `allow_paid` is the only door to a metered one, so a
+        run cannot quietly spend credits on a shot that was fine already.
+        """
+        if not self.is_available():
+            return None
+        free_model = os.environ.get("MAGNIFIC_UPSCALE_FREE_MODEL", "upscaler-fast")
+        paid_model = os.environ.get("MAGNIFIC_UPSCALE_MODEL", "magnific-precision")
+
+        for model, credits in ((free_model, 0.0), (paid_model, 1.0)):
+            if not model:
+                continue
+            if credits and not allow_paid:
+                break
+            if credits and self.budget is not None and not self.budget.can_afford("magnific_image"):
+                log.info("no budget left to upscale", extra={"stage": self.stage})
+                break
+            try:
+                response = self.post_json(
+                    f"{self.base}/upscale",
+                    {"model": model, "image_url": source_url, "scale": factor},
+                )
+            except ProviderError as exc:
+                log.warning("upscale failed on %s: %s", model, exc, extra={"stage": self.stage})
+                continue
+            url = self._resolve(response)
+            if url:
+                if credits and self.budget is not None:
+                    self.budget.charge("magnific_image")
+                self._last_credits = credits
+                log.info("upscaled x%d via %s", factor, model, extra={"stage": self.stage})
+                return url
+        return None
+
     # -- tiers 2 & 3: generation -------------------------------------------
 
     def generate(

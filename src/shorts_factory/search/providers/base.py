@@ -71,11 +71,42 @@ class StockProvider(ABC):
         return f"<{type(self).__name__} {self.name}>"
 
 
-#: The Short is 1920 tall. This much source height gives room to crop and
-#: reframe; past it every extra pixel is downscaled away before it is ever
-#: seen.
-TARGET_HEIGHT = 1920
-HEADROOM = 1.35
+#: The output is 1080x1920. Nothing above the 1080p class is ever worth
+#: fetching: a 4K or 8K master is hundreds of megabytes downloaded, probed,
+#: decoded per frame and then thrown away in the downscale. The cap is on the
+#: SHORT edge, which is the honest way to say "1080p" for both orientations —
+#: it admits 1920x1080 landscape and 1080x1920 vertical, and excludes 2160
+#: and 4320 in either.
+MAX_SHORT_EDGE = 1080
+
+#: What a 9:16 frame needs. A landscape source cropped to 9:16 comes out
+#: narrower than this and has to be lifted; see `needs_upscale`.
+OUTPUT_WIDTH = 1080
+OUTPUT_HEIGHT = 1920
+
+
+def short_edge(variant: dict, *, width_key: str = "width", height_key: str = "height") -> int:
+    width = int(variant.get(width_key) or 0)
+    height = int(variant.get(height_key) or 0)
+    if not width or not height:
+        return max(width, height)
+    return min(width, height)
+
+
+def needs_upscale(width: int, height: int) -> bool:
+    """Whether a 9:16 crop of this source lands below the output resolution.
+
+    A 1920x1080 clip cropped to 9:16 is 607x1080 — sharp, but too small, so it
+    gets blown up in the composition. Lifting it deliberately with an upscaler
+    beats letting the browser stretch it.
+    """
+    if not width or not height:
+        return False
+    if height <= 0:
+        return False
+    # Crop to 9:16 keeps the full height and takes 9/16 of it in width.
+    cropped_width = min(width, height * OUTPUT_WIDTH / OUTPUT_HEIGHT)
+    return cropped_width < OUTPUT_WIDTH - 1
 
 
 def pick_best_fit(
@@ -84,41 +115,30 @@ def pick_best_fit(
     width_key: str = "width",
     height_key: str = "height",
     prefer_vertical: bool = True,
-    target_height: int = TARGET_HEIGHT,
+    max_short_edge: int = MAX_SHORT_EDGE,
 ) -> dict | None:
-    """Choose the smallest variant that still covers the output resolution.
+    """Choose the best variant at or below the 1080p class.
 
-    This used to take the tallest file under 4320 — up to 8K. For a
-    1080x1920 Short that is a UHD master downloaded, stored and transcoded so
-    it can be thrown away in the downscale, and it dominated the run: one
-    measured pass spent 65 minutes of its 115-minute budget filling slots,
-    almost all of it moving pixels nobody would ever see.
-
-    Vertical variants still win outright, since a 9:16 crop of a portrait
-    source loses nothing. Among the rest, the smallest file that clears the
-    target height wins; if nothing clears it, the tallest available does.
+    Vertical wins outright — a portrait source needs no crop, so all 1080 of
+    its width survive. Otherwise take the largest variant that still respects
+    the cap; only if every variant breaks the cap does the smallest of those
+    win, since something has to be returned.
     """
     usable = [v for v in variants if isinstance(v, dict) and v.get(height_key)]
     if not usable:
         return None
 
-    ceiling = int(target_height * HEADROOM)
-
-    def height_of(variant: dict) -> int:
-        return int(variant.get(height_key) or 0)
-
     def is_vertical(variant: dict) -> bool:
         width = int(variant.get(width_key) or 0)
-        height = height_of(variant)
+        height = int(variant.get(height_key) or 0)
         return bool(prefer_vertical and height and width and height > width)
 
     def rank(variant: dict) -> tuple[int, int, int]:
-        height = height_of(variant)
-        # Enough resolution, and not wastefully more: the band we want.
-        in_band = 1 if target_height <= height <= ceiling else 0
-        # Within the band prefer the smallest; outside it prefer the tallest.
-        size_key = -height if in_band else height
-        return (int(is_vertical(variant)), in_band, size_key)
+        edge = short_edge(variant, width_key=width_key, height_key=height_key)
+        within = 1 if edge <= max_short_edge else 0
+        # Inside the cap take the biggest; outside it take the smallest.
+        size_key = edge if within else -edge
+        return (int(is_vertical(variant)) if within else 0, within, size_key)
 
     return max(usable, key=rank)
 

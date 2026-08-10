@@ -30,8 +30,15 @@ from ..core.log import get_logger
 
 log = get_logger("icons")
 
-#: Where committed icons live, relative to the repository root.
+#: Where committed marks and plates live, relative to the repository root.
+#: Anything fetched lands here and is meant to be committed, so the second
+#: video that needs the same thing costs nothing and needs no network.
 ICON_DIR = Path("assets/icons")
+
+#: Reusable stock the cards are built from — plates, arrows, badges. Same
+#: idea as the icon bank, one folder per kind so the bank stays browsable.
+STOCK_ROOT = Path("assets/stock")
+STOCK_KINDS = ("plates", "arrows", "badges", "textures")
 
 SUFFIXES = (".svg", ".png", ".webp", ".jpg", ".jpeg")
 
@@ -96,9 +103,12 @@ class IconBank:
         root: Path | str = ".",
         *,
         fetch: Callable[[str, Path], Path | None] | None = None,
+        kind: str = "",
     ):
         self.root = Path(root)
-        self.dir = self.root / ICON_DIR
+        # An empty kind is the icon bank; a named kind is a stock shelf next
+        # to it, so plates and arrows accumulate the same way marks do.
+        self.dir = self.root / (STOCK_ROOT / kind if kind else ICON_DIR)
         self.fetch = fetch
         self._memo: dict[str, str] = {}
         #: Names looked up this run that ended on the drawn fallback, so a
