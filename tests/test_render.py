@@ -407,3 +407,41 @@ def test_a_spoken_word_hands_the_highlight_back(minimal_spec, fake_media, tmp_pa
     assert frames.rstrip().rstrip("}").endswith("color:var(--caption-color);"), (
         f"the word never returns to the base colour: {frames}"
     )
+
+
+def test_a_clip_that_kept_its_audio_is_caught_not_shipped(minimal_spec, tmp_path):
+    """The timeline mix is the only soundtrack.
+
+    Clips are stripped on the way in and marked muted, so this should be
+    unreachable — and the first cut still came back with two voices, which
+    means one of those steps failed silently. Checking the result catches
+    every route, including ones not thought of yet.
+    """
+    import shutil
+    import subprocess
+
+    if not shutil.which("ffmpeg"):
+        pytest.skip("ffmpeg is what makes this checkable")
+
+    noisy = tmp_path / "noisy.mp4"
+    subprocess.run(
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+         "-f", "lavfi", "-i", "color=c=black:s=270x480:d=1",
+         "-f", "lavfi", "-i", "sine=frequency=440:duration=1",
+         "-shortest", "-pix_fmt", "yuv420p", str(noisy)],
+        check=False, capture_output=True, timeout=60,
+    )  # fmt: skip
+    if not noisy.exists():
+        pytest.skip("could not build a clip with audio")
+
+    from shorts_factory.media.ffmpeg import probe
+
+    assert probe(noisy).has_audio, "fixture must actually carry audio"
+
+    timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, noisy))
+    writer = CompositionWriter(minimal_spec, timeline, tmp_path / "comp")
+    result = writer.write()
+
+    for path in (result.directory / "media").glob("*.mp4"):
+        info = probe(path)
+        assert info is None or not info.has_audio, f"{path.name} reached the composition with audio"

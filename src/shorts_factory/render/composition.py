@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from ..errors import RenderError
 from ..logging_utils import get_logger
 from ..media.ffmpeg import is_available as ffmpeg_available
 from ..media.ffmpeg import remux_without_audio
@@ -158,6 +159,7 @@ class CompositionWriter:
             encoding="utf-8",
         )
         self._write_design_tokens()
+        self._assert_video_is_silent()
 
         log.info(
             "composition written to %s (%d media files)",
@@ -166,6 +168,51 @@ class CompositionWriter:
             extra={"stage": "compose"},
         )
         return CompositionResult(self.directory, index_html, manifest, len(self._copied))
+
+    def _assert_video_is_silent(self) -> None:
+        """No clip in the composition may carry its own audio.
+
+        The timeline mix is the only soundtrack. Every visual clip is stripped
+        on the way in and marked `muted`, so in principle this can never fire —
+        and yet the first cut came back with two voices talking over each
+        other, which means one of those steps failed without saying so. There
+        are three ways it can: the remux fails and the re-encode fails too,
+        HyperFrames muxes a muted <video> anyway, or the no-ffmpeg fallback
+        copies a clip verbatim.
+
+        Rather than guess which, check the result. A file that still has an
+        audio stream is stripped here by force; if even that fails the run
+        stops, because a Short with two narrators is not worth shipping and a
+        silent failure is how it reached the client in the first place.
+        """
+        from ..media.ffmpeg import probe
+
+        offenders: list[Path] = []
+        for path in sorted(self.media_dir.glob("*")):
+            if path.suffix.lower() not in {".mp4", ".webm", ".mov", ".m4v"}:
+                continue
+            info = probe(path, self.settings_ffprobe)
+            if info is None or not info.has_audio:
+                continue
+            log.error("%s still carries audio; stripping it", path.name, extra={"stage": "compose"})
+            silent = path.with_name(f"{path.stem}_forced_silent{path.suffix}")
+            if _reencode_silent(path, silent):
+                silent.replace(path)
+                self.timeline.warnings.append(f"{path.name} needed a forced audio strip")
+                continue
+            offenders.append(path)
+
+        if offenders:
+            names = ", ".join(path.name for path in offenders)
+            raise RenderError(
+                f"these clips still carry audio and could not be silenced: {names}. "
+                "The timeline mix is the only soundtrack; shipping this would put "
+                "two voices in the Short."
+            )
+
+    @property
+    def settings_ffprobe(self) -> str:
+        return "ffprobe"
 
     # -- media --------------------------------------------------------------
 
