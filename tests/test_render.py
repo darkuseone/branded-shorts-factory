@@ -19,6 +19,7 @@ from shorts_factory.render.timeline import (
     use_mixed_audio,
 )
 from shorts_factory.resolver import ResolvedVisual
+from shorts_factory.spec import Cta
 from shorts_factory.voice.captions import CaptionCue, CaptionWord, build_cues
 from shorts_factory.voice.elevenlabs import SfxClip, VoiceClip, WordTiming, _words_from_alignment
 from shorts_factory.voice.heygen import AvatarClip
@@ -278,3 +279,52 @@ def test_alignment_folding_builds_words():
 
 def test_alignment_folding_rejects_mismatched_input():
     assert _words_from_alignment({"characters": ["a"], "character_start_times_seconds": []}) == []
+
+
+# --------------------------------------------------------------------------- #
+# Track hygiene
+# --------------------------------------------------------------------------- #
+
+
+def test_cta_and_outro_never_share_the_last_seconds(minimal_spec, fake_media):
+    """Both live on the CTA track, and a CTA that stops early is pointless —
+    so without reconciliation they always collide once both are enabled."""
+    from shorts_factory.render.timeline import TRACK_CTA
+
+    minimal_spec.brand.outro_card = True
+    minimal_spec.cta = Cta(text="Подпишись", start=minimal_spec.duration_target - 5.0, duration=5.0)
+
+    timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, fake_media))
+    on_track = sorted((e for e in timeline.elements if e.track == TRACK_CTA), key=lambda e: e.start)
+    for earlier, later in zip(on_track, on_track[1:], strict=False):
+        assert later.start >= earlier.end - 0.001, f"{earlier.id} overlaps {later.id}"
+
+
+def test_a_cta_too_short_to_read_keeps_the_badge_and_drops_the_card(minimal_spec, fake_media):
+    minimal_spec.brand.outro_card = True
+    # Starting almost at the outro leaves no room to trim into.
+    minimal_spec.cta = Cta(text="Подпишись", start=minimal_spec.duration_target - 2.6, duration=2.6)
+
+    timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, fake_media))
+    ids = {e.id for e in timeline.elements}
+    assert "cta" in ids, "the CTA is the element with a job to do"
+    assert "outro" not in ids
+    assert any("outro card dropped" in w for w in timeline.warnings)
+
+
+def test_no_two_elements_ever_overlap_on_any_track(minimal_spec, fake_media):
+    import collections
+
+    minimal_spec.brand.outro_card = True
+    minimal_spec.cta = Cta(text="Подпишись", start=minimal_spec.duration_target - 5.0, duration=5.0)
+    timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, fake_media))
+    by_track = collections.defaultdict(list)
+    for element in timeline.elements:
+        by_track[element.track].append(element)
+    for track, elements in by_track.items():
+        elements.sort(key=lambda e: e.start)
+        for earlier, later in zip(elements, elements[1:], strict=False):
+            assert later.start >= earlier.end - 0.001, (
+                f"track {track}: {earlier.id} [{earlier.start:.2f},{earlier.end:.2f}] "
+                f"overlaps {later.id} [{later.start:.2f},{later.end:.2f}]"
+            )
