@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from ..logging_utils import get_logger
+from ..media.ffmpeg import is_available as ffmpeg_available
 from ..media.ffmpeg import remux_without_audio
 from ..spec import Spec
 from .host_presence import (
@@ -195,6 +196,21 @@ class CompositionWriter:
                 # (HyperFrames may mux muted <video> tracks → "two soundtracks").
                 reencoded = self.media_dir / f"{source.stem}_silent_reenc.mp4"
                 if not _reencode_silent(source, reencoded):
+                    if not ffmpeg_available("ffmpeg"):
+                        # No ffmpeg at all is an environment problem, not a bad
+                        # clip. Dropping every asset over it produces a
+                        # composition with no b-roll and no error — far worse
+                        # than the double-VO risk stripping guards against.
+                        log.error(
+                            "no ffmpeg: copying %s with its audio intact — "
+                            "mute it in the timeline or the mix may double up",
+                            source.name,
+                            extra={"stage": "compose"},
+                        )
+                        self.timeline.warnings.append(
+                            f"{source.name} kept its audio track: ffmpeg is not installed"
+                        )
+                        return self._copy_verbatim(source, cache_key)
                     log.error(
                         "cannot strip audio from %s; skipping clip",
                         source.name,
@@ -216,6 +232,19 @@ class CompositionWriter:
             if not target.exists():
                 shutil.copy2(source, target)
 
+        relative = f"media/{target.name}"
+        self._copied[cache_key] = relative
+        return relative
+
+    def _copy_verbatim(self, source: Path, cache_key: tuple) -> str:
+        """Copy an asset as-is, audio and all."""
+        target = self.media_dir / source.name
+        counter = 1
+        while target.exists() and not _same_file(target, source):
+            target = self.media_dir / f"{source.stem}_{counter}{source.suffix}"
+            counter += 1
+        if not target.exists():
+            shutil.copy2(source, target)
         relative = f"media/{target.name}"
         self._copied[cache_key] = relative
         return relative

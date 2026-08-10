@@ -16,6 +16,14 @@ jobs:
         with:
           python-version: "3.11"
 
+      # This is a media pipeline: half the code paths under test probe, remux
+      # or re-encode a clip. Without ffmpeg those paths silently take their
+      # degraded branch and CI calls the result green.
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg
+
       - name: Install dependencies
         run: python -m pip install --upgrade pip pytest ruff pydantic PyYAML
 
