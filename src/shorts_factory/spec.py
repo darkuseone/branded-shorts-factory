@@ -39,6 +39,17 @@ POSITIONS = frozenset(
 MOTIONS = frozenset({"none", "kenburns", "parallax", "zoom_in", "zoom_out", "pan_left", "pan_right"})
 PRIORITIES = frozenset({"low", "normal", "high", "critical"})
 CAPTION_STYLES = frozenset({"karaoke", "word_pop", "line", "none"})
+CARD_TEMPLATES = frozenset(
+    {
+        "BIG_NUMBER",
+        "BAR_RANK",
+        "COMPARISON_AB",
+        "TIMELINE",
+        "ICON_FACT_LIST",
+        "PROCESS_ARROW",
+        "SCREEN_CARD",
+    }
+)
 HOST_MODES = frozenset({"split", "full_host", "full_footage"})
 AUDIO_FX_TYPES = frozenset(
     {
@@ -350,6 +361,9 @@ class Visual:
     must_avoid: list[str] = field(default_factory=list)
     source_hint: str | None = None
     notes: str = ""
+    #: Infographic content, when this slot is a card we render ourselves.
+    #: Populated only for `type: infographic`; see render/infographic_bridge.py.
+    card: dict[str, Any] | None = None
 
     @property
     def end(self) -> float:
@@ -696,7 +710,47 @@ def _parse_visual(data: dict[str, Any], path: str, col: _Collector, index: int) 
         must_avoid=_string_list(data, "must_avoid", path, col),
         source_hint=_string(data, "source_hint", path, col) or None,
         notes=_string(data, "notes", path, col),
+        card=_card(data, path, col, visual_type),
     )
+
+
+def _card(data: dict[str, Any], path: str, col: _Collector, visual_type: str) -> dict[str, Any] | None:
+    """The content of an infographic slot.
+
+    Cards are rendered by us and never sourced: a stock "data visualization"
+    shows numbers that have nothing to do with the story, and a generated one
+    invents them. So an infographic slot carries its own figures.
+    """
+    raw = data.get("card")
+    if raw is None:
+        if visual_type == "infographic":
+            col.warn(f"{path}.card", "no card content; this slot will fall back to stock search")
+        return None
+    if not isinstance(raw, dict):
+        col.error(f"{path}.card", "must be an object")
+        return None
+    if visual_type != "infographic":
+        col.warn(f"{path}.card", f"ignored on type {visual_type!r}")
+        return None
+
+    items = raw.get("items")
+    if not isinstance(items, list) or not items:
+        col.error(f"{path}.card.items", "at least one item is required")
+        return None
+    if len(items) > 5:
+        # §13.3: more than five units cannot be read at Shorts pace.
+        col.error(f"{path}.card.items", f"{len(items)} items; a card holds at most 5")
+        return None
+    for position, item in enumerate(items):
+        if not isinstance(item, dict):
+            col.error(f"{path}.card.items[{position}]", "must be an object")
+            return None
+
+    template = str(raw.get("template") or "").strip().upper()
+    if template and template not in CARD_TEMPLATES:
+        col.error(f"{path}.card.template", f"{template!r} is not one of {sorted(CARD_TEMPLATES)}")
+        return None
+    return dict(raw)
 
 
 def _parse_voice(data: dict[str, Any], col: _Collector, language: str) -> VoiceSettings:

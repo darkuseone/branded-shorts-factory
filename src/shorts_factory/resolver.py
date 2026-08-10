@@ -98,6 +98,10 @@ class VisualResolver:
         if visual.type == "meme":
             return ResolvedVisual(visual=visual, qa=self._resolve_meme(spec, visual), search=None)
 
+        card = self._resolve_card(spec, visual)
+        if card is not None:
+            return ResolvedVisual(visual=visual, qa=card, search=None)
+
         local = self._resolve_local_broll(spec, visual)
         if local is not None:
             return ResolvedVisual(visual=visual, qa=local, search=None)
@@ -299,6 +303,45 @@ class VisualResolver:
         return result
 
     # -- local overrides ----------------------------------------------------
+
+    def _resolve_card(self, spec: Spec, visual: Visual) -> VisualQA | None:
+        """Render an infographic slot ourselves rather than searching for one.
+
+        Stock "data visualization" shows somebody else's numbers and a
+        generated chart invents them; either way the figure on screen
+        contradicts the voiceover. A card that carries its own content is
+        rendered here, costs nothing, and skips QA — there is no third party
+        whose licence, watermark or framing needs checking.
+        """
+        from .render.infographic_bridge import render_card_asset
+
+        if visual.type != "infographic" or not visual.card:
+            return None
+        destination = self.settings.paths.cards
+        try:
+            rendered = render_card_asset(visual, spec, destination)
+        except Exception as exc:  # a card must never take the run down
+            log.warning("%s: card render failed (%s)", visual.id, exc, extra={"stage": "resolve"})
+            return None
+        if rendered is None:
+            log.warning(
+                "%s: card could not be rendered; falling through to search",
+                visual.id,
+                extra={"stage": "resolve"},
+            )
+            return None
+
+        path, candidate = rendered
+        from .media.ffmpeg import probe
+
+        info = probe(path, self.settings.ffprobe_cmd)
+        asset = LocalAsset(candidate=candidate, path=path, info=info)
+        return VisualQA(
+            visual_id=visual.id,
+            outcome="accepted",
+            asset=asset,
+            notes=[f"infographic rendered locally: {path.name}", "no search, no tokens"],
+        )
 
     def _resolve_local_broll(self, spec: Spec, visual: Visual) -> VisualQA | None:
         """Accept ``jobs/<id>/broll/<visual_id>.*`` when an agent pre-staged stock.

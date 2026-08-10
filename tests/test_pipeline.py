@@ -25,6 +25,46 @@ from .conftest import EXAMPLE
 from .test_search import FakeProvider, make_candidate
 
 
+@pytest.fixture(autouse=True)
+def fast_cards(monkeypatch, tmp_path):
+    """Render infographic cards without starting a browser.
+
+    These tests are about orchestration. Driving real Chromium for every card
+    in the example scenario added ~20s per test and tested the card engine
+    twice — tests/test_infographic_bridge.py already renders one for real.
+    The stub keeps the routing honest: a card slot still bypasses search.
+    """
+    import shorts_factory.render.infographic_bridge as bridge
+
+    def stub(visual, spec, destination):
+        card = bridge.card_spec_for(visual, spec)
+        if card is None:
+            return None
+        destination.mkdir(parents=True, exist_ok=True)
+        path = destination / f"{visual.id}.png"
+        path.write_bytes(_PNG)
+        return path, Candidate(
+            source="redshift_card",
+            external_id=f"card:{visual.id}",
+            media_type="image",
+            download_url="",
+            title=card.title,
+            width=1080,
+            height=1920,
+            license=bridge.LICENCE,
+            cost_tokens=0,
+        )
+
+    monkeypatch.setattr(bridge, "render_card_asset", stub)
+
+
+_PNG = bytes.fromhex(
+    "89504e470d0a1a0a0000000d4948445200000001000000010806000000"
+    "1f15c4890000000d4944415478da63fcffff3f0300050001a5f645b400"
+    "00000049454e44ae426082"
+)
+
+
 class FakeDownloader(Downloader):
     """Writes a placeholder file instead of hitting the network."""
 
@@ -219,7 +259,10 @@ def test_run_report_records_budget_and_search_trail(settings, example_spec):
     result = pipeline.run(example_spec)
     payload = result.to_dict()
     assert payload["budget"]["spent"] == 0
-    assert set(payload["search"]) == {visual.id for visual in example_spec.visuals}
+    # Cards are rendered, not searched, so they carry no search trail (§13).
+    searched = {visual.id for visual in example_spec.visuals if not visual.card}
+    assert set(payload["search"]) == searched
+    assert all(visual.id not in payload["search"] for visual in example_spec.visuals if visual.card)
     first_id = example_spec.visuals[0].id
     assert payload["search"][first_id]["queries"], "the query fan is part of the audit trail"
 

@@ -134,6 +134,11 @@ class Paths:
         return self.workdir / "keyframes"
 
     @property
+    def cards(self) -> Path:
+        """Infographics we render ourselves, rather than source (§13)."""
+        return self.workdir / "cards"
+
+    @property
     def composition(self) -> Path:
         return self.workdir / "composition"
 

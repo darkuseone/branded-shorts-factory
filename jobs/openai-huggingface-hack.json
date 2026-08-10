@@ -193,7 +193,30 @@
       "motion": "none",
       "priority": "critical",
       "segment_ref": "s2",
-      "notes": "PROCESS_ARROW: OpenAI --взломал--> Hugging Face, итог «1681 репозиторий»"
+      "notes": "PROCESS_ARROW: OpenAI --взломал--> Hugging Face, итог «1681 репозиторий»",
+      "card": {
+        "template": "PROCESS_ARROW",
+        "title": "Что произошло",
+        "accent_word": "взломала",
+        "source": "OpenAI, 26 июля 2026",
+        "items": [
+          {
+            "label": "OpenAI",
+            "icon": "openai"
+          },
+          {
+            "label": "Hugging Face",
+            "icon": "huggingface"
+          },
+          {
+            "label": "прод-база",
+            "value": "доступ получен",
+            "icon": "alert"
+          }
+        ]
+      },
+      "allow_magnific": false,
+      "allow_generative": false
     },
     {
       "id": "v07",
@@ -240,7 +263,20 @@
       "motion": "none",
       "priority": "high",
       "segment_ref": "s3",
-      "notes": "BIG_NUMBER: ~900 задач ExploitGym, источник в подписи"
+      "notes": "BIG_NUMBER: ~900 задач ExploitGym, источник в подписи",
+      "card": {
+        "template": "BIG_NUMBER",
+        "title": "ExploitGym",
+        "source": "OpenAI",
+        "items": [
+          {
+            "value": "~900",
+            "label": "задач по взлому в бенчмарке"
+          }
+        ]
+      },
+      "allow_magnific": false,
+      "allow_generative": false
     },
     {
       "id": "v10",
@@ -404,7 +440,28 @@
       "motion": "none",
       "priority": "high",
       "segment_ref": "s6",
-      "notes": "TIMELINE: 21 июля атака → 26 июля признание OpenAI"
+      "notes": "TIMELINE: 21 июля атака → 26 июля признание OpenAI",
+      "card": {
+        "template": "TIMELINE",
+        "title": "Пять дней вслепую",
+        "source": "Hugging Face, OpenAI",
+        "items": [
+          {
+            "value": "21 июля",
+            "label": "Hugging Face видит атаку"
+          },
+          {
+            "value": "21–26",
+            "label": "отбивается от неизвестного"
+          },
+          {
+            "value": "26 июля",
+            "label": "OpenAI признаётся"
+          }
+        ]
+      },
+      "allow_magnific": false,
+      "allow_generative": false
     },
     {
       "id": "v20",
