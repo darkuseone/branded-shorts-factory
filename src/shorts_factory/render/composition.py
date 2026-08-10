@@ -28,6 +28,7 @@ from ..media.ffmpeg import is_available as ffmpeg_available
 from ..media.ffmpeg import remux_without_audio
 from ..spec import Spec
 from .host_presence import (
+    HOST_FOCUS,
     HostPlan,
     host_chrome_css,
     host_lower_layout,
@@ -418,7 +419,7 @@ class CompositionWriter:
 
     def _host_base_css(self) -> str:
         """Rectangular host frame. Transparent fill — studio avatar is the plate."""
-        return _HOST_BASE_CSS.format(background="transparent")
+        return _HOST_BASE_CSS.format(background="transparent", focus=HOST_FOCUS)
 
     def _element_css(self, element: Element) -> str:
         duration = max(self.timeline.duration, 0.001)
@@ -553,6 +554,7 @@ class CompositionWriter:
             name = f"kw_{element.id}_{index}"
             pre = _pct(start, duration)
             hit = _pct(min(start + 0.08, end), duration)
+            done = _pct(end, duration)
             blocks.append(
                 _keyframes(
                     name,
@@ -560,7 +562,13 @@ class CompositionWriter:
                         (0.0, "color:var(--caption-color);"),
                         (max(pre - 0.0001, 0.0), "color:var(--caption-color);"),
                         (hit, "color:var(--caption-highlight);"),
-                        (100.0, "color:var(--caption-highlight);"),
+                        # Karaoke marks the word being said, then hands the
+                        # line back. Holding the highlight to 100% left every
+                        # spoken word crimson, so by the end of a line the
+                        # whole subtitle was red.
+                        (done, "color:var(--caption-highlight);"),
+                        (min(done + 0.0001, 100.0), "color:var(--caption-color);"),
+                        (100.0, "color:var(--caption-color);"),
                     ],
                 )
             )
@@ -572,7 +580,17 @@ class CompositionWriter:
     def _avatar_css(self, element: Element) -> str:
         if self.host.visible:
             # Positioning lives on .host-frame; the video fills the rectangle.
-            return "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"
+            #
+            # object-position matters more than it looks. The avatar render is
+            # 1080x1920, and the SPLIT band is 1080x768, so `cover` centred
+            # keeps the middle 768 rows of a 1920-row frame — the chin and
+            # chest of a head-and-shoulders shot, or forehead and half a face
+            # when the source is already a close crop. Anchoring near the top
+            # keeps the face in the band without scaling the presenter at all.
+            return (
+                "position:absolute;inset:0;width:100%;height:100%;"
+                f"object-fit:cover;object-position:{HOST_FOCUS};"
+            )
         layout = element.props.get("layout", {})
         scale = float(layout.get("scale", 0.34))
         width = int(self.timeline.width * scale)
@@ -586,7 +604,8 @@ class CompositionWriter:
         box = host_lower_layout()
         return (
             f"position:absolute;top:{box['top']}px;left:0;"
-            f"width:{box['width']}px;height:{box['height']}px;object-fit:cover;"
+            f"width:{box['width']}px;height:{box['height']}px;"
+            f"object-fit:cover;object-position:{box.get('focus', HOST_FOCUS)};"
         )
 
     def _copy_brand_fonts(self) -> None:
@@ -727,8 +746,14 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   left: 50%;
   top: {caption_top};
   transform: translateX(-50%);
-  width: {width}px;
-  padding: 0 {safe_margin}px;
+  /* The safe area, not the whole frame: a line as wide as the video has its
+     first and last glyph on the bezel, and anything unbreakable ran clean off
+     the edge. */
+  width: calc({width}px - {safe_margin}px * 4);
+  max-width: calc({width}px - {safe_margin}px * 4);
+  overflow-wrap: anywhere;
+  word-break: normal;
+  hyphens: auto;
   text-align: center;
   font-size: {caption_size}px;
   font-weight: 800;
@@ -819,10 +844,14 @@ _HOST_BASE_CSS = """\
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* Pin framing to upper torso/face — milder than 28% so micro head-bob
-     from HeyGen does not look like the host jumping inside the split band. */
-  object-position: center 12%;
-  transform: scale(1.08);
+  /* Framing pinned to the face. The source is 1080x1920 and the split band is
+     1080x768, so `cover` already discards two thirds of the frame; where that
+     window sits is the whole difference between a portrait and a forehead. */
+  object-position: {focus};
+  /* No standing zoom. The presenter was permanently blown up 8%, on top of
+     that crop, which is how a head-and-shoulders render came out as half a
+     face. Emphasis is opt-in, per shot, and capped — see host_emphasis_css. */
+  transform: none;
   transform-origin: center 18%;
 }}
 """
@@ -830,11 +859,10 @@ _HOST_BASE_CSS = """\
 
 def _caption_glow_css(primary: str) -> str:
     """Soft crimson glow + light chromatic aberration (no SVG filters)."""
-    return (
-        f"0 0 18px {primary}99, 0 0 36px {primary}55, "
-        f"1px 0 0 rgba(225,29,72,0.55), -1px 0 0 rgba(56,189,248,0.35), "
-        f"0 6px 28px rgba(0,0,0,.55)"
-    )
+    # A crimson halo this wide bleeds over white glyphs and the whole subtitle
+    # reads red. Keep a hint of brand and let the drop shadow do the work of
+    # separating text from footage.
+    return f"0 0 10px {primary}44, 0 3px 10px rgba(0,0,0,.75), 0 8px 30px rgba(0,0,0,.55)"
 
 
 _SCRIPT = """\

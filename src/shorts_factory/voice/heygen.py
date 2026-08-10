@@ -29,7 +29,10 @@ UPLOAD_BASE = "https://upload.heygen.com"
 POLL_INTERVAL = 10.0
 POLL_TIMEOUT = 900.0
 
-EXTERNAL_NAMES = ("avatar_close.mp4", "avatar.mp4", "avatar.webm", "avatar.mov")
+#: Full framing first. The split band already crops the source to a third of
+#: its height, so starting from a close crop crops twice and lands on the
+#: forehead. `avatar_close.mp4` stays available for scenarios that ask for it.
+EXTERNAL_NAMES = ("avatar.mp4", "avatar.webm", "avatar.mov", "avatar_close.mp4")
 
 
 @dataclass

@@ -328,3 +328,82 @@ def test_no_two_elements_ever_overlap_on_any_track(minimal_spec, fake_media):
                 f"track {track}: {earlier.id} [{earlier.start:.2f},{earlier.end:.2f}] "
                 f"overlaps {later.id} [{later.start:.2f},{later.end:.2f}]"
             )
+
+
+# --------------------------------------------------------------------------- #
+# On-screen defects the client reported after watching the first cut
+# --------------------------------------------------------------------------- #
+
+
+def test_the_presenter_is_never_blown_up_by_default(minimal_spec, fake_media, tmp_path):
+    """A standing scale(1.08) on top of a 1080x1920 → 1080x768 crop is how a
+    head-and-shoulders render came out as forehead and half a face."""
+    minimal_spec.avatar.enabled = True
+    minimal_spec.avatar.avatar_id = "avatar-123"
+    avatar = AvatarClip(path=fake_media, duration=12.0)
+    timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, fake_media), avatar=avatar)
+    CompositionWriter(minimal_spec, timeline, tmp_path / "comp").write()
+    html = (tmp_path / "comp" / "index.html").read_text(encoding="utf-8")
+
+    host_block = html.split(".host-video video")[-1].split("}")[0] if ".host-video video" in html else ""
+    assert "scale(" not in host_block, f"presenter carries a standing zoom: {host_block}"
+
+
+def test_the_presenter_is_framed_on_the_face(minimal_spec, fake_media, tmp_path):
+    from shorts_factory.render.host_presence import HOST_FOCUS
+
+    minimal_spec.avatar.enabled = True
+    minimal_spec.avatar.avatar_id = "avatar-123"
+    avatar = AvatarClip(path=fake_media, duration=12.0)
+    timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, fake_media), avatar=avatar)
+    CompositionWriter(minimal_spec, timeline, tmp_path / "comp").write()
+    html = (tmp_path / "comp" / "index.html").read_text(encoding="utf-8")
+    assert f"object-position: {HOST_FOCUS}" in html or f"object-position:{HOST_FOCUS}" in html
+
+
+def test_an_emphasis_push_stays_within_fifteen_percent():
+    """The client's own limit: never enlarge the presenter, 10-15% at most."""
+    from shorts_factory.render.host_presence import HOST_EMPHASIS_ZOOM
+
+    assert 1.0 < HOST_EMPHASIS_ZOOM <= 1.15
+
+
+def test_captions_stay_inside_the_safe_area(minimal_spec, fake_media, tmp_path):
+    """A line as wide as the frame puts its first and last glyph on the bezel."""
+    cues = [
+        CaptionCue(
+            text="ExploitGym сверхдлинноесловокотороеневлезает",
+            start=1.0,
+            end=2.0,
+            words=[CaptionWord("ExploitGym", 1.0, 1.5), CaptionWord("сверхдлинное", 1.5, 2.0)],
+        )
+    ]
+    timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, fake_media), captions=cues)
+    CompositionWriter(minimal_spec, timeline, tmp_path / "comp").write()
+    html = (tmp_path / "comp" / "index.html").read_text(encoding="utf-8")
+
+    caption_css = html.split(".caption {")[1].split("}")[0]
+    assert "overflow-wrap: anywhere" in caption_css, "an unbreakable word runs off the edge"
+    assert f"width: {timeline.width}px" not in caption_css, "caption is as wide as the whole frame"
+
+
+def test_a_spoken_word_hands_the_highlight_back(minimal_spec, fake_media, tmp_path):
+    """Karaoke marks the current word. Holding the highlight to the end left
+    every spoken word crimson, so whole lines finished red."""
+    cues = [
+        CaptionCue(
+            text="раз два",
+            start=1.0,
+            end=2.0,
+            words=[CaptionWord("раз", 1.0, 1.5), CaptionWord("два", 1.5, 2.0)],
+        )
+    ]
+    minimal_spec.captions.style = "karaoke"
+    timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, fake_media), captions=cues)
+    CompositionWriter(minimal_spec, timeline, tmp_path / "comp").write()
+    html = (tmp_path / "comp" / "index.html").read_text(encoding="utf-8")
+
+    frames = html.split("@keyframes kw_cap_000_0")[1].split("}\n")[0]
+    assert frames.rstrip().rstrip("}").endswith("color:var(--caption-color);"), (
+        f"the word never returns to the base colour: {frames}"
+    )

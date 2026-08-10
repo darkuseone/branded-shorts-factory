@@ -101,6 +101,17 @@ def split_upper_layout() -> dict[str, object]:
     }
 
 
+#: Where the face sits in a 9:16 talking-head render. The band shows the top
+#: of the frame, not its middle: `cover` centred on a 1080x1920 source crops
+#: to the vertical middle, which on a head-and-shoulders render is the chin
+#: and chest — or, on an already-close crop, forehead and half a face.
+HOST_FOCUS = "50% 18%"
+
+#: The presenter is never blown up to fill a box. At most this much, and only
+#: as a deliberate push on an emphasised line.
+HOST_EMPHASIS_ZOOM = 1.12
+
+
 def host_lower_layout() -> dict[str, object]:
     return {
         "top": HOST_LOWER_TOP,
@@ -108,6 +119,7 @@ def host_lower_layout() -> dict[str, object]:
         "width": VIDEO_WIDTH,
         "height": HOST_LOWER_HEIGHT,
         "fit": "cover",
+        "focus": HOST_FOCUS,
         "mode": "split",
     }
 
@@ -119,6 +131,7 @@ def host_fullscreen_layout() -> dict[str, object]:
         "width": VIDEO_WIDTH,
         "height": VIDEO_HEIGHT,
         "fit": "cover",
+        "focus": HOST_FOCUS,
         "mode": "full_host",
     }
 

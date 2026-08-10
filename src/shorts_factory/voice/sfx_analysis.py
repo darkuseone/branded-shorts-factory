@@ -82,6 +82,12 @@ ROLE_TARGET_LUFS = {
     "ambience": -30.0,
 }
 DEFAULT_TARGET_LUFS = -19.0
+
+#: Every target above is lowered by this much. They were set level with the
+#: narration — an impact at -16 LUFS against a voice at about -17 is not an
+#: accent, it is a second voice — and the result was sound design that
+#: shouted over the line it was supposed to punctuate.
+SFX_BED_OFFSET_DB = -6.0
 #: Roles the placement engine asks for on a normal video. A gap here is not an
 #: error — it just means that beat falls through to generation.
 REQUIRED_ROLES = (
@@ -265,7 +271,7 @@ def gain_db_for(profile: AudioProfile, role: str) -> float:
     Clamped by the file's own true peak: a sound already touching 0 dBFS is
     never pushed further, whatever the target says.
     """
-    target = ROLE_TARGET_LUFS.get(role, DEFAULT_TARGET_LUFS)
+    target = ROLE_TARGET_LUFS.get(role, DEFAULT_TARGET_LUFS) + SFX_BED_OFFSET_DB
     wanted = target - profile.lufs
     headroom = PEAK_CEILING_DBTP - profile.peak_dbtp
     return round(max(-24.0, min(wanted, headroom, 18.0)), 1)

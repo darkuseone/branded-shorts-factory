@@ -1058,7 +1058,10 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
             "brand_elements",
             col,
             {"top_left", "top_right", "bottom_left", "bottom_right", "none"},
-            "top_left",
+            # Off unless a scenario asks for it. The parser used to default to
+            # top_left while the dataclass said "none", so the two disagreed
+            # and a watermark could appear in a corner nobody put it in.
+            "none",
         ),
         lower_third=_bool(brand_data, "lower_third", "brand_elements", col, False),
         color_primary=_string(brand_data, "color_primary", "brand_elements", col, default=DEFAULT_PRIMARY)
