@@ -1,0 +1,53 @@
+# Двухслойный критик. Источник — ТЗ §10 и §26.
+
+accept_threshold: 7.0
+accept_threshold_priority1: 7.5
+accept_threshold_fallback: 6.0
+# В серой зоне подключается арбитр Gemini (§10.3).
+gray_zone: [6.5, 7.5]
+max_rounds: 2
+
+weights:
+  relevance: 0.30
+  factual_fit: 0.25
+  brand_fit: 0.20
+  wow: 0.15
+  safety: 0.10
+
+# 9 кандидатов = 1 vision-вызов вместо 9 (§19.E1).
+contact_sheet:
+  grid: [3, 3]
+  tile: [360, 640]
+  jpeg_q: 72
+  # Кадр берём на 40% длительности — там уже нет заставки, но ещё не финал.
+  video_frame_at: 0.40
+
+# Расхождение оценок больше этого — кандидат отклоняется: спорный ≠ хороший.
+arbitration_max_delta: 2.0
+
+# L0, детерминированный слой. Отсекает 50-70% бесплатно (§10.1).
+l0:
+  hard_reject:
+    min_short_side_video_px: 1080
+    min_short_side_photo_px: 1440
+    min_sharpness: 60.0
+    watermark_suspect: true
+    require_commercial_license: true
+  penalties:
+    static_in_mode_b: -2.0 # motion_score < static_motion_threshold
+    acid_colors: -3.0
+    off_aspect: -2.0
+    unwanted_faces: -1.0
+    used_in_history: -4.0
+  static_motion_threshold: 0.02
+  # «Кислотность»: доля пикселей с saturation>0.85 вне брендовых оттенков.
+  acid_saturation: 0.85
+  acid_share_max: 0.18
+  phash_dupe_distance: 10
+  history_penalty_videos: 30
+
+sequence_review:
+  # Один vision-вызов на весь ролик, сильно поднимает качество монтажа (§10.4).
+  enabled: true
+  frames: [12, 16]
+  max_similar_in_row: 3

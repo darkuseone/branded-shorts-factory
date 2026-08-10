@@ -1,0 +1,84 @@
+# Источники новостей и медиа. Источник — ТЗ §5.1 и §9.3.
+
+pillars:
+  space:
+    - { url: "https://www.nasa.gov/news-release/feed/", authority: 0.95 }
+    - { url: "https://www.nasa.gov/rss/dyn/breaking_news.rss", authority: 0.95 }
+    - { url: "https://science.nasa.gov/feed/", authority: 0.94 }
+    - { url: "https://www.esa.int/rssfeed/Our_Activities/Space_Science", authority: 0.93 }
+    - { url: "https://webbtelescope.org/news/news-releases/rss", authority: 0.94 }
+    - { url: "https://phys.org/rss-feed/space-news/", authority: 0.75 }
+    - { url: "http://export.arxiv.org/api/query?search_query=cat:astro-ph.HE&sortBy=submittedDate&sortOrder=descending", authority: 0.88, kind: atom }
+    - { url: "http://export.arxiv.org/api/query?search_query=cat:astro-ph.EP&sortBy=submittedDate&sortOrder=descending", authority: 0.88, kind: atom }
+  ai:
+    - { url: "https://openai.com/blog/rss.xml", authority: 0.88 }
+    - { url: "https://www.anthropic.com/news", authority: 0.88, kind: html }
+    - { url: "https://deepmind.google/blog/rss.xml", authority: 0.88 }
+    - { url: "https://huggingface.co/blog/feed.xml", authority: 0.80 }
+    - { url: "https://arxiv.org/rss/cs.AI", authority: 0.86 }
+    - { url: "https://arxiv.org/rss/cs.LG", authority: 0.86 }
+    - { url: "https://www.technologyreview.com/feed/", authority: 0.84 }
+  it_news:
+    - { url: "https://arstechnica.com/feed/", authority: 0.82 }
+    - { url: "https://www.theverge.com/rss/index.xml", authority: 0.78 }
+    - { url: "https://techcrunch.com/feed/", authority: 0.74 }
+    - { url: "https://habr.com/ru/rss/hubs/artificial_intelligence/all/", authority: 0.70 }
+  science:
+    - { url: "https://www.nature.com/nature.rss", authority: 0.96 }
+    - { url: "https://www.science.org/rss/news_current.xml", authority: 0.95 }
+    - { url: "https://nplus1.ru/rss", authority: 0.80 }
+    - { url: "https://www.eurekalert.org/rss/technology_engineering.xml", authority: 0.82 }
+  medicine_x_science:
+    - { url: "https://www.nature.com/nbt.rss", authority: 0.94 }
+    - { url: "https://www.statnews.com/feed/", authority: 0.82 }
+
+buzz_signal:
+  grok_live_search: true
+
+scout:
+  window_hours: 72
+  max_age_hours: 96
+  simhash_threshold: 0.86
+  topic_cooldown_days: 60
+  visual_precheck_top_n: 8
+  visual_precheck_min_assets: 4
+  scoring:
+    novelty: 25
+    visual_potential: 25
+    wow_factor: 20
+    pillar_fit: 15
+    buzz: 10
+    authority: 5
+  penalties:
+    too_long_to_explain: -20
+    no_free_visual: -15
+    similar_to_recent: -25
+  # Не наш бренд: политика, война, катастрофы с жертвами, YMYL-медицина (§5.2).
+  hard_filter_topics: [politics, war, crime, disaster_casualties, medical_advice]
+
+# Лестница источников материала: дёшево → дорого (§9.3).
+# Останов по правилу достаточности, а не «собрать всё».
+asset_ladder:
+  - { step: 1, source: local_cache, cost: free }
+  - { step: 2, source: nasa, cost: free }
+  - { step: 3, source: archives, cost: free } # ESA / Webb / archive.org
+  - { step: 4, source: stocks, cost: free } # Pexels / Pixabay
+  - { step: 5, source: magnific_stock, cost: cheap }
+  - { step: 6, source: magnific_image_gen, cost: credits }
+  - { step: 7, source: magnific_video_gen, cost: credits }
+  - { step: 8, source: grok_image_gen, cost: tokens }
+  - { step: 9, source: procedural_backplate, cost: free } # последний шанс
+
+candidates_per_shot:
+  p1: 3
+  p2: 2
+  p3: 1
+
+screenshots:
+  viewport: [1440, 2000]
+  device_scale_factor: 2
+  color_scheme: dark
+  wait_after_networkidle_ms: 600
+  max_on_screen_s: 3.0
+  max_per_video: 2
+  max_quote_words: 12

@@ -1,0 +1,76 @@
+# Тайминги и константы монтажа. Источник — ТЗ §2, §8, §26.
+# Это измеренные с референсов числа, а не вкусовые настройки. Менять только
+# по результатам аналитики удержания (§25.3).
+
+video:
+  target_duration_s: 45.0
+  min_duration_s: 38.0
+  max_duration_s: 52.0
+  fps: 30
+  fps_if_burst: 60
+  width: 1080
+  height: 1920
+
+# Потолки удержания плана по режимам. MODE_B ≤2.9 c — главный вывод из
+# замеров референса V2 (медиана 1.54, максимум 2.85, планов длиннее нет вообще).
+shot_duration_s:
+  MODE_A: { min: 1.2, max: 6.0 }
+  MODE_B: { min: 0.8, max: 2.9 }
+  MODE_C: { min: 1.5, max: 4.2 }
+  infographic_exception_max: 3.4
+  global_median_target: { min: 1.2, max: 2.2 }
+
+sections_s:
+  hook: { start: 0.0, end: 2.0, shots: [3, 5], shot_len: [0.4, 0.7] }
+  setup: { start: 2.0, end: 8.0, shot_len: [1.4, 2.2] }
+  body: { start: 8.0, end: 30.0, shot_len: [1.2, 2.2] }
+  climax: { start: 30.0, end: 40.0, shot_len: [0.8, 1.4] }
+  closer: { start: 40.0, end: 45.0, shot_len: [2.5, 3.5] }
+
+burst:
+  per_video: { min: 1, max: 2 }
+  shots: { min: 3, max: 7 }
+  shot_len: [0.10, 0.35]
+
+flash:
+  per_video_max: 6
+  frames: [1, 2]
+  colors: ["#F1F5F9@0.35", "#E11D48@0.45"]
+  max_per_second: 2 # фотосенситивность, §27 B2
+
+mode_switching:
+  min_interval_s: 3.5
+  max_hold_s: 12.0
+  presenter_share: { min: 0.40, max: 0.70 }
+  closer_mode: MODE_C
+  closer_len_s: 2.0
+  first_shot_modes: [MODE_B, MODE_C] # R1: начинать со сплита запрещено
+
+subtitles:
+  MODE_A: { lines: 2, words: [3, 5], size_px: [46, 54], y: 0.455 }
+  MODE_B: { style: karaoke_word, size_px: [78, 88], y: 0.57 }
+  MODE_C: { words: [1, 3], size_px: [58, 66], y: 0.78 }
+  safe_zones: { top: 0.14, bottom: 0.18, right: 0.12 }
+  sync_tolerance_ms: 120
+
+audio:
+  master_lufs: -14.0
+  true_peak_dbtp: -1.5
+  music_bed_lufs: -22.0
+  duck_db: -9.0
+  duck_attack_ms: 40
+  duck_release_ms: 260
+  music_extra_duck_mode_c_db: -5.0
+  max_silence_s: 0.25
+  meme_audio_db: -8.0
+  vo_duck_on_meme_db: -6.0
+  music_duck_on_meme_db: -4.0
+
+render:
+  video_codec: libx264
+  crf: 18
+  bitrate: "15M"
+  pix_fmt: yuv420p
+  faststart: true
+  audio_codec: aac
+  audio_bitrate: "320k"

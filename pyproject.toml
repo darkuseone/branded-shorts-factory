@@ -9,9 +9,9 @@ description = "One scenario JSON in, one finished branded 9:16 YouTube Short out
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Proprietary" }
-# Runtime is standard library only on purpose: the same code has to run on a
-# laptop and on a bare GitHub Actions runner with no install step.
-dependencies = []
+# pydantic and PyYAML are required by the TZ: every artifact is validated
+# against a schema (§21) and every constant lives in config/*.yaml (§0.3).
+dependencies = ["pydantic>=2.7", "PyYAML>=6.0"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.6"]
