@@ -509,7 +509,8 @@ class InfographicSpec(BaseModel):
     source: str = ""
     accent_word: str = ""
     icons: list[str] = Field(default_factory=list)
-    duration_s: Seconds = 2.4
+    #: 0 means "auto" — the template's own beat timing decides (§13.2).
+    duration_s: Seconds = 0.0
     file: str = ""
 
     @model_validator(mode="after")

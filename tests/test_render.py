@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -26,9 +28,23 @@ from .test_search import make_candidate
 
 @pytest.fixture
 def fake_media(tmp_path: Path) -> Path:
-    """A file that exists so the composition writer will copy it."""
+    """A real, tiny clip the writer can copy *and* probe.
+
+    Placeholder bytes used to be enough, which quietly made these tests pass
+    only on machines without ffmpeg: with ffmpeg present the probe rejected the
+    file and the asset was dropped. A one-second black clip exercises the real
+    path either way.
+    """
     path = tmp_path / "clip.mp4"
-    path.write_bytes(b"\x00" * 2048)
+    if shutil.which("ffmpeg"):
+        subprocess.run(
+            ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+             "-f", "lavfi", "-i", "color=c=black:s=270x480:d=1", "-r", "12",
+             "-pix_fmt", "yuv420p", str(path)],
+            check=False, capture_output=True, timeout=60,
+        )  # fmt: skip
+    if not path.exists() or path.stat().st_size < 512:
+        path.write_bytes(b"\x00" * 2048)
     return path
 
 
