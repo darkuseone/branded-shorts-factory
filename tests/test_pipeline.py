@@ -427,3 +427,100 @@ def test_coverage_is_measured_against_the_timeline(minimal_spec, tmp_path):
     assert result.broll_coverage == 0.0, "no timeline means nothing is covered"
     result.timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, clip))
     assert 0.0 < result.broll_coverage <= 1.0
+
+
+# --------------------------------------------------------------------------- #
+# Escalating when QA empties a slot
+# --------------------------------------------------------------------------- #
+
+
+def test_a_slot_qa_emptied_escalates_instead_of_staying_empty(settings, minimal_spec):
+    """The worst of both worlds is neither using free stock nor paying.
+
+    The policy reads the ranker's score, decides free stock is good enough and
+    never escalates; then QA throws out every one of those candidates. Five
+    slots ended a real run empty exactly that way.
+    """
+
+    class NoneShallPass:
+        """Rejects the free tier, accepts anything from Magnific."""
+
+        def __init__(self):
+            self.saw_premium = False
+
+        def __call__(self, asset, visual, plan, context, **kwargs):
+            from shorts_factory.qa.native import NativeVerdict
+
+            if asset.candidate.source == "magnific_library":
+                self.saw_premium = True
+                return NativeVerdict(passed=True, score=0.9, issues=[], notes=[])
+            return NativeVerdict(passed=False, score=0.1, issues=[], notes=[])
+
+    gate = NoneShallPass()
+    resolver = build_resolver(settings, minimal_spec)
+    resolver.magnific = _MagnificWithLibrary()
+
+    import shorts_factory.resolver as resolver_module
+
+    original = resolver_module.check_native
+    resolver_module.check_native = gate
+    try:
+        resolved = resolver.resolve(minimal_spec, minimal_spec.visuals[0])
+    finally:
+        resolver_module.check_native = original
+
+    assert gate.saw_premium, "the paid tier was never tried"
+    assert resolved.qa.outcome == "accepted"
+    assert resolved.escalated
+    assert any("escalated after QA" in note for note in resolved.qa.notes)
+
+
+class _MagnificWithLibrary:
+    """A Magnific stand-in whose library always has something."""
+
+    is_available = True
+
+    def search_library(self, query, media_type, limit=8):
+        return [
+            make_candidate(
+                external_id="premium-1",
+                source="magnific_library",
+                license="Magnific subscription library",
+            )
+        ]
+
+    def generate(self, request, budget, *, hero=False):
+        return None
+
+
+def test_escalation_is_skipped_when_the_slot_forbids_magnific(settings, minimal_spec):
+    resolver = build_resolver(settings, minimal_spec)
+    resolver.magnific = _MagnificWithLibrary()
+    visual = minimal_spec.visuals[0]
+    visual.allow_magnific = False
+
+    qa, tried = resolver._escalate_after_qa(minimal_spec, visual, _empty_outcome(visual), "")
+    assert not tried, "a slot that forbids the paid tier must not reach for it"
+
+
+def test_escalation_is_skipped_when_the_clock_is_spent(settings, minimal_spec):
+    resolver = build_resolver(settings, minimal_spec)
+    resolver.magnific = _MagnificWithLibrary()
+    resolver.deadline.limit_s = 60.0
+    resolver.deadline.started -= 59
+
+    qa, tried = resolver._escalate_after_qa(
+        minimal_spec, minimal_spec.visuals[0], _empty_outcome(minimal_spec.visuals[0]), ""
+    )
+    assert not tried, "escalation is a slow step and the run has to finish"
+
+
+def _empty_outcome(visual):
+    from shorts_factory.search.aggregator import SearchOutcome
+    from shorts_factory.search.keywords import QueryPlan
+
+    return SearchOutcome(
+        visual_id=visual.id,
+        plan=QueryPlan(visual_id=visual.id, primary=visual.query, queries=[visual.query]),
+        ranked=[],
+    )

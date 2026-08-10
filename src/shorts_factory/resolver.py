@@ -123,8 +123,45 @@ class VisualResolver:
 
         queue, escalated = self._build_queue(spec, visual, outcome, decision)
         qa = self._try_candidates(spec, visual, queue, outcome.plan, context)
+
+        if qa.outcome == "rejected" and not escalated:
+            # The policy looked at the ranker's score, decided free stock was
+            # good enough, and never escalated — then QA threw out every one of
+            # those candidates. Leaving the slot empty there is the worst of
+            # both worlds: we neither used the free material nor paid for
+            # better. An empty slot is exactly what the paid tiers exist for.
+            retry, retried = self._escalate_after_qa(spec, visual, outcome, context)
+            if retried:
+                escalated = True
+                if retry.outcome != "rejected":
+                    retry.notes.insert(0, "escalated after QA emptied the slot")
+                    return ResolvedVisual(visual=visual, qa=retry, search=outcome, escalated=True)
+                qa.notes.append("escalation after QA also found nothing")
+
         qa.notes.insert(0, f"policy: {decision.action} ({decision.reason})")
         return ResolvedVisual(visual=visual, qa=qa, search=outcome, escalated=escalated)
+
+    def _escalate_after_qa(
+        self, spec: Spec, visual: Visual, outcome: SearchOutcome, context: str
+    ) -> tuple[VisualQA, bool]:
+        """Try the paid tiers for a slot QA emptied. Returns (result, tried)."""
+        if not visual.allow_magnific or not self.magnific.is_available:
+            return VisualQA(visual_id=visual.id, outcome="rejected"), False
+        if not self.deadline.allows_slow_step():
+            log.info("%s: no time left to escalate after QA", visual.id, extra={"stage": "resolve"})
+            return VisualQA(visual_id=visual.id, outcome="rejected"), False
+
+        log.info("%s: every free candidate failed QA — escalating", visual.id, extra={"stage": "resolve"})
+        premium = self.magnific.search_library(outcome.plan.primary, media_type_for(visual))
+        if not premium and visual.allow_generative and spec.constraints.allow_generative:
+            generated = self._generate_magnific(spec, visual, outcome.plan, hero=False)
+            if generated:
+                premium = [generated]
+        if not premium:
+            return VisualQA(visual_id=visual.id, outcome="rejected"), True
+
+        ranked = rank_candidates(premium, visual, outcome.plan, limit=4)
+        return self._try_candidates(spec, visual, ranked, outcome.plan, context), True
 
     # -- candidate assembly -------------------------------------------------
 
