@@ -253,3 +253,43 @@ def test_candidate_filename_matches_media_type(media_type):
     candidate = make_candidate(media_type=media_type, download_url="https://example.com/asset")
     suffix = ".mp4" if media_type == "video" else ".jpg"
     assert candidate.suggested_filename.endswith(suffix)
+
+
+# --------------------------------------------------------------------------- #
+# Which rendition we actually download
+# --------------------------------------------------------------------------- #
+
+
+def test_an_8k_master_is_never_downloaded_for_a_1080_short():
+    """Filling slots took 65 of a 115-minute budget, almost all of it moving
+    pixels that the downscale throws away."""
+    from shorts_factory.search.providers.base import pick_best_fit
+
+    variants = [
+        {"width": 1280, "height": 720},
+        {"width": 3840, "height": 2160},
+        {"width": 7680, "height": 4320},
+    ]
+    assert pick_best_fit(variants)["height"] == 2160
+
+
+def test_a_vertical_source_wins_over_a_bigger_landscape_one():
+    from shorts_factory.search.providers.base import pick_best_fit
+
+    variants = [{"width": 3840, "height": 2160}, {"width": 1080, "height": 1920}]
+    best = pick_best_fit(variants)
+    assert (best["width"], best["height"]) == (1080, 1920), "a 9:16 source needs no crop at all"
+
+
+def test_the_tallest_is_taken_when_nothing_reaches_the_target():
+    from shorts_factory.search.providers.base import pick_best_fit
+
+    variants = [{"width": 640, "height": 360}, {"width": 1280, "height": 720}]
+    assert pick_best_fit(variants)["height"] == 720
+
+
+def test_no_variants_is_not_a_crash():
+    from shorts_factory.search.providers.base import pick_best_fit
+
+    assert pick_best_fit([]) is None
+    assert pick_best_fit([{"link": "x"}]) is None

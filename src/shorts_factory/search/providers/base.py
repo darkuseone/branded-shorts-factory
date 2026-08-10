@@ -71,28 +71,57 @@ class StockProvider(ABC):
         return f"<{type(self).__name__} {self.name}>"
 
 
-def pick_largest(
+#: The Short is 1920 tall. This much source height gives room to crop and
+#: reframe; past it every extra pixel is downscaled away before it is ever
+#: seen.
+TARGET_HEIGHT = 1920
+HEADROOM = 1.35
+
+
+def pick_best_fit(
     variants: Sequence[dict],
     *,
     width_key: str = "width",
     height_key: str = "height",
     prefer_vertical: bool = True,
-    max_height: int = 4320,
+    target_height: int = TARGET_HEIGHT,
 ) -> dict | None:
-    """Choose the best file variant a provider offers for one asset.
+    """Choose the smallest variant that still covers the output resolution.
 
-    Vertical variants win outright (they need no crop); otherwise the tallest
-    file below `max_height` wins, because 9:16 crops are height-bound.
+    This used to take the tallest file under 4320 — up to 8K. For a
+    1080x1920 Short that is a UHD master downloaded, stored and transcoded so
+    it can be thrown away in the downscale, and it dominated the run: one
+    measured pass spent 65 minutes of its 115-minute budget filling slots,
+    almost all of it moving pixels nobody would ever see.
+
+    Vertical variants still win outright, since a 9:16 crop of a portrait
+    source loses nothing. Among the rest, the smallest file that clears the
+    target height wins; if nothing clears it, the tallest available does.
     """
     usable = [v for v in variants if isinstance(v, dict) and v.get(height_key)]
     if not usable:
         return None
 
-    def sort_key(variant: dict) -> tuple[int, int]:
-        width = int(variant.get(width_key) or 0)
-        height = int(variant.get(height_key) or 0)
-        vertical = 1 if (prefer_vertical and height and width and height > width) else 0
-        penalty = 0 if height <= max_height else -1
-        return (vertical + penalty, height)
+    ceiling = int(target_height * HEADROOM)
 
-    return max(usable, key=sort_key)
+    def height_of(variant: dict) -> int:
+        return int(variant.get(height_key) or 0)
+
+    def is_vertical(variant: dict) -> bool:
+        width = int(variant.get(width_key) or 0)
+        height = height_of(variant)
+        return bool(prefer_vertical and height and width and height > width)
+
+    def rank(variant: dict) -> tuple[int, int, int]:
+        height = height_of(variant)
+        # Enough resolution, and not wastefully more: the band we want.
+        in_band = 1 if target_height <= height <= ceiling else 0
+        # Within the band prefer the smallest; outside it prefer the tallest.
+        size_key = -height if in_band else height
+        return (int(is_vertical(variant)), in_band, size_key)
+
+    return max(usable, key=rank)
+
+
+#: Kept so existing callers and tests keep working.
+pick_largest = pick_best_fit
