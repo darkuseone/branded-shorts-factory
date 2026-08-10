@@ -274,6 +274,46 @@ TOPIC_LEXICON: dict[str, frozenset[str]] = {
             "boxing",
         ]
     ),
+    "lifestyle_domestic": frozenset(
+        [
+            "salon",
+            "hairdresser",
+            "haircut",
+            "hair",
+            "barber",
+            "barbershop",
+            "makeup",
+            "manicure",
+            "cosmetics",
+            "spa",
+            "massage",
+            "wedding",
+            "bride",
+            "groom",
+            "birthday",
+            "party",
+            "baby",
+            "toddler",
+            "kid",
+            "kids",
+            "puppy",
+            "kitten",
+            "pet",
+            "dog",
+            "cat",
+            "shopping",
+            "grooming",
+            "beauty",
+            "fashion",
+            # No "model" here on purpose: it is the single most common word in
+            # an AI script, and one lexicon entry would classify the whole
+            # topic as lifestyle.
+            "portrait",
+            "selfie",
+            "smiling",
+            "posing",
+        ]
+    ),
     "abstract": frozenset(
         [
             "abstract",
@@ -298,8 +338,22 @@ TOPIC_LEXICON: dict[str, frozenset[str]] = {
 #: Domains that never conflict with anything — abstract motion works anywhere.
 NEUTRAL_DOMAINS = frozenset({"abstract"})
 
+#: Domains that are never an illustration for anything else. A clip that reads
+#: as a hair salon is not a weak match for a story about a model breaking into
+#: a code host — it is the wrong film. These veto on sight, without the
+#: coverage escape hatch the ordinary domain check allows, because the escape
+#: hatch is what let a haircut open a video about AI.
+HARD_VETO_DOMAINS = frozenset({"lifestyle_domestic", "food", "sport"})
+
 #: Below this, the asset is not credibly about the same thing as the narration.
-PASS_THRESHOLD = 0.42
+#:
+#: Deliberately coarse. Word overlap cannot tell "source code on a monitor"
+#: from "code repository screen" — a human calls that the same shot, the
+#: tokeniser sees one word in common. Since anything thinly covered now has to
+#: be *looked at* before it ships (`needs_vision`), a low bar here does not
+#: mean more junk on screen; it means more candidates reach the gate that can
+#: actually see them. Level 1 filters, level 2 judges.
+PASS_THRESHOLD = 0.30
 
 #: Fraction of the primary query an asset should echo before its subject
 #: coverage counts as complete, and the floor in absolute words.
@@ -317,6 +371,13 @@ class NativeVerdict:
     score: float
     issues: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    #: The metadata alone cannot settle it — the asset is plausible but thinly
+    #: covered, or carries no words at all. Somebody has to look at the frame.
+    #: With no vision gate available this is a rejection, not a pass: an empty
+    #: slot falls back to the brand backdrop, which is never *wrong*, and the
+    #: first cut opened with a hair salon precisely because "defer to vision"
+    #: was decided in a run where vision never ran.
+    needs_vision: bool = False
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -324,6 +385,7 @@ class NativeVerdict:
             "score": round(self.score, 3),
             "issues": self.issues,
             "notes": self.notes,
+            "needs_vision": self.needs_vision,
         }
 
 
@@ -363,12 +425,14 @@ def check_native(
         translated = translate_term(token) or token
         context_tokens.update(translated.split())
 
+    thin_coverage = False
     if not asset_tokens:
         # Generated assets carry their prompt as metadata; a truly blank asset
         # cannot be judged here, so defer to the vision gate rather than block.
-        notes.append("no metadata; deferring to the vision gate")
+        notes.append("no metadata; only the vision gate can judge this")
         lexical = 0.5
         primary_hit = 0.0
+        thin_coverage = True
     else:
         # The primary query carries most of the weight: the expanded fan
         # contains type modifiers ("cinematic 4k") that no honest asset is
@@ -384,6 +448,11 @@ def check_native(
         matched = len(asset_tokens & primary_tokens)
         target = max(PRIMARY_MIN_HITS, round(len(primary_tokens) * PRIMARY_COVERAGE))
         primary_hit = min(matched / target, 1.0) if primary_tokens else 0.0
+        # One word in common with a three-word subject is not a match, it is a
+        # coincidence: "office" is shared by an OpenAI headquarters and by a
+        # stranger walking down a corridor. Plausible enough to look at, never
+        # enough to ship unseen.
+        thin_coverage = bool(primary_tokens) and matched < min(PRIMARY_MIN_HITS, len(primary_tokens))
         breadth = len(asset_tokens & plan_tokens) / max(len(plan_tokens), 1)
         components = [(0.55, primary_hit), (0.20, breadth)]
         if context_tokens:
@@ -412,13 +481,23 @@ def check_native(
     # "chart". The author's own query words are the ground truth, so an asset
     # that already echoes the subject cannot be vetoed by a lexicon hunch.
     lexicon_may_veto = primary_hit < DOMAIN_VETO_FLOOR
-    if wanted and got and lexicon_may_veto and not (wanted & got):
+    hard = got & HARD_VETO_DOMAINS
+    if hard and not (wanted & hard):
+        # No coverage argument saves this one. Lexical overlap on a word like
+        # "face" or "model" is exactly how a salon and a portrait got in.
+        issues.append(f"asset reads as {'/'.join(sorted(hard))}, which never illustrates this")
+        score = 0.0
+    elif wanted and got and lexicon_may_veto and not (wanted & got):
         conflict = (
             f"asset reads as {'/'.join(sorted(got))} but the script is about {'/'.join(sorted(wanted))}"
         )
         issues.append(conflict)
         score *= 0.25
-    elif wanted and (wanted & got):
+    elif wanted and (wanted & got) and not thin_coverage:
+        # The bonus is a reward for agreeing with the author's own words, so it
+        # is withheld when those words are barely echoed. It was worth +0.15,
+        # which is precisely what carried single-generic-word matches over the
+        # line: 0.293 became 0.443 against a 0.42 threshold.
         notes.append(f"domain match: {'/'.join(sorted(wanted & got))}")
         score = min(1.0, score + 0.15)
 
@@ -445,4 +524,12 @@ def check_native(
     score = max(0.0, min(score, 1.0))
     blocking = [issue for issue in issues if "banned" in issue or "reads as" in issue]
     passed = score >= threshold and not blocking
-    return NativeVerdict(passed=passed, score=score, issues=issues, notes=notes)
+    if passed and thin_coverage:
+        notes.append("thin subject coverage; needs a look at the frame")
+    return NativeVerdict(
+        passed=passed,
+        score=score,
+        issues=issues,
+        notes=notes,
+        needs_vision=passed and thin_coverage,
+    )

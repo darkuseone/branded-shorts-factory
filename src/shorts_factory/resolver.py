@@ -315,7 +315,13 @@ class VisualResolver:
                 )
                 continue
 
-            vision = self.vision.check(asset, visual, context) if spec.constraints.require_vision_qa else None
+            # Vision is not only for scenarios that demand it wholesale. When
+            # level 1 says the words do not settle it, looking at the frame is
+            # the only thing that can — and it is exactly those slots that came
+            # back as a hair salon. Cost is bounded: it runs for the thin cases,
+            # not for every candidate.
+            look = spec.constraints.require_vision_qa or native.needs_vision
+            vision = self.vision.check(asset, visual, context) if look else None
             outcome = combine(
                 native,
                 vision,

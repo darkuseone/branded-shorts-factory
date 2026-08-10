@@ -102,11 +102,22 @@ def combine(
     Level 1 is a hard filter: if the metadata says the asset is about something
     else, it never reaches level 2. Level 2 can still veto, and when it is
     unavailable the asset is only accepted if vision was not required.
+
+    Level 1 has a third answer besides pass and fail: *plausible, but the words
+    do not settle it* — an asset with no metadata, or one sharing a single
+    generic noun with the subject. Those may only ship if something actually
+    looked at the frame. When the vision gate is missing or abstains they are
+    rejected, and the slot falls back to the brand backdrop. An empty slot is
+    a smaller failure than a hair salon in a story about a break-in.
     """
     if native is not None and not native.passed:
         return "rejected"
 
+    unseen = native is not None and native.needs_vision
+
     if vision is None:
+        if unseen:
+            return "rejected"
         return "accepted" if not require_vision else ("manual_review" if manual_review_ok else "rejected")
 
     if vision.verdict == "pass":
@@ -115,6 +126,8 @@ def combine(
         return "rejected"
 
     # "manual": the model abstained or could not be reached.
+    if vision.skipped and unseen:
+        return "rejected"
     if vision.skipped and not require_vision:
         return "accepted"
     return "manual_review" if manual_review_ok else "rejected"

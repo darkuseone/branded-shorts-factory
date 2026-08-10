@@ -86,12 +86,102 @@ def test_ultrawide_source_is_flagged():
     assert any("ultra-wide" in issue for issue in verdict.issues)
 
 
-def test_asset_without_metadata_defers_instead_of_blocking():
+def test_asset_without_metadata_is_never_shipped_unseen():
+    """It may pass level 1, but only on the promise that level 2 looks at it.
+
+    The first cut opened with a hair salon. Nothing in the pipeline had ever
+    looked at that frame: the metadata was too thin to judge, level 1 waved it
+    through "deferring to the vision gate", and in that run the vision gate
+    never ran. Deferring to something that is not there is just accepting.
+    """
     visual = make_visual()
     plan = build_query_plan(visual)
     verdict = check_native(asset_for(title="", tags=[]), visual, plan, "Венера, планета")
     assert verdict.passed
-    assert any("deferring" in note for note in verdict.notes)
+    assert verdict.needs_vision
+    assert combine(verdict, None, require_vision=False, manual_review_ok=True) == "rejected"
+    assert (
+        combine(
+            verdict,
+            VisionVerdict(verdict="manual", skipped=True),
+            require_vision=False,
+            manual_review_ok=True,
+        )
+        == "rejected"
+    )
+    assert (
+        combine(verdict, VisionVerdict(verdict="pass"), require_vision=False, manual_review_ok=True)
+        == "accepted"
+    )
+
+
+#: Titles in the shape stock libraries actually return, for the two slots that
+#: opened the first cut: `v01 "openai office sign"` and `v02 "code repository
+#: screen"`. The rejects are the class of thing that got on screen — a salon,
+#: a stranger's face — and the passes are what those slots are for. Both halves
+#: matter: a gate that rejects everything also produces a video of backdrops.
+OFF_TOPIC_TITLES = [
+    "woman at hair salon",
+    "a woman getting her hair done in a salon",
+    "portrait of a ginger man smiling at the camera",
+    "barber trimming a beard in a barbershop",
+    "family having dinner at a restaurant table",
+]
+
+#: Paired with the slot query they answer — a title is only on-topic for a
+#: question, and judging all of them against one merged query measures nothing.
+ON_TOPIC_TITLES = [
+    ("openai office sign", "modern tech company office sign"),
+    ("openai office sign", "openai logo on a building facade"),
+    ("code repository screen", "programmer writing code on a screen"),
+    ("code repository screen", "source code scrolling on a monitor"),
+    ("data center corridor", "rows of servers in a data center"),
+]
+
+
+@pytest.mark.parametrize("title", OFF_TOPIC_TITLES)
+def test_a_domestic_scene_never_illustrates_an_it_story(title):
+    visual = make_visual(query="openai office sign")
+    plan = build_query_plan(visual)
+    verdict = check_native(
+        asset_for(title=title, tags=title.split()),
+        visual,
+        plan,
+        "OpenAI модель сама взломала Hugging Face. Не хакер. Модель.",
+    )
+    assert not verdict.passed, f"{title!r} scored {verdict.score:.3f} and would go on screen"
+
+
+@pytest.mark.parametrize(("query", "title"), ON_TOPIC_TITLES)
+def test_the_gate_still_lets_the_right_footage_through(query, title):
+    visual = make_visual(query=query)
+    plan = build_query_plan(visual)
+    verdict = check_native(
+        asset_for(title=title, tags=title.split()),
+        visual,
+        plan,
+        "OpenAI модель сама взломала Hugging Face.",
+    )
+    assert verdict.passed, f"{title!r} scored only {verdict.score:.3f}: {verdict.issues}"
+
+
+def test_one_generic_word_in_common_is_not_a_match():
+    """ "office" is shared by an OpenAI headquarters and by a stranger's corridor.
+
+    A single shared noun used to clear the bar outright, helped over it by a
+    domain bonus awarded for the same one word. It may now go no further than
+    the gate that can see the frame.
+    """
+    visual = make_visual(query="openai office sign")
+    plan = build_query_plan(visual)
+    verdict = check_native(
+        asset_for(title="people walking in an office corridor", tags=["office", "corridor"]),
+        visual,
+        plan,
+        "OpenAI модель сама взломала Hugging Face.",
+    )
+    assert not verdict.passed or verdict.needs_vision
+    assert combine(verdict, None, require_vision=False, manual_review_ok=True) == "rejected"
 
 
 def test_abstract_motion_never_conflicts():

@@ -46,6 +46,10 @@ class LocalAsset:
         return {
             "path": str(self.path),
             "source": self.candidate.source,
+            # What the library calls this clip. Without it the report can say a
+            # slot was filled but not with what, and "why is there a hair salon
+            # in my video" has to be answered by watching the video.
+            "title": self.candidate.title,
             "license": self.candidate.license,
             "page_url": self.candidate.page_url,
             "width": self.width,
