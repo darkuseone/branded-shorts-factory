@@ -19,10 +19,14 @@ build/
 # Optional avatar-extracted VO fallback when ElevenLabs is unavailable.
 !jobs/**/voice_from_avatar.mp3
 
-# NOTE: assets/music, assets/sfx, assets/memes, brand/ and .state/ are
-# deliberately NOT ignored. GitHub Actions builds from a fresh clone, so
-# anything the render needs — tracks, sounds, memes, logo, brandbook, meme
-# cadence — has to be committed or the build silently comes out without it.
+# The asset banks must be committed, not ignored. GitHub Actions builds from a
+# fresh clone, so anything the render needs — memes, music, sounds, logo,
+# brandbook, meme cadence — has to be in the tree or the build silently comes
+# out without it. The blanket *.mp4 rule above would swallow them, so undo it
+# here explicitly.
+!assets/**/*.mp4
+!assets/**/*.webm
+!assets/**/*.mov
 
 # Python
 __pycache__/
