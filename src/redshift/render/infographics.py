@@ -34,6 +34,7 @@ from typing import Any
 from ..core.config import Config
 from ..core.log import get_logger
 from ..core.schemas import InfographicSpec
+from .icons import IconBank
 
 log = get_logger("s08")
 
@@ -160,9 +161,15 @@ def card_duration(template: str, items: list[Any], requested: float = 0.0) -> fl
 # --------------------------------------------------------------------------- #
 
 
-def build_html(spec: InfographicSpec, tokens: BrandTokens) -> str:
-    """Render one card to a standalone HTML document."""
-    body = _TEMPLATES[spec.template](spec, tokens)
+def build_html(spec: InfographicSpec, tokens: BrandTokens, icons: IconBank | None = None) -> str:
+    """Render one card to a standalone HTML document.
+
+    With an `IconBank`, company and app marks are resolved to inline data URIs
+    before the template runs, so the templates themselves stay unaware of where
+    an icon came from — a resolved mark and a drawn glyph reach them the same
+    way.
+    """
+    body = _TEMPLATES[spec.template](_with_icons(spec, icons), tokens)
     return _PAGE.format(
         title=html.escape(spec.title or spec.template),
         width=WIDTH,
@@ -170,6 +177,20 @@ def build_html(spec: InfographicSpec, tokens: BrandTokens) -> str:
         css=_base_css(tokens),
         body=body,
     )
+
+
+def _with_icons(spec: InfographicSpec, icons: IconBank | None) -> InfographicSpec:
+    """Swap icon keywords for real marks where the bank has one."""
+    if icons is None or not spec.items:
+        return spec
+    resolved = spec.model_copy(deep=True)
+    for item in resolved.items:
+        # An explicit keyword wins as the lookup term; the label is the
+        # fallback because "OpenAI" is what a card actually names.
+        uri = icons.resolve(item.icon or item.label)
+        if uri:
+            item.icon = uri
+    return resolved
 
 
 def _big_number(spec: InfographicSpec, tokens: BrandTokens) -> str:
@@ -363,13 +384,14 @@ def render_card(
     destination: Path,
     *,
     transparent: bool = True,
+    icons: IconBank | None = None,
 ) -> RenderedCard:
     """HTML → PNG via headless Chromium. Falls back to HTML only if it is absent."""
     tokens = BrandTokens.from_config(config)
     destination.mkdir(parents=True, exist_ok=True)
 
     html_path = destination / f"{spec.shot_id}.html"
-    html_path.write_text(build_html(spec, tokens), encoding="utf-8")
+    html_path.write_text(build_html(spec, tokens, icons), encoding="utf-8")
 
     card = RenderedCard(
         spec=spec,
