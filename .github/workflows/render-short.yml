@@ -58,60 +58,10 @@ jobs:
       - name: Pick the scenario
         id: pick
         run: |
-          if [ -n "${{ inputs.spec }}" ]; then
-            SPEC="${{ inputs.spec }}"
-          else
-            BEFORE="${{ github.event.before }}"
-            SHA="${{ github.sha }}"
-            AVATAR=""
-            JOBJSON=""
-            if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] \
-               && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
-              AVATAR=$(git diff --name-only --diff-filter=d "$BEFORE" "$SHA" \
-                       -- 'jobs/**/avatar.mp4' 'jobs/**/avatar.webm' | tail -n 1)
-              JOBJSON=$(git diff --name-only --diff-filter=d "$BEFORE" "$SHA" \
-                        -- 'jobs/*.json' 'jobs/**/broll/**' | grep -E 'jobs/[^/]+\.json$' | tail -n 1)
-              if [ -z "$JOBJSON" ]; then
-                BROLL=$(git diff --name-only --diff-filter=d "$BEFORE" "$SHA" -- 'jobs/**/broll/**' | head -n 1)
-                if [ -n "$BROLL" ]; then
-                  ID=$(echo "$BROLL" | awk -F/ '{print $2}')
-                  JOBJSON="jobs/${ID}.json"
-                fi
-              fi
-            fi
-            if [ -z "$AVATAR" ]; then
-              AVATAR=$(git show --name-only --pretty='' "$SHA" \
-                       -- 'jobs/**/avatar.mp4' 'jobs/**/avatar.webm' | tail -n 1)
-            fi
-            if [ -z "$JOBJSON" ]; then
-              JOBJSON=$(git show --name-only --pretty='' "$SHA" -- 'jobs/*.json' | tail -n 1)
-            fi
-            if [ -z "$JOBJSON" ]; then
-              BROLL=$(git show --name-only --pretty='' "$SHA" -- 'jobs/**/broll/**' | head -n 1)
-              if [ -n "$BROLL" ]; then
-                ID=$(echo "$BROLL" | awk -F/ '{print $2}')
-                JOBJSON="jobs/${ID}.json"
-              fi
-            fi
-            if [ -n "$AVATAR" ]; then
-              ID=$(basename "$(dirname "$AVATAR")")
-              SPEC="jobs/${ID}.json"
-            elif [ -n "$JOBJSON" ]; then
-              SPEC="$JOBJSON"
-            fi
-          fi
-          if [ -z "$SPEC" ] || [ ! -f "$SPEC" ]; then
-            echo "::error::No scenario JSON found (looked for '$SPEC')"
-            exit 1
-          fi
-          ID=$(python3 -c "import json;print(json.load(open('$SPEC'))['id'])")
-          if [ ! -f "jobs/${ID}/avatar.mp4" ] && [ ! -f "jobs/${ID}/avatar.webm" ]; then
-            echo "::error::Missing jobs/${ID}/avatar.mp4 (or .webm) — run prepare + HeyGen first"
-            exit 1
-          fi
-          echo "spec=$SPEC" >> "$GITHUB_OUTPUT"
-          echo "id=$ID" >> "$GITHUB_OUTPUT"
-          echo "Rendering $SPEC with external avatar"
+          python3 scripts/pick_scenario.py \
+            --spec "${{ inputs.spec }}" \
+            --before "${{ github.event.before }}" \
+            --sha "${{ github.sha }}"
 
       - uses: actions/setup-python@v5
         with:
