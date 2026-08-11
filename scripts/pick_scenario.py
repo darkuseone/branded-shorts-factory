@@ -116,7 +116,9 @@ def avatar_for(scenario_id: str) -> Path | None:
     return None
 
 
-def resolve(spec: str = "", before: str = "", sha: str = "") -> tuple[Path, str]:
+def resolve(
+    spec: str = "", before: str = "", sha: str = "", *, require_avatar: bool = False
+) -> tuple[Path, str]:
     """Return the scenario file and its id, or raise SystemExit with a reason."""
     if spec:
         path = ROOT / spec if not Path(spec).is_absolute() else Path(spec)
@@ -128,19 +130,36 @@ def resolve(spec: str = "", before: str = "", sha: str = "") -> tuple[Path, str]
     if not available:
         raise SystemExit("::error::no scenarios in jobs/*.json")
 
+    # A workflow that renders with a committed avatar can only ever run a
+    # scenario that has one. Choosing another is not a near miss — the run
+    # fails at the first step with nothing to show, which is what happened
+    # when a branch that deletes old scenarios was built on a merge ref: the
+    # deletions counted as "touched", and a scenario with no avatar won.
+    eligible = [name for name in available if avatar_for(name)] if require_avatar else available
+
     touched = ids_from_paths(changed_paths(before, sha))
-    # A push may touch several jobs; prefer one that can actually be rendered.
-    renderable = [name for name in touched if avatar_for(name)]
-    chosen = renderable[0] if renderable else (touched[0] if touched else "")
+    # A push may touch several jobs; prefer one that can actually be rendered,
+    # then one this workflow is allowed to consider at all, then anything.
+    with_avatar = [name for name in touched if name in eligible and avatar_for(name)]
+    order = with_avatar or [name for name in touched if name in eligible]
+    if not order and not require_avatar:
+        order = touched
+    chosen = order[0] if order else ""
 
     if not chosen:
-        if len(available) == 1:
-            chosen = available[0]
-        else:
+        if len(eligible) == 1:
+            chosen = eligible[0]
+        elif not eligible:
             listing = ", ".join(available)
             raise SystemExit(
-                "::error::this push touched no scenario and jobs/ holds several "
-                f"({listing}) — dispatch the workflow with an explicit spec"
+                "::error::no scenario in jobs/ has a committed avatar clip beside "
+                f"it, and this workflow renders with one ({listing})"
+            )
+        else:
+            listing = ", ".join(eligible)
+            raise SystemExit(
+                "::error::this push touched no renderable scenario and jobs/ holds "
+                f"several ({listing}) — dispatch the workflow with an explicit spec"
             )
 
     path = JOBS / f"{chosen}.json"
@@ -162,7 +181,12 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    path, scenario_id = resolve(args.spec.strip(), args.before.strip(), args.sha.strip())
+    path, scenario_id = resolve(
+        args.spec.strip(),
+        args.before.strip(),
+        args.sha.strip(),
+        require_avatar=args.require_avatar,
+    )
 
     if args.require_avatar and avatar_for(scenario_id) is None:
         raise SystemExit(

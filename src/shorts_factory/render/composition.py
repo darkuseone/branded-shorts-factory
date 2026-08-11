@@ -78,7 +78,11 @@ def _reencode_silent(source: Path, target: Path) -> bool:
     return completed.returncode == 0 and target.exists() and target.stat().st_size > 0
 
 
-FONT_STACK = '"{family}", "Inter", "Helvetica Neue", Arial, system-ui, sans-serif'
+#: No "Helvetica Neue" or "Arial" in the fallbacks. The renderer substitutes
+#: both with Inter for cross-platform consistency and says so ("system font
+#: will alias"), which means the preview and the render disagree about metrics
+#: whenever a fallback is reached. Naming Inter directly makes them agree.
+FONT_STACK = '"{family}", "Inter", system-ui, sans-serif'
 
 _CAPTION_ANCHORS = {
     "center": {"top": "45%", "translate": "-50%"},

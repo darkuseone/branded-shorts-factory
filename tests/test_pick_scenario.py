@@ -109,3 +109,44 @@ def test_an_avatar_stub_does_not_count_as_an_avatar(jobs, tmp_path):
 def test_the_zero_sha_of_a_new_branch_is_not_a_commit():
     assert not pick._commit_exists("0" * 40)
     assert not pick._commit_exists("")
+
+
+def test_a_scenario_with_no_avatar_is_never_chosen_for_a_render(jobs, monkeypatch):
+    """The failure that killed a run at its first step.
+
+    Actions builds a pull request on a merge ref, so scenarios this branch
+    deleted are present again — and their deletion counts as "touched". The
+    picker chose one of those, Render Short demands a committed avatar, and
+    the job died with nothing to show. A workflow that can only render a
+    scenario with an avatar must never be handed one without.
+    """
+    jobs("with-avatar", avatar=True)
+    jobs("deleted-elsewhere", avatar=False)
+    monkeypatch.setattr(pick, "changed_paths", lambda before, sha: ["jobs/deleted-elsewhere.json"])
+
+    path, scenario_id = pick.resolve(before="a", sha="b", require_avatar=True)
+
+    assert scenario_id == "with-avatar", "picked a scenario this workflow cannot render"
+    assert path.name == "with-avatar.json"
+
+
+def test_without_the_avatar_requirement_the_touched_scenario_still_wins(jobs, monkeypatch):
+    """Prepare Short runs *to make* the avatar, so it must not filter on one."""
+    jobs("with-avatar", avatar=True)
+    jobs("fresh", avatar=False)
+    monkeypatch.setattr(pick, "changed_paths", lambda before, sha: ["jobs/fresh.json"])
+
+    _path, scenario_id = pick.resolve(before="a", sha="b")
+
+    assert scenario_id == "fresh"
+
+
+def test_several_renderable_scenarios_and_no_touch_asks_for_an_explicit_spec(jobs, monkeypatch):
+    jobs("one", avatar=True)
+    jobs("two", avatar=True)
+    monkeypatch.setattr(pick, "changed_paths", lambda before, sha: [])
+
+    with pytest.raises(SystemExit) as caught:
+        pick.resolve(before="a", sha="b", require_avatar=True)
+
+    assert "explicit spec" in str(caught.value)
