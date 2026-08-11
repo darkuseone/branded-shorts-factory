@@ -26,6 +26,14 @@ are marks, not photographs, and they are inlined into the card as base64.
 
 ## Where they come from
 
+0. The marks committed here came from [simple-icons](https://github.com/simple-icons/simple-icons),
+   whose icon set is released under CC0 1.0. They are recoloured to the
+   brandbook's ink (`#F1F5F9`) and otherwise unaltered. To add more:
+
+       npm pack simple-icons && tar xzf simple-icons-*.tgz
+       cp package/icons/<name>.svg assets/icons/
+
+   A mark the current release has dropped is usually still in an older one.
 1. This folder. Free, offline, identical on every runner.
 2. The Magnific subscription library — free, but 100 downloads a day on the
    current plan, tracked in `.state/magnific-downloads.json`. Anything fetched

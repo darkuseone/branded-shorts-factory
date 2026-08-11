@@ -230,3 +230,40 @@ def test_a_card_renders_identically_with_no_bank_at_all():
     )
     tokens = BrandTokens.from_config(load_config())
     assert build_html(spec, tokens) == build_html(spec, tokens, None)
+
+
+def test_the_committed_marks_resolve_without_a_network():
+    """A card that says "OpenAI → Hugging Face" has to carry both marks.
+
+    They are committed rather than fetched precisely so this holds on a runner
+    with no Magnific key and no network: the first cut drew grey diamonds, and
+    a diagram whose nodes are diamonds is a slide.
+    """
+    from redshift.render.icons import IconBank
+
+    bank = IconBank(Path(__file__).resolve().parents[1])
+    for name in ("OpenAI", "Hugging Face", "openai", "huggingface", "anthropic", "nvidia"):
+        assert bank.resolve(name).startswith("data:"), f"no mark for {name!r}"
+    assert not bank.missing, bank.missing
+
+
+def test_every_icon_the_shipping_scenario_asks_for_exists():
+    """The scenario names its icons by keyword; each one has to land."""
+    import json
+
+    from redshift.render.icons import IconBank
+
+    root = Path(__file__).resolve().parents[1]
+    scenario = json.loads((root / "jobs" / "openai-huggingface-hack.json").read_text(encoding="utf-8"))
+    bank = IconBank(root)
+
+    wanted = {
+        str(item.get("icon") or item.get("label") or "")
+        for visual in scenario["visuals"]
+        for item in (visual.get("card") or {}).get("items", [])
+    }
+    # "alert" and friends are drawn glyphs, not company marks; only names that
+    # look like a company are expected to have a file.
+    companies = {name for name in wanted if name.isascii() and name not in {"alert", "clock", "check"}}
+    unresolved = [name for name in sorted(companies) if not bank.resolve(name)]
+    assert not unresolved, f"these would render as a grey diamond: {unresolved}"
