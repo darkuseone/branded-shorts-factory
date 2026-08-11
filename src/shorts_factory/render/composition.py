@@ -18,7 +18,7 @@ from __future__ import annotations
 import html
 import json
 import shutil
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -87,6 +87,19 @@ _CAPTION_ANCHORS = {
     "upper_third": {"top": "26%", "translate": "-50%"},
     "top": {"top": "16%", "translate": "-50%"},
 }
+
+#: Who paints over whom. Kept in one table because the alternative — a number
+#: written wherever each element happens to be built — is how the subtitles
+#: ended up *underneath* the footage: no z-index at all put them below every
+#: positioned layer that had one.
+Z_BACKDROP = 1
+Z_MEDIA = 10
+Z_HOST = 30
+Z_CHIP = 40
+Z_TEXT = 55
+Z_CAPTION = 60
+Z_LOGO = 70
+Z_SAFE_AREA = 80
 
 _MOTION_KEYFRAMES = {
     "kenburns": ("scale(1.04) translate(0, 0)", "scale(1.16) translate(-1.5%, -1.5%)"),
@@ -390,7 +403,7 @@ class CompositionWriter:
         """
         layout = host_lower_layout()
         return (
-            f'<div id="host_wrap" class="host-wrap" style="z-index:30;'
+            f'<div id="host_wrap" class="host-wrap" style="z-index:{Z_HOST};'
             f"top:{layout['top']}px;left:{layout['left']}px;"
             f'width:{layout["width"]}px;height:{layout["height"]}px;">'
             f'<div class="host-frame">'
@@ -446,6 +459,10 @@ class CompositionWriter:
                 caption_top=anchor["top"],
                 caption_stroke=skin["stroke"],
                 caption_glow=skin["glow"],
+                z_caption=Z_CAPTION,
+                z_text=Z_TEXT,
+                z_chip=Z_CHIP,
+                z_safe=Z_SAFE_AREA,
             ),
         ]
 
@@ -480,7 +497,7 @@ class CompositionWriter:
             rules.append(
                 f"position:absolute;top:{layout['top']}px;left:{layout['left']}px;"
                 f"width:{layout['width']}px;height:{layout['height']}px;"
-                f"z-index:10;overflow:hidden;" + (f"border-radius:{radius}px;" if radius else "")
+                f"z-index:{Z_MEDIA};overflow:hidden;" + (f"border-radius:{radius}px;" if radius else "")
             )
             # Inner clip fills the shell; object-fit lives on the media node.
             keyframes.append(
@@ -495,19 +512,39 @@ class CompositionWriter:
             rules.append(self._logo_css(element))
         elif element.kind == "shape" and element.props.get("role") == "backdrop":
             rules.append(
-                "position:absolute;inset:0;"
+                f"position:absolute;inset:0;z-index:{Z_BACKDROP};"
                 "background:radial-gradient(120% 90% at 50% 12%, "
                 f"{element.props.get('accent', '#0F62FE')}22 0%, "
                 f"{element.props.get('color', '#050608')} 62%);"
             )
 
-        # Timing: a single full-length animation with percentage stops.
+        # Which clock this element's keyframes are written against.
+        #
+        # HyperFrames seeks the animation on a `.clip` element in *clip-local*
+        # time — the contract is "give timed elements a data-start so local
+        # animation time matches the clip". Keyframes written against the
+        # composition clock therefore evaluate at ~0% for the clip's whole life
+        # and the element never appears. That is why captions, the CTA and the
+        # outro were missing from rendered frames while looking perfect in a
+        # browser, which runs the same CSS on the wall clock.
+        #
+        # Video and image shells animate a plain wrapper `<div>`, which is not a
+        # clip and is driven on the composition clock. So the two cases need
+        # two timebases, and each one has to match how the runtime drives it.
+        local = _is_clip_animated(element)
+        span = max(element.duration, 0.001) if local else duration
+        origin = element.start if local else 0.0
+
+        def pct(when: float) -> float:
+            return _pct(when - origin, span)
+
+        # Timing: one animation per element with percentage stops.
         fade_in = min(0.45, element.duration * 0.35)
         fade_out = min(0.45, element.duration * 0.35)
-        p0 = _pct(element.start, duration)
-        p1 = _pct(element.start + fade_in, duration)
-        p2 = _pct(element.end - fade_out, duration)
-        p3 = _pct(element.end, duration)
+        p0 = pct(element.start)
+        p1 = pct(element.start + fade_in)
+        p2 = pct(element.end - fade_out)
+        p3 = pct(element.end)
 
         if element.kind in {"video", "image"}:
             motion_from, motion_to = _MOTION_KEYFRAMES.get(
@@ -564,7 +601,7 @@ class CompositionWriter:
             # begins. A cross-fade there would put two words on top of each
             # other for a moment, so the switch is a cut: full opacity from
             # the first frame of the cue to a frame before the last.
-            keyframes.append(_keyframes(name, _word_cut_stops(element, duration)))
+            keyframes.append(_keyframes(name, _word_cut_stops(element, pct)))
         else:
             enter, exit_ = _entrance_for(element)
             keyframes.append(
@@ -581,7 +618,7 @@ class CompositionWriter:
                 )
             )
 
-        rules.append(f"animation:{name} {duration:.3f}s linear 0s 1 normal both;")
+        rules.append(f"animation:{name} {span:.3f}s linear 0s 1 normal both;")
         # Video/image shells are animated; avatar/caption/text keep element id.
         target = (
             f"#wrap_{element.id}"
@@ -592,19 +629,19 @@ class CompositionWriter:
         css.extend(keyframes)
 
         if element.kind == "caption" and self.spec.captions.style in {"karaoke", "word_pop"}:
-            css.append(self._karaoke_css(element, duration))
+            css.append(self._karaoke_css(element, span, pct))
         return "\n".join(css)
 
-    def _karaoke_css(self, element: Element, duration: float) -> str:
+    def _karaoke_css(self, element: Element, span: float, pct: Callable[[float], float]) -> str:
         words = element.props.get("words") or []
         blocks: list[str] = []
         for index, word in enumerate(words):
             start = float(word.get("start", element.start))
             end = float(word.get("end", start + 0.2))
             name = f"kw_{element.id}_{index}"
-            pre = _pct(start, duration)
-            hit = _pct(min(start + 0.08, end), duration)
-            done = _pct(end, duration)
+            pre = pct(start)
+            hit = pct(min(start + 0.08, end))
+            done = pct(end)
             blocks.append(
                 _keyframes(
                     name,
@@ -622,9 +659,7 @@ class CompositionWriter:
                     ],
                 )
             )
-            blocks.append(
-                f"#w_{element.id}_{index}{{animation:{name} {duration:.3f}s linear 0s 1 normal both;}}"
-            )
+            blocks.append(f"#w_{element.id}_{index}{{animation:{name} {span:.3f}s linear 0s 1 normal both;}}")
         return "\n".join(blocks)
 
     def _avatar_css(self, element: Element) -> str:
@@ -682,7 +717,7 @@ class CompositionWriter:
         vertical = f"top:{SAFE_MARGIN}px;" if position.startswith("top") else f"bottom:{BOTTOM_UI_RESERVE}px;"
         horizontal = f"left:{SAFE_MARGIN}px;" if position.endswith("left") else f"right:{SAFE_MARGIN}px;"
         return (
-            f"position:absolute;{vertical}{horizontal}"
+            f"position:absolute;{vertical}{horizontal}z-index:{Z_LOGO};"
             f"width:160px;height:160px;object-fit:contain;opacity:{opacity};"
         )
 
@@ -736,6 +771,18 @@ def _pct(time: float, duration: float) -> float:
     return max(0.0, min(100.0, (time / duration) * 100.0 if duration else 0.0))
 
 
+def _is_clip_animated(element: Element) -> bool:
+    """Whether the animated node is the `.clip` itself rather than a wrapper.
+
+    Video and image slots animate a wrapper `<div>` around the media, because
+    CSS opacity on a `<video>` is dropped by HyperFrames capture. Everything
+    else — captions, text, the logo, shapes, the avatar — carries the clip
+    class on the animated node, and the runtime drives those on clip-local
+    time. The distinction decides which clock the keyframes are written in.
+    """
+    return not (element.kind in {"video", "image"} and "layout" in element.props)
+
+
 def _keyframes(name: str, stops: list[tuple[float, str]]) -> str:
     seen: set[str] = set()
     parts: list[str] = []
@@ -757,22 +804,28 @@ WORD_POP_S = 0.07
 WORD_GAP_S = 1.0 / 30.0
 
 
-def _word_cut_stops(element: Element, duration: float) -> list[tuple[float, str]]:
+def _word_cut_stops(element: Element, pct: Callable[[float], float]) -> list[tuple[float, str]]:
     """Hard on, small pop, hard off — the timing of a spoken word."""
     settle = min(element.start + WORD_POP_S, element.end)
     leave = max(element.end - WORD_GAP_S, settle)
-    on = _pct(element.start, duration)
-    return [
-        (0.0, "opacity:0;transform:scale(.84);"),
-        (max(on - 0.0001, 0.0), "opacity:0;transform:scale(.84);"),
+    on = pct(element.start)
+    stops: list[tuple[float, str]] = []
+    if on > 0.0:
+        # Composition-clock timebase: hold the word off screen until its cue.
+        # On the clip-local clock the cue starts at 0% and a leading "off" stop
+        # would win de-duplication, turning the cut into a fade-in.
+        stops.append((0.0, "opacity:0;transform:scale(.84);"))
+        stops.append((max(on - 0.0001, 0.0), "opacity:0;transform:scale(.84);"))
+    stops += [
         (on, "opacity:1;transform:scale(1.10);"),
-        (_pct(settle, duration), "opacity:1;transform:scale(1);"),
+        (pct(settle), "opacity:1;transform:scale(1);"),
         # Listed before the hold so that on a cue too short to separate them,
         # de-duplication keeps the stop that takes the word off screen.
-        (_pct(element.end, duration), "opacity:0;transform:scale(1);"),
-        (_pct(leave, duration), "opacity:1;transform:scale(1);"),
+        (pct(element.end), "opacity:0;transform:scale(1);"),
+        (pct(leave), "opacity:1;transform:scale(1);"),
         (100.0, "opacity:0;"),
     ]
+    return stops
 
 
 def _entrance_for(element: Element) -> tuple[str, str]:
@@ -820,6 +873,7 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   inset: {safe_margin}px {safe_margin}px {bottom_reserve}px {safe_margin}px;
   border: 0;
   pointer-events: none;
+  z-index: {z_safe};
 }}
 .caption {{
   /* Centred by the box, never by `transform`. Every element carries an
@@ -830,6 +884,11 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   left: 0;
   right: 0;
   top: {caption_top};
+  /* Above everything. Without an explicit layer the subtitle painted *under*
+     the b-roll shells (z-index 10) and the presenter (30): invisible over an
+     opaque clip, a washed-out grey under a dimmed one, and readable only in
+     the gaps — which is exactly "the subtitles sometimes appear". */
+  z-index: {z_caption};
   /* The safe area, not the whole frame: a line as wide as the video has its
      first and last glyph on the bezel, and anything unbreakable ran clean off
      the edge. */
@@ -854,11 +913,13 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   width: {width}px;
   padding: 0 {safe_margin}px;
   text-align: center;
+  z-index: {z_text};
 }}
 .text[data-role="cta"] {{ bottom: {bottom_reserve}px; }}
 .text[data-role="lower_third"] {{ bottom: calc({bottom_reserve}px + 220px); text-align: left; }}
 .text[data-role="outro"] {{ top: 46%; }}
 .text[data-role="data_chip"] {{
+  z-index: {z_chip};
   top: auto;
   bottom: calc({bottom_reserve}px + 420px);
   left: {safe_margin}px;

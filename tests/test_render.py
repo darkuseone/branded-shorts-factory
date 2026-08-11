@@ -10,7 +10,7 @@ import pytest
 
 from shorts_factory.media.download import LocalAsset
 from shorts_factory.qa.gate import VisualQA
-from shorts_factory.render.composition import CompositionWriter, _pct
+from shorts_factory.render.composition import CompositionWriter
 from shorts_factory.render.timeline import (
     SAFE_MARGIN,
     TRACK_AUDIO_MUSIC,
@@ -477,9 +477,10 @@ def test_one_word_replaces_the_next_without_a_dissolve(minimal_spec, fake_media,
         if float(opacity) == 1.0
     ]
     assert on, f"the word never becomes visible: {frames}"
-    # Visible for the cue and nothing more: the first full-opacity stop is the
-    # cue's own start, not a ramp that began while the previous word was up.
-    assert min(on) == pytest.approx(_pct(1.0, timeline.duration), abs=0.05)
+    # Full opacity from the cue's own first frame — a caption is animated on
+    # the clip-local clock, so that is 0%. Anything later is a fade-in, which
+    # would overlap the word that is still leaving.
+    assert min(on) == pytest.approx(0.0, abs=0.05), frames
 
 
 def test_a_spoken_word_hands_the_highlight_back(minimal_spec, fake_media, tmp_path):
@@ -540,3 +541,57 @@ def test_a_clip_that_kept_its_audio_is_caught_not_shipped(minimal_spec, tmp_path
     for path in (result.directory / "media").glob("*.mp4"):
         info = probe(path)
         assert info is None or not info.has_audio, f"{path.name} reached the composition with audio"
+
+
+def test_a_clip_animation_is_written_on_the_clips_own_clock(minimal_spec, fake_media, tmp_path):
+    """Why captions rendered blank while looking perfect in a browser.
+
+    HyperFrames seeks the CSS animation on a `.clip` element in *clip-local*
+    time — its contract is "give timed elements a data-start so local animation
+    time matches the clip". Keyframes written against the composition clock sit
+    at ~0% for the element's entire life, so it never appears in a render even
+    though a browser, running the same CSS on the wall clock, shows it.
+    """
+    cues = [CaptionCue(text="слово", start=30.0, end=30.6, words=[CaptionWord("слово", 30.0, 30.6)])]
+    minimal_spec.duration_target = 46.0
+    timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, fake_media), captions=cues)
+    CompositionWriter(minimal_spec, timeline, tmp_path / "comp").write()
+    html = (tmp_path / "comp" / "index.html").read_text(encoding="utf-8")
+
+    rule = re.search(r"#el_cap_000\{animation:anim_cap_000 ([\d.]+)s", html)
+    assert rule, "the caption carries no animation"
+    assert float(rule.group(1)) == pytest.approx(0.6, abs=0.05), (
+        "the caption animates over the whole composition; the runtime will seek it to ~0%"
+    )
+
+    frames = html.split("@keyframes anim_cap_000")[1].split("@keyframes")[0]
+    visible = [
+        float(percent)
+        for percent, opacity in re.findall(r"([\d.]+)%\{opacity:([\d.]+)", frames)
+        if float(opacity) > 0
+    ]
+    assert visible and max(visible) > 50, (
+        f"nothing is visible in the second half of the cue's own window: {frames}"
+    )
+
+
+def test_the_subtitle_paints_above_the_footage_and_the_presenter(minimal_spec, fake_media, tmp_path):
+    """The other half of the invisible-caption bug.
+
+    Media shells and the host wrap carry a z-index; captions and text carried
+    none, which puts them under every positioned layer that has one. Over an
+    opaque clip that is invisible, under a dimmed one it is a washed-out grey —
+    "the subtitles sometimes appear".
+    """
+    from shorts_factory.render.composition import Z_CAPTION, Z_CHIP, Z_HOST, Z_MEDIA, Z_TEXT
+
+    assert Z_CAPTION > Z_HOST > Z_MEDIA, "the subtitle can be covered by the presenter or the footage"
+    assert Z_TEXT > Z_HOST and Z_CHIP > Z_MEDIA
+
+    cues = [CaptionCue(text="слово", start=1.0, end=2.0, words=[CaptionWord("слово", 1.0, 2.0)])]
+    timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, fake_media), captions=cues)
+    CompositionWriter(minimal_spec, timeline, tmp_path / "comp").write()
+    html = (tmp_path / "comp" / "index.html").read_text(encoding="utf-8")
+
+    caption_css = html.split(".caption {")[1].split("}")[0]
+    assert f"z-index: {Z_CAPTION}" in caption_css, f"the caption has no layer of its own: {caption_css}"
