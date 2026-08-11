@@ -399,3 +399,65 @@ def test_cuts_land_between_words_when_the_alignment_is_real():
     cuts = [round(visual.start + visual.duration, 3) for visual in spec.visuals[:-1]]
     for cut in cuts:
         assert any(abs(cut - edge) < 0.001 for edge in edges), f"cut at {cut}s falls inside a word"
+
+
+def test_retiming_never_leaves_two_shots_on_the_same_instant():
+    """The failure mode that killed a render outright.
+
+    Each segment is retimed against its own narration, and a synthesised
+    segment can overrun the window the scenario gave it — the voice takes as
+    long as it takes. Two segments stretched that way put two clips on one
+    track at the same moment, and HyperFrames refuses to lint that:
+    "overlapping_clips_same_track", no video produced.
+    """
+    from pathlib import Path as _Path
+
+    from shorts_factory.render.rhythm import retime_visuals
+    from shorts_factory.voice.elevenlabs import VoiceClip
+
+    segments = [
+        _segment("hook", "Первый кусок, короткий.", 0.0, 4.0),
+        _segment("s1", "Второй кусок, который диктор читает дольше.", 4.0, 6.0),
+    ]
+    visuals = [
+        _visual("v1", "hook", 0.0, 2.0),
+        _visual("v2", "hook", 2.0, 2.0),
+        _visual("v3", "s1", 4.0, 3.0),
+        _visual("v4", "s1", 7.0, 3.0),
+    ]
+    spec = _spec_with(segments, visuals)
+    # The hook's voice ran 2.1s past the window the scenario allowed for it.
+    clips = [
+        VoiceClip(segment_id="hook", path=_Path("a.mp3"), start=0.0, duration=6.1, text=segments[0].text),
+        VoiceClip(segment_id="s1", path=_Path("b.mp3"), start=4.0, duration=6.0, text=segments[1].text),
+    ]
+
+    report = retime_visuals(spec, clips)
+
+    ordered = sorted(spec.visuals, key=lambda visual: visual.start)
+    for earlier, later in zip(ordered, ordered[1:], strict=False):
+        assert earlier.start + earlier.duration <= later.start + 0.001, (
+            f"{earlier.id} runs into {later.id}: "
+            f"{earlier.start:.2f}+{earlier.duration:.2f} vs {later.start:.2f}"
+        )
+    assert any("trimmed" in note for note in report.notes), "the trim happened silently"
+
+
+def test_the_shipping_scenario_has_no_overlapping_shots():
+    """Measured on the real file, because that is the one that has to render."""
+    from pathlib import Path as _Path
+
+    from shorts_factory.render.rhythm import retime_visuals
+    from shorts_factory.spec import load_spec
+
+    scenario = _Path(__file__).resolve().parents[1] / "jobs" / "openai-huggingface-hack.json"
+    spec, _issues = load_spec(scenario)
+    retime_visuals(spec, [])
+
+    ordered = sorted(spec.visuals, key=lambda visual: visual.start)
+    overlaps = [
+        (earlier.id, later.id)
+        for earlier, later in zip(ordered, ordered[1:], strict=False)
+        if earlier.start + earlier.duration > later.start + 0.001
+    ]
+    assert not overlaps, f"overlapping shots would fail hyperframes lint: {overlaps}"

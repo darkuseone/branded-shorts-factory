@@ -87,6 +87,35 @@ TOPIC_LEXICON: dict[str, frozenset[str]] = {
             "interface",
             "datacenter",
             "semiconductor",
+            # Words stock libraries actually use for technology footage. Their
+            # absence is why "portrait of a developer at a workstation" read as
+            # no domain at all and scored like a holiday snap.
+            "developer",
+            "programmer",
+            "engineer",
+            "workstation",
+            "monitor",
+            "terminal",
+            "dashboard",
+            "database",
+            "cloud",
+            "api",
+            "dataset",
+            "gpu",
+            "cybersecurity",
+            "hacker",
+            "programming",
+            # The vocabulary of a security story, which is what these Shorts
+            # are usually about. Without it "security operations center"
+            # classified as no domain at all.
+            "security",
+            "infrastructure",
+            "breach",
+            "malware",
+            "firewall",
+            "encryption",
+            "vulnerability",
+            "exploit",
         ]
     ),
     "science_lab": frozenset(
@@ -274,16 +303,22 @@ TOPIC_LEXICON: dict[str, frozenset[str]] = {
             "boxing",
         ]
     ),
+    # Only words that name a domestic scene outright. Everything describing a
+    # *person* — portrait, smiling, posing, beauty, fashion, model — was in
+    # here for one run and vetoed eleven perfectly good slots: stock titles for
+    # technology b-roll are full of "portrait of a developer" and "smiling
+    # engineer at a workstation". A stop-list that also stops the footage you
+    # want is not a stop-list, it is an outage.
     "lifestyle_domestic": frozenset(
         [
             "salon",
             "hairdresser",
             "haircut",
-            "hair",
             "barber",
             "barbershop",
             "makeup",
             "manicure",
+            "pedicure",
             "cosmetics",
             "spa",
             "massage",
@@ -291,27 +326,15 @@ TOPIC_LEXICON: dict[str, frozenset[str]] = {
             "bride",
             "groom",
             "birthday",
-            "party",
-            "baby",
             "toddler",
-            "kid",
-            "kids",
             "puppy",
             "kitten",
-            "pet",
-            "dog",
-            "cat",
-            "shopping",
             "grooming",
-            "beauty",
-            "fashion",
-            # No "model" here on purpose: it is the single most common word in
-            # an AI script, and one lexicon entry would classify the whole
-            # topic as lifestyle.
-            "portrait",
-            "selfie",
-            "smiling",
-            "posing",
+            "hairstyle",
+            "hairstylist",
+            "nightclub",
+            "picnic",
+            "shopping",
         ]
     ),
     "abstract": frozenset(
@@ -389,8 +412,14 @@ class NativeVerdict:
         }
 
 
-def domains_of(text: str, *, min_hits: int = 2) -> set[str]:
-    """Which topic domains a piece of text belongs to."""
+def domains_of(text: str, *, min_hits: int = 2, strict: bool = False) -> set[str]:
+    """Which topic domains a piece of text belongs to.
+
+    A short text gets the benefit of the doubt on a single hit — "planet
+    venus" is about space on the strength of one word. `strict` withdraws that,
+    for callers whose verdict is final and who therefore need two independent
+    words before they act.
+    """
     tokens = set(tokenize(text))
     # Narration is often Russian; map what we can into the English lexicon.
     translated = {translate_term(token) or token for token in tokens}
@@ -399,7 +428,7 @@ def domains_of(text: str, *, min_hits: int = 2) -> set[str]:
     found: set[str] = set()
     for domain, vocabulary in TOPIC_LEXICON.items():
         hits = len(tokens & vocabulary)
-        if hits >= min_hits or (hits == 1 and len(tokens) <= 4):
+        if hits >= min_hits or (not strict and hits == 1 and len(tokens) <= 4):
             found.add(domain)
     return found
 
@@ -481,7 +510,10 @@ def check_native(
     # "chart". The author's own query words are the ground truth, so an asset
     # that already echoes the subject cannot be vetoed by a lexicon hunch.
     lexicon_may_veto = primary_hit < DOMAIN_VETO_FLOOR
-    hard = got & HARD_VETO_DOMAINS
+    # Two independent words, never the one-word shortcut `domains_of` allows
+    # for short texts: a veto this absolute has to be sure, and "a developer
+    # shopping for a laptop" is not a shopping video.
+    hard = domains_of(metadata, min_hits=2, strict=True) & HARD_VETO_DOMAINS
     if hard and not (wanted & hard):
         # No coverage argument saves this one. Lexical overlap on a word like
         # "face" or "model" is exactly how a salon and a portrait got in.
@@ -493,13 +525,24 @@ def check_native(
         )
         issues.append(conflict)
         score *= 0.25
-    elif wanted and (wanted & got) and not thin_coverage:
-        # The bonus is a reward for agreeing with the author's own words, so it
-        # is withheld when those words are barely echoed. It was worth +0.15,
-        # which is precisely what carried single-generic-word matches over the
-        # line: 0.293 became 0.443 against a 0.42 threshold.
-        notes.append(f"domain match: {'/'.join(sorted(wanted & got))}")
-        score = min(1.0, score + 0.15)
+    elif wanted and (wanted & got):
+        matched_domains = "/".join(sorted(wanted & got))
+        if thin_coverage:
+            # The asset is about the right subject and shares none of the words
+            # for it — "portrait of a developer at a workstation" against "code
+            # repository screen". A lexical gate cannot settle that either way,
+            # so it goes to the gate that can see the frame rather than being
+            # thrown out for a vocabulary mismatch. Without a vision gate this
+            # still ends as a rejection; it never ships unseen.
+            notes.append(f"domain match: {matched_domains}; no shared words, so worth a look")
+            score = max(score, threshold)
+        else:
+            # The bonus is a reward for agreeing with the author's own words,
+            # so it is withheld when those words are barely echoed. It was
+            # worth +0.15, which is precisely what carried single-generic-word
+            # matches over the line: 0.293 became 0.443 against a 0.42 bar.
+            notes.append(f"domain match: {matched_domains}")
+            score = min(1.0, score + 0.15)
 
     # --- hard constraints -------------------------------------------------
     for term in visual.must_include:

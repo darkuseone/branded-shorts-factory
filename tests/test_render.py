@@ -595,3 +595,94 @@ def test_the_subtitle_paints_above_the_footage_and_the_presenter(minimal_spec, f
 
     caption_css = html.split(".caption {")[1].split("}")[0]
     assert f"z-index: {Z_CAPTION}" in caption_css, f"the caption has no layer of its own: {caption_css}"
+
+
+# --------------------------------------------------------------------------- #
+# Camera grammar
+# --------------------------------------------------------------------------- #
+
+
+def test_every_shot_travels_at_the_same_speed():
+    """The vector law's "matched speed", made true by construction.
+
+    Entry velocity has to equal the previous shot's exit velocity or the eye's
+    momentum dies at the cut. Rather than tune pairs of shots, every shot moves
+    at one speed and covers ground in proportion to its length — so any two
+    shots, in any order, already match.
+    """
+    from shorts_factory.render.camera import MAX_TRAVEL, MIN_TRAVEL, travel_for
+
+    speeds = []
+    for duration in (0.9, 1.2, 1.7, 2.3, 2.6):
+        travel = travel_for(duration)
+        assert MIN_TRAVEL <= travel <= MAX_TRAVEL
+        speeds.append(travel / duration)
+    assert max(speeds) - min(speeds) < 1e-6, f"shots move at different speeds: {speeds}"
+    # Outside the band the clamps take over — a four-second shot would
+    # otherwise travel far enough to read as a whip.
+    assert travel_for(0.2) == MIN_TRAVEL
+    assert travel_for(9.0) == MAX_TRAVEL
+
+
+def test_ordinary_shots_never_mirror_each_other():
+    """A drift right after a drift left is the most common vector violation."""
+    import re
+
+    from shorts_factory.render.camera import move_for
+
+    def signed(duration: float) -> float:
+        move = move_for(duration=duration)
+        starts = [float(x) for x in re.findall(r"translateX\(([-\d.]+)%\)", move.start)]
+        ends = [float(x) for x in re.findall(r"translateX\(([-\d.]+)%\)", move.end)]
+        return ends[0] - starts[0]
+
+    directions = {signed(duration) < 0 for duration in (1.0, 1.5, 2.0, 2.6)}
+    assert directions == {True}, "the current reverses between ordinary shots"
+
+
+def test_a_graphic_holds_still_and_the_last_shot_rises():
+    """Reserved vectors: stillness to read, upward for a conclusion."""
+    from shorts_factory.render.camera import move_for
+
+    card = move_for(duration=2.4, readable=True)
+    assert card.still and card.start == card.end, "the card drifts while it is being read"
+
+    closing = move_for(duration=2.4, closing=True)
+    assert "translateY" in closing.start, "the film does not end on the reserved vector"
+    assert "translateX" not in closing.start
+
+
+def test_b_roll_cuts_rather_than_dissolves(minimal_spec, fake_media, tmp_path):
+    """A cross-fade settles the outgoing shot and starts the next from rest.
+
+    That is a dead beat on both sides of every cut — twenty-five of them read
+    as a slide show however well the lengths were chosen. The shot has to be at
+    full opacity from its own first frame to its last.
+    """
+    import re
+
+    timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, fake_media))
+    CompositionWriter(minimal_spec, timeline, tmp_path / "comp").write()
+    html = (tmp_path / "comp" / "index.html").read_text(encoding="utf-8")
+
+    # A shot hidden under the presenter is held at opacity 0 on purpose;
+    # measuring the cut needs one that is actually on screen.
+    element = next(
+        e
+        for e in timeline.elements
+        if e.kind == "video" and not e.props.get("hidden_under_host") and not e.props.get("dim")
+    )
+    frames = html.split(f"@keyframes anim_{element.id}")[1].split("@keyframes")[0]
+    stops = [
+        (float(percent), float(opacity))
+        for percent, opacity in re.findall(r"([\d.]+)%\{opacity:([\d.]+)", frames)
+    ]
+    visible = [percent for percent, opacity in stops if opacity > 0]
+    start = _pct_of(element.start, timeline.duration)
+    end = _pct_of(element.end, timeline.duration)
+    assert min(visible) == pytest.approx(start, abs=0.05), f"the shot fades in: {stops}"
+    assert max(visible) == pytest.approx(end, abs=0.05), f"the shot fades out: {stops}"
+
+
+def _pct_of(seconds: float, duration: float) -> float:
+    return max(0.0, min(100.0, seconds / duration * 100.0))

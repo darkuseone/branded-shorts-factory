@@ -286,6 +286,7 @@ class VisualResolver:
             return result
 
         held_for_review: VisualQA | None = None
+        unseen = 0
 
         for ranked in queue[:MAX_ATTEMPTS]:
             result.attempts += 1
@@ -348,6 +349,14 @@ class VisualResolver:
                 )
                 continue
 
+            if native.needs_vision and (vision is None or vision.skipped):
+                # Not the model's judgement — the model never saw it. Level 1
+                # could not settle this asset from its words, so it was left
+                # out rather than shipped unseen. Say which it was, because an
+                # empty slot for want of a working vision gate looks exactly
+                # like an empty slot for want of good footage, and only one of
+                # those is fixed by searching harder.
+                unseen += 1
             result.rejected.append(
                 {
                     "candidate": candidate.key,
@@ -356,6 +365,12 @@ class VisualResolver:
                     "reason": vision.reason if vision else "",
                     "distractors": vision.distractors if vision else [],
                 }
+            )
+
+        if unseen:
+            result.notes.append(
+                f"{unseen} candidate(s) needed a look at the frame and the vision gate "
+                f"was unavailable ({self.vision.unavailable_reason() or 'it abstained'})"
             )
 
         if held_for_review is not None:

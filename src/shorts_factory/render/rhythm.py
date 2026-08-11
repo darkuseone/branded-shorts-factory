@@ -240,6 +240,11 @@ def retime_visuals(
             last.duration = round(max(last.duration + drift, band.shot_min), 3)
             lengths[-1] = last.duration
 
+    trimmed = _seal_overlaps(spec, band)
+    if trimmed:
+        report.notes.append(f"{trimmed} shot(s) trimmed where a segment ran into the next")
+        lengths = [visual.duration for visual in spec.visuals if _is_main(visual)]
+
     if lengths:
         report.median_s = statistics.median(lengths)
         report.shortest_s = min(lengths)
@@ -330,14 +335,54 @@ _NUMBER_WORDS = frozenset(
 )
 
 
+def _is_main(visual: Visual) -> bool:
+    return (visual.position or "auto") in MAIN_POSITIONS
+
+
 def _slots_for(spec: Spec, segment: ScriptSegment) -> list[Visual]:
     """The main-plane visuals that tile this segment, in order."""
-    slots = [
-        visual
-        for visual in spec.visuals
-        if _segment_of(spec, visual) is segment and (visual.position or "auto") in MAIN_POSITIONS
-    ]
+    slots = [visual for visual in spec.visuals if _segment_of(spec, visual) is segment and _is_main(visual)]
     return sorted(slots, key=lambda visual: visual.start)
+
+
+def _seal_overlaps(spec: Spec, band: _Band) -> int:
+    """No two main-plane shots may occupy the same instant.
+
+    Each segment is retimed against its own narration, and a synthesised
+    segment can overrun the window the scenario gave it — the voice takes as
+    long as it takes. Two segments stretched that way put two clips on one
+    track at the same moment, which HyperFrames rejects outright: the run dies
+    at lint with "overlapping_clips_same_track" and no video comes out at all.
+    Trimming the earlier shot is right rather than dropping either: the picture
+    still changes on the word it was cut to, one frame sooner.
+    """
+    slots = sorted((v for v in spec.visuals if _is_main(v)), key=lambda v: v.start)
+    trimmed = 0
+    for earlier, later in zip(slots, slots[1:], strict=False):
+        overlap = (earlier.start + earlier.duration) - later.start
+        if overlap <= 0.001:
+            continue
+        gap = round(later.start - earlier.start, 3)
+        if gap <= 0:
+            # Two shots claiming the same instant is a scenario error, not a
+            # retiming one; say so rather than paper over it with a zero-length
+            # clip the renderer would have to interpret.
+            log.warning(
+                "%s and %s both start at %.2fs", earlier.id, later.id, later.start, extra={"stage": "rhythm"}
+            )
+            continue
+        # Below the band's floor if it has to be: a short shot is a stylistic
+        # problem, an overlap is a failed render.
+        earlier.duration = gap
+        trimmed += 1
+        log.info(
+            "trimmed %s by %.2fs so it does not overlap %s",
+            earlier.id,
+            overlap,
+            later.id,
+            extra={"stage": "rhythm"},
+        )
+    return trimmed
 
 
 def _segment_of(spec: Spec, visual: Visual) -> ScriptSegment | None:
