@@ -13,9 +13,13 @@ on:
   workflow_dispatch:
     inputs:
       spec:
-        description: "Path to the scenario JSON"
-        required: true
-        default: "examples/venus-hell.json"
+        # Optional on purpose. Dispatching with nothing filled in used to send
+        # an example scenario that has no committed avatar, so the run died at
+        # its first step; empty means "let the picker apply its rules", which
+        # is what a dispatch from a branch with one renderable scenario wants.
+        description: "Path to the scenario JSON (blank = pick it automatically)"
+        required: false
+        default: ""
       dry_run:
         description: "Stop before rendering"
         type: boolean
