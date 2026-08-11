@@ -489,10 +489,25 @@ class CompositionWriter:
             layout = element.props["layout"]
             radius = layout.get("radius", 0)
             # Animate the shell; the inner media fills it at opacity 1.
+            #
+            # A card is a transparent WebM: its plate sits in the middle and
+            # the rest of the frame shows whatever is underneath, which is the
+            # page — flat near-black. The graphic beat then reads as the video
+            # having stopped rather than as a designed frame. Giving the shell
+            # the brand's own ground costs nothing and makes the card land on
+            # something.
+            ground = ""
+            if self._is_card(element):
+                brand = self.spec.brand
+                ground = (
+                    f"background:radial-gradient(120% 90% at 50% 20%, "
+                    f"{brand.color_primary}1F 0%, {brand.color_background} 68%);"
+                )
             rules.append(
                 f"position:absolute;top:{layout['top']}px;left:{layout['left']}px;"
                 f"width:{layout['width']}px;height:{layout['height']}px;"
-                f"z-index:{Z_MEDIA};overflow:hidden;" + (f"border-radius:{radius}px;" if radius else "")
+                f"z-index:{Z_MEDIA};overflow:hidden;{ground}"
+                + (f"border-radius:{radius}px;" if radius else "")
             )
             # Inner clip fills the shell; object-fit lives on the media node.
             keyframes.append(
@@ -631,6 +646,12 @@ class CompositionWriter:
             css.append(self._karaoke_css(element, span, pct))
         return "\n".join(css)
 
+    def _is_card(self, element: Element) -> bool:
+        """An infographic we rendered ourselves — a transparent WebM plate."""
+        if element.props.get("card") or element.props.get("infographic"):
+            return True
+        return element.src is not None and element.src.suffix.lower() == ".webm"
+
     def _camera_move(self, element: Element) -> CameraMove:
         """This shot's move, chosen by what it carries and where it falls.
 
@@ -638,9 +659,7 @@ class CompositionWriter:
         rises because that is the vector reserved for a conclusion, and
         everything else travels along the current at the film's one speed.
         """
-        readable = bool(element.props.get("card") or element.props.get("infographic"))
-        if not readable and element.src is not None:
-            readable = element.src.suffix.lower() == ".webm"
+        readable = self._is_card(element)
         closing = element.end >= self.timeline.duration - 0.05
         return move_for(
             duration=element.duration,
