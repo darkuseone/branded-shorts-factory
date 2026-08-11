@@ -686,3 +686,20 @@ def test_b_roll_cuts_rather_than_dissolves(minimal_spec, fake_media, tmp_path):
 
 def _pct_of(seconds: float, duration: float) -> float:
     return max(0.0, min(100.0, seconds / duration * 100.0))
+
+
+def test_the_composition_declares_that_it_has_no_gsap_timeline(minimal_spec, fake_media, tmp_path):
+    """Two costs avoided by saying so outright.
+
+    A composition animated entirely in CSS registers no GSAP timeline. Without
+    `data-no-timeline` the producer polls for one for 45 seconds before giving
+    up — on every render. And the tempting workaround, registering a look-alike
+    object under `window.__timelines`, hands the runtime something it may try
+    to drive as a timeline; the key belongs to GSAP, one per composition.
+    """
+    timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, fake_media))
+    CompositionWriter(minimal_spec, timeline, tmp_path / "comp").write()
+    html = (tmp_path / "comp" / "index.html").read_text(encoding="utf-8")
+
+    assert "data-no-timeline" in html
+    assert "window.__timelines[" not in html, "the composition registers a GSAP timeline it does not have"

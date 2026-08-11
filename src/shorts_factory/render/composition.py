@@ -309,7 +309,13 @@ class CompositionWriter:
 
     def _body(self) -> str:
         rows: list[str] = [
-            f'<div id="stage" data-composition-id="{self.timeline.composition_id}" '
+            # `data-no-timeline` is the honest declaration for a composition
+            # animated entirely in CSS. Without it the producer polls for a
+            # GSAP timeline registration for 45 seconds before giving up — on
+            # every render — and the alternative, registering a look-alike
+            # object under `window.__timelines`, invites the runtime to drive a
+            # timeline that does not exist.
+            f'<div id="stage" data-composition-id="{self.timeline.composition_id}" data-no-timeline '
             f'data-start="0" data-duration="{self.timeline.duration:.3f}" '
             f'data-width="{self.timeline.width}" data-height="{self.timeline.height}" '
             f'data-fps="{self.timeline.fps}">'
@@ -1108,19 +1114,37 @@ def _caption_glow_css(primary: str) -> str:
 
 
 _SCRIPT = """\
-// HyperFrames reads the DOM for timing; this only exposes a seek hook so the
-// preview and the renderer agree on the clock when driving CSS animations.
+// A seek hook for our own preview only. HyperFrames drives the composition
+// with its own runtime and its own clock; this exists so opening index.html
+// by hand shows the same frame the renderer would.
+//
+// Two things it must not do. It must not register under `window.__timelines`:
+// that key belongs to GSAP timelines, one per composition, and putting a
+// look-alike object there invites the runtime to drive a timeline that does
+// not exist. And it must not seek every animation to composition time — the
+// runtime seeks a `.clip` element's animation in clip-local time, so doing
+// otherwise here would show one thing in preview and render another, which is
+// the exact failure this composition already shipped once.
 (function () {{
   const stage = document.getElementById('stage');
   if (!stage) return;
   const duration = parseFloat(stage.dataset.duration || '0');
   const animated = () => Array.from(document.getAnimations ? document.getAnimations() : []);
 
+  function originOf(animation) {{
+    // A clip's animation runs on the clip's own clock; everything else (the
+    // wrappers around video and image slots) runs on the composition's.
+    const target = animation.effect && animation.effect.target;
+    const clip = target && target.closest ? target.closest('.clip') : null;
+    return clip === target && clip ? parseFloat(clip.dataset.start || '0') : 0;
+  }}
+
   function seek(seconds) {{
-    const t = Math.max(0, Math.min(seconds, duration)) * 1000;
+    const now = Math.max(0, Math.min(seconds, duration));
     animated().forEach((animation) => {{
       animation.pause();
-      try {{ animation.currentTime = t; }} catch (err) {{ /* not seekable */ }}
+      try {{ animation.currentTime = Math.max(0, now - originOf(animation)) * 1000; }}
+      catch (err) {{ /* not seekable */ }}
     }});
     stage.querySelectorAll('video, audio').forEach((media) => {{
       const start = parseFloat(media.dataset.start || '0');
@@ -1134,9 +1158,8 @@ _SCRIPT = """\
     }});
   }}
 
-  window.__timelines = window.__timelines || {{}};
-  window.__timelines['{composition_id}'] = {{ duration: duration, seek: seek }};
   window.__hyperframesSeek = seek;
+  window.__redshiftComposition = {{ id: '{composition_id}', duration: duration, seek: seek }};
 }})();
 """
 
