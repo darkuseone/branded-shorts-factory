@@ -53,7 +53,13 @@ jobs:
       MAGNIFIC_TOKEN_BUDGET: ${{ vars.MAGNIFIC_TOKEN_BUDGET || '40' }}
       MAGNIFIC_TOKEN_RESERVE: ${{ vars.MAGNIFIC_TOKEN_RESERVE || '10' }}
       # Push events have empty inputs — always Docker-render unless explicitly disabled.
-      HYPERFRAMES_SKIP_CHECK: "1"
+      # `check` runs lint plus runtime, layout, motion and contrast gates. It
+      # is worth the ninety seconds: its contrast pass counts how many text
+      # elements it can actually see, which went from "0/0 text checks" to
+      # "6/6 pass" when the invisible-caption bug was fixed. That number is the
+      # cheapest possible alarm for text vanishing again. Browser/GPU failures
+      # on a runner are treated as soft by the adapter and do not block.
+      HYPERFRAMES_SKIP_CHECK: "0"
       # The pipeline's own budget stops it reaching for slow optional tiers in
       # time to still finish, well inside the step cap below.
       RUN_WALLCLOCK_MINUTES: ${{ vars.RUN_WALLCLOCK_MINUTES || '55' }}
