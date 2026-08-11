@@ -414,3 +414,61 @@ def test_a_person_in_a_tech_scene_is_not_a_domestic_scene():
         assert not any("never illustrates" in issue for issue in verdict.issues), (
             f"{title!r} was vetoed as a domestic scene: {verdict.issues}"
         )
+
+
+# --------------------------------------------------------------------------- #
+# Vision transport
+# --------------------------------------------------------------------------- #
+
+
+def test_a_model_name_the_provider_rejects_is_not_fatal():
+    """One wrong model name cost a whole run its footage.
+
+    The default was `grok-4-vision`, which xAI has never had. Every call
+    answered "Model not found", so every slot that needed a look at the frame
+    was left empty — eleven of them — and the video came out with half its
+    b-roll missing. The name of somebody else's model is not something this
+    pipeline can know for certain, so it moves down a ladder instead.
+    """
+    from shorts_factory.config import Settings
+    from shorts_factory.errors import ProviderError
+    from shorts_factory.qa.vision import MODEL_LADDER, GrokVisionGate
+
+    settings = Settings.from_env({"GROK_API_KEY": "test-key", "GROK_VISION_MODEL": "made-up-model"})
+    gate = GrokVisionGate(settings)
+    tried: list[str] = []
+
+    def fake_post(url, body, **kwargs):
+        tried.append(body["model"])
+        if body["model"] != MODEL_LADDER[1]:
+            raise ProviderError("grok_vision", 'Bad Request: {"error":"Model not found: x"} (HTTP 400)')
+        return {"choices": [{"message": {"content": '{"verdict": "pass"}'}}]}
+
+    gate.client.post_json = fake_post
+
+    reply = gate._post([{"type": "text", "text": "hello"}])
+
+    assert reply["choices"], "the ladder never produced an answer"
+    assert tried[0] == "made-up-model", "the configured model must be tried first"
+    assert gate.model == MODEL_LADDER[1], "the working model is not remembered for the next call"
+    assert len(tried) > 1
+
+
+def test_an_ordinary_failure_still_raises():
+    """The ladder is for unknown model names, not for every error."""
+    from shorts_factory.config import Settings
+    from shorts_factory.errors import ProviderError
+    from shorts_factory.qa.vision import GrokVisionGate
+
+    gate = GrokVisionGate(Settings.from_env({"GROK_API_KEY": "test-key"}))
+    calls: list[str] = []
+
+    def fake_post(url, body, **kwargs):
+        calls.append(body["model"])
+        raise ProviderError("grok_vision", "Unauthorized (HTTP 401)")
+
+    gate.client.post_json = fake_post
+
+    with pytest.raises(ProviderError):
+        gate._post([{"type": "text", "text": "hello"}])
+    assert len(calls) == 1, "a 401 must not walk the whole ladder"

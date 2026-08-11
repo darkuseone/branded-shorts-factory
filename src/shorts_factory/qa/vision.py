@@ -34,6 +34,18 @@ log = get_logger("vision")
 DEFAULT_BASE = "https://api.x.ai/v1"
 FRAMES_PER_ASSET = 3
 
+#: Models to try, in order, when the configured one is rejected by name. xAI's
+#: current models are multimodal, so a "-vision" suffix is not a thing — which
+#: is how the default came to be `grok-4-vision`, a model that has never
+#: existed. Newest first, with an older explicitly-vision model at the end
+#: because an account without access to the newest still has that one.
+MODEL_LADDER = (
+    "grok-4",
+    "grok-4-fast",
+    "grok-2-vision-1212",
+    "grok-vision-beta",
+)
+
 Verdict = Literal["pass", "replace", "manual"]
 
 SYSTEM_PROMPT = (
@@ -105,6 +117,14 @@ class GrokVisionGate:
         self.settings = settings
         self.base = os.environ.get("GROK_API_BASE", DEFAULT_BASE).rstrip("/")
         self.model = settings.grok_vision_model
+        #: Models to fall back to when the configured one does not exist. A
+        #: whole run once produced nothing from the vision gate because the
+        #: model was named `grok-4-vision`, which xAI has never had: every
+        #: single call answered "Model not found", eleven slots were left empty
+        #: rather than shipped unseen, and the video came out with half the
+        #: b-roll missing. The name of a third party's model is not something
+        #: this pipeline can know for certain, so it stops being fatal.
+        self.fallbacks = [name for name in MODEL_LADDER if name != self.model]
         self.calls_used = 0
         self.call_budget = settings.budgets.grok_vision_calls
         key = settings.credentials.grok
@@ -197,23 +217,48 @@ class GrokVisionGate:
             )
 
         self.calls_used += 1
-        response = self.client.post_json(
-            f"{self.base}/chat/completions",
-            {
-                "model": self.model,
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": content},
-                ],
-                "temperature": 0.0,
-                "max_tokens": 400,
-            },
-        )
+        response = self._post(content)
         choices = (response or {}).get("choices") or []
         if not choices:
             raise ProviderError(self.name, "empty response")
         message = choices[0].get("message") or {}
         return str(message.get("content") or "")
+
+    def _post(self, content: list[dict[str, object]]) -> dict | None:
+        """Ask the model, moving down the ladder if the name is rejected.
+
+        The switch is remembered for the rest of the run: without that, a bad
+        default costs four rejected calls on every candidate of every slot —
+        which is exactly what happened, forty-four times, before the run gave
+        up and shipped a video missing half its footage.
+        """
+        body = {
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": content},
+            ],
+            "temperature": 0.0,
+            "max_tokens": 400,
+        }
+        while True:
+            try:
+                return self.client.post_json(f"{self.base}/chat/completions", {"model": self.model, **body})
+            except ProviderError as exc:
+                if not _is_unknown_model(exc) or not self.fallbacks:
+                    raise
+                previous, self.model = self.model, self.fallbacks.pop(0)
+                log.warning(
+                    "vision model %r is not available; falling back to %r",
+                    previous,
+                    self.model,
+                    extra={"stage": "qa"},
+                )
+
+
+def _is_unknown_model(exc: Exception) -> bool:
+    """Whether the provider rejected the model name rather than the request."""
+    text = str(exc).lower()
+    return "model not found" in text or "does not exist" in text or "unknown model" in text
 
 
 def _data_url(path: Path) -> str:

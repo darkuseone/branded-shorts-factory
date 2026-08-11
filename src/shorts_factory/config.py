@@ -201,7 +201,7 @@ class Settings:
     ffprobe_cmd: str = "ffprobe"
     http_timeout: float = 30.0
     max_parallel_searches: int = 8
-    grok_vision_model: str = "grok-4-vision"
+    grok_vision_model: str = "grok-4"
 
     @classmethod
     def from_env(
@@ -233,5 +233,5 @@ class Settings:
             ffprobe_cmd=_env(env, "FFPROBE_BIN") or "ffprobe",
             http_timeout=_env_float(env, "HTTP_TIMEOUT", 30.0),
             max_parallel_searches=_env_int(env, "MAX_PARALLEL_SEARCHES", 8),
-            grok_vision_model=_env(env, "GROK_VISION_MODEL") or "grok-4-vision",
+            grok_vision_model=_env(env, "GROK_VISION_MODEL") or "grok-4",
         )
