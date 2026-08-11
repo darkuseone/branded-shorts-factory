@@ -76,8 +76,8 @@
   },
   "avatar": {
     "enabled": true,
-    "provider": "heygen",
-    "avatar_id": "37fa8301e2dd46b2a8d11d4b766a6a50",
+    "provider": "external",
+    "avatar_id": "54172d7a5b2946ed8a592dee955fb0c7",
     "version": "avatar_5",
     "position": "bottom_right",
     "scale": 0.3,
@@ -631,5 +631,9 @@
     "require_vision_qa": false,
     "min_visual_score": 0.4,
     "manual_review_ok": true
+  },
+  "voice": {
+    "source": "avatar",
+    "language": "ru"
   }
 }
