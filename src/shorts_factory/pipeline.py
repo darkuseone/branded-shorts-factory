@@ -290,6 +290,7 @@ class Pipeline:
             try:
                 result.render = self.runner.run_pipeline(composition.directory, output)
                 result.output = result.render.output
+                result.warnings.extend(result.render.warnings)
                 info["output"] = result.output.name if result.output else "none"
             except RenderError as exc:
                 result.warnings.append(str(exc))

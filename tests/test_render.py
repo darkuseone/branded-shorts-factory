@@ -703,3 +703,77 @@ def test_the_composition_declares_that_it_has_no_gsap_timeline(minimal_spec, fak
 
     assert "data-no-timeline" in html
     assert "window.__timelines[" not in html, "the composition registers a GSAP timeline it does not have"
+
+
+# --------------------------------------------------------------------------- #
+# The render pipeline's gates
+# --------------------------------------------------------------------------- #
+
+
+def test_check_reports_but_does_not_block_the_render(tmp_path, monkeypatch):
+    """A quality alarm must not be able to cost a ninety-minute render.
+
+    `check` runs a browser on a runner with no GPU. When it failed there, the
+    run raised and no video came out at all — trading a finished video for a
+    warning. Lint stays the gate: deterministic, fast, and the one that catches
+    the structural faults a render genuinely cannot survive.
+    """
+    from shorts_factory.config import Settings
+    from shorts_factory.render.hyperframes import HyperFramesRunner, StepResult
+
+    settings = Settings.from_env({})
+    runner = HyperFramesRunner(settings)
+    monkeypatch.setattr(runner, "is_available", lambda: True)
+    monkeypatch.setattr(runner, "lint", lambda d: StepResult("lint", True, 0))
+    monkeypatch.setattr(
+        runner,
+        "check",
+        lambda d: StepResult("check", False, 1, stdout="✗ contrast: 3 error(s)", stderr="WebGL unavailable"),
+    )
+
+    output = tmp_path / "out.mp4"
+
+    def fake_render(project_dir, target):
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b"\x00" * 32)
+        return StepResult("render", True, 0)
+
+    monkeypatch.setattr(runner, "render", fake_render)
+    monkeypatch.setenv("HYPERFRAMES_SKIP_CHECK", "0")
+
+    result = runner.run_pipeline(tmp_path, output)
+
+    assert result.ok, "a check failure stopped the render"
+    assert any("check failed" in warning for warning in result.warnings), (
+        "the failure was swallowed instead of reported"
+    )
+
+
+def test_lint_still_stops_the_render(tmp_path, monkeypatch):
+    """Overlapping clips are not a matter of taste; the renderer refuses them."""
+    from shorts_factory.config import Settings
+    from shorts_factory.errors import RenderError
+    from shorts_factory.render.hyperframes import HyperFramesRunner, StepResult
+
+    runner = HyperFramesRunner(Settings.from_env({}))
+    monkeypatch.setattr(runner, "is_available", lambda: True)
+    monkeypatch.setattr(
+        runner, "lint", lambda d: StepResult("lint", False, 1, stdout="✗ overlapping_clips_same_track")
+    )
+
+    with pytest.raises(RenderError):
+        runner.run_pipeline(tmp_path, tmp_path / "out.mp4")
+
+
+def test_a_failed_step_shows_what_it_found_not_just_browser_noise():
+    """The findings go to stdout; the browser complains on stderr.
+
+    Preferring stderr made a failed check unreadable: the run died with a page
+    of "WebGL unavailable" and no hint of what had been found.
+    """
+    from shorts_factory.render.hyperframes import StepResult
+
+    step = StepResult("check", False, 1, stdout="✗ caption_overflow at t=3s", stderr="WebGL unavailable")
+
+    assert "caption_overflow" in step.tail
+    assert "WebGL" in step.tail
