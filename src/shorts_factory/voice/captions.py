@@ -131,7 +131,31 @@ def build_cues(
         cues.extend(_group(timings, settings, segment.id))
 
     cues.sort(key=lambda cue: cue.start)
+    _seal_overlaps(cues)
     return cues
+
+
+def _seal_overlaps(cues: list[CaptionCue]) -> None:
+    """No two cues may be on screen at once.
+
+    Cues are built one segment at a time, and a synthesised segment routinely
+    runs past the window the scenario gave it — the voice takes as long as it
+    takes. Two segments stretched that way overlap at the seam, and with one
+    word per cue that puts two words in the same place: the screenshot showed
+    "Модель" and another word printed on top of each other.
+
+    Grouping fixes the inside of a segment; only this fixes the seams.
+    """
+    for earlier, later in zip(cues, cues[1:], strict=False):
+        if earlier.end <= later.start:
+            continue
+        earlier.end = later.start
+        if earlier.words:
+            earlier.words[-1].end = later.start
+        # A cue squeezed to nothing would flash; give it back a sliver by
+        # starting it earlier is not an option (that moves it off the voice),
+        # so it simply disappears, which is what the eye expects at a seam.
+        earlier.start = min(earlier.start, earlier.end)
 
 
 #: A word shown for less than this reads as a flicker; neighbours are held

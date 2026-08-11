@@ -99,7 +99,7 @@ class VisualResolver:
         context = spec.context_for(visual)
 
         if visual.type == "meme":
-            return ResolvedVisual(visual=visual, qa=self._resolve_meme(spec, visual), search=None)
+            return ResolvedVisual(visual=visual, qa=self._resolve_meme(spec, visual, context), search=None)
 
         card = self._resolve_card(spec, visual)
         if card is not None:
@@ -486,7 +486,7 @@ class VisualResolver:
 
     # -- memes --------------------------------------------------------------
 
-    def _resolve_meme(self, spec: Spec, visual: Visual) -> VisualQA:
+    def _resolve_meme(self, spec: Spec, visual: Visual, context: str = "") -> VisualQA:
         """Memes come only from the user's bank, matched by irony beat + tags."""
         result = VisualQA(visual_id=visual.id, outcome="rejected", attempts=1)
         if not spec.memes.enabled:
@@ -538,8 +538,35 @@ class VisualResolver:
             tags=item.tags,
             license="user-supplied",
         )
+        asset = LocalAsset(candidate=candidate, path=item.path)
+
+        # A meme is footage like any other, and until now it was the one kind
+        # that reached the cut without anyone looking at it. Tags decided
+        # everything, and half the bank is tagged "reaction / still / лицо",
+        # which matches any beat at all — which is how a woman having her hair
+        # done and a stranger's orange face ended up in a news story about a
+        # model breaking into a code host. The gates were not fooled; they were
+        # never asked.
+        vision = self.vision.check(asset, visual, context)
+        if vision.verdict == "replace" or (vision.skipped and spec.constraints.require_vision_qa):
+            log.info(
+                "%s: meme '%s' rejected by vision — %s",
+                visual.id,
+                item.name,
+                vision.reason or "no reason given",
+                extra={"stage": "qa"},
+            )
+            result.outcome = "rejected"
+            result.vision = vision
+            result.notes.append(
+                f"meme '{item.name}' does not belong in this video: "
+                f"{vision.reason or 'the frame does not fit the story'}"
+            )
+            return result
+
         result.outcome = "accepted"
-        result.asset = LocalAsset(candidate=candidate, path=item.path)
+        result.asset = asset
+        result.vision = vision
         result.notes.append(
             f"meme '{item.name}' humor={item.humor or '?'} beat={beat or item.beats[:1]} "
             f"trim={item.trim_start:g}s use={usable:g}s"

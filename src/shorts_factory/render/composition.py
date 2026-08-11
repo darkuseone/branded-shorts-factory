@@ -384,7 +384,13 @@ class CompositionWriter:
                     f"</span>"
                 )
             elif role == "cta":
-                inner = f'<span class="cta-inner">{html.escape(element.text)}</span>'
+                style = str(element.props.get("style", "badge"))
+                inner = (
+                    f'<span class="cta-inner cta-{style}">'
+                    f'<span class="cta-gloss"></span>'
+                    f'<span class="cta-label">{html.escape(element.text)}</span>'
+                    f"</span>"
+                )
             else:
                 inner = f'<span class="text-inner">{html.escape(element.text)}</span>'
             return f'<div {attrs} data-role="{role}">{inner}</div>'
@@ -1031,6 +1037,49 @@ html, body {{ background: #000; width: {width}px; height: {height}px; overflow: 
   font-weight: 800;
   box-shadow: 0 18px 60px rgba(0,0,0,.45), 0 0 24px color-mix(in srgb, var(--primary) 45%, transparent);
 }}
+.cta-label {{ position: relative; z-index: 2; }}
+/* One button, convex, glass. The lift comes from three things stacked in the
+   right order: a vertical gradient that is lighter at the top than the bottom
+   (a surface catching light from above), a bright hairline along the top edge
+   and a dark one along the bottom (the thickness of the glass), and a gloss
+   that covers the upper half only. The drop shadow sits below and behind, so
+   the button reads as floating rather than painted on. */
+.cta-glass {{
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 30px 74px;
+  border-radius: 999px;
+  font-size: 54px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #FFFFFF;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--primary) 78%, #FFFFFF) 0%,
+      var(--primary) 46%,
+      color-mix(in srgb, var(--primary) 82%, #000000) 100%);
+  border-top: 2px solid rgba(255,255,255,.55);
+  border-bottom: 2px solid rgba(0,0,0,.35);
+  box-shadow:
+    inset 0 2px 1px rgba(255,255,255,.45),
+    inset 0 -10px 18px rgba(0,0,0,.28),
+    0 10px 24px rgba(0,0,0,.45),
+    0 24px 70px color-mix(in srgb, var(--primary) 40%, transparent);
+  text-shadow: 0 2px 6px rgba(0,0,0,.35);
+}}
+.cta-gloss {{
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 52%;
+  border-radius: 999px 999px 40% 40% / 999px 999px 100% 100%;
+  background: linear-gradient(180deg, rgba(255,255,255,.38) 0%, rgba(255,255,255,.06) 100%);
+  pointer-events: none;
+}}
+.cta-badge .cta-gloss {{ display: none; }}
 """
 
 _HOST_BASE_CSS = """\

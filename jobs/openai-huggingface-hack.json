@@ -607,13 +607,13 @@
   },
   "brand_elements": {},
   "cta": {
-    "text": "Подпишись — сигнал из будущего",
+    "text": "Subscribe",
     "start": 40.6,
     "duration": 5.4,
-    "style": "badge"
+    "style": "glass"
   },
   "memes": {
-    "enabled": true,
+    "enabled": false,
     "tags": [
       "взлом",
       "шок",

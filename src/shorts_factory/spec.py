@@ -315,6 +315,12 @@ class ScriptSegment:
 
 @dataclass
 class VoiceSettings:
+    #: Where the narration comes from. "avatar" means the HeyGen clip already
+    #: carries it — the voice the lips were animated against — so nothing is
+    #: synthesised separately and lipsync is correct by construction. Anything
+    #: else and the two are made independently, which is how a video ends up
+    #: with a voice-over that does not match the mouth.
+    source: str = "elevenlabs"
     provider: str = "elevenlabs"
     model: str = "eleven_v3"
     voice_id: str = ""
@@ -766,6 +772,7 @@ def _parse_voice(data: dict[str, Any], col: _Collector, language: str) -> VoiceS
             "recommended for Shorts delivery",
         )
     return VoiceSettings(
+        source=_enum(data, "source", path, col, {"elevenlabs", "avatar"}, "elevenlabs"),
         provider=_string(data, "provider", path, col, default="elevenlabs") or "elevenlabs",
         model=_string(data, "model", path, col, default="eleven_v3") or "eleven_v3",
         voice_id=_string(data, "voice_id", path, col),
@@ -1095,7 +1102,9 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
                 or max(0.0, target - 4.0)
             ),
             duration=float(_number(cta_data, "duration", "cta", col, default=3.0, minimum=0.5) or 3.0),
-            style=_enum(cta_data, "style", "cta", col, {"badge", "banner", "card", "text", "arrow"}, "badge"),
+            style=_enum(
+                cta_data, "style", "cta", col, {"glass", "badge", "banner", "card", "text", "arrow"}, "badge"
+            ),
             url=_string(cta_data, "url", "cta", col),
         )
     elif isinstance(cta_data, str) and cta_data.strip():

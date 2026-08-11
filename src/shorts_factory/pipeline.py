@@ -47,6 +47,7 @@ from .render.rhythm import RetimeReport, retime_visuals
 from .render.timeline import Timeline, build_timeline, use_mixed_audio
 from .resolver import ResolvedVisual, VisualResolver
 from .spec import Spec, SpecIssue
+from .voice.alignment import split_at_pauses
 from .voice.audio_design import finalize_audio_fx, resolve_from_library, suggest_audio_fx
 from .voice.captions import CaptionCue, build_cues
 from .voice.elevenlabs import ElevenLabsClient, SfxClip, VoiceClip
@@ -352,6 +353,23 @@ class Pipeline:
             result.warnings.append(f"could not update meme history: {exc}")
 
     def _synthesize_voice(self, spec: Spec, result: RunResult) -> None:
+        if spec.voice.source == "avatar":
+            # The avatar clip already carries the narration it was animated
+            # against. Synthesising a second take and laying it over the same
+            # video is what produced a voice-over that does not match the
+            # mouth — the lips were made for audio we then threw away.
+            clips = self._load_avatar_voice(spec)
+            if clips:
+                result.voice_clips = clips
+                log.info("narration taken from the avatar clip", extra={"stage": "voice"})
+            else:
+                result.warnings.append(
+                    'voice.source is "avatar" but jobs/<id>/avatar.mp4 carries no audio — '
+                    "the Short will have no narration"
+                )
+            self._resolve_sound_design(spec, result)
+            return
+
         if self.voice_client.is_available:
             result.voice_clips = self.voice_client.synthesize_script(spec.all_segments, spec.voice)
             if len(result.voice_clips) < len(spec.all_segments):
@@ -414,17 +432,41 @@ class Pipeline:
             shutil.copy2(voice_path, target)
             voice_path = target
 
-        duration = float(spec.spoken_duration or spec.duration_target)
-        first = spec.all_segments[0] if spec.all_segments else None
-        if first is None:
+        segments = spec.all_segments
+        if not segments:
             return []
+
+        duration = _audio_duration(voice_path, self.settings) or float(
+            spec.spoken_duration or spec.duration_target
+        )
+
+        # The narration is one continuous recording, so it goes into the mix as
+        # one clip — a clip per segment would place the whole file once per
+        # segment and stack the voice on top of itself.
+        #
+        # What the segments get instead is the truth about *when* each of them
+        # is spoken. The scenario's timings are the author's guesses; the
+        # recording knows, because the narrator pauses between sentences. Every
+        # segment is moved onto the span it really occupies, and captions and
+        # shot lengths — which both read segment timings — land on the voice
+        # instead of near it.
+        spans = split_at_pauses(
+            voice_path,
+            [float(max(len(segment.text), 1)) for segment in segments],
+            duration,
+            ffmpeg=self.settings.ffmpeg_cmd,
+        )
+        for segment, (start, length) in zip(segments, spans, strict=True):
+            segment.start = start
+            segment.duration = length
+
         return [
             VoiceClip(
-                segment_id=first.id,
+                segment_id=segments[0].id,
                 path=voice_path,
                 start=0.0,
                 duration=duration,
-                text=" ".join(segment.text for segment in spec.all_segments),
+                text=" ".join(segment.text for segment in segments),
                 words=[],
             )
         ]
@@ -655,3 +697,11 @@ class Pipeline:
 def _host_plan(spec: Spec) -> HostPlan:
     """Build host presentation windows from segment modes."""
     return plan_host(spec)
+
+
+def _audio_duration(path: Path, settings: Settings) -> float:
+    """Length of an audio file in seconds, or 0.0 when it cannot be read."""
+    from .media.ffmpeg import probe
+
+    info = probe(path, settings.ffprobe_cmd)
+    return float(info.duration) if info and info.duration else 0.0

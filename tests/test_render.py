@@ -777,3 +777,110 @@ def test_a_failed_step_shows_what_it_found_not_just_browser_noise():
 
     assert "caption_overflow" in step.tail
     assert "WebGL" in step.tail
+
+
+def test_two_captions_are_never_on_screen_at_once():
+    """The overlapping words in the screenshot.
+
+    Cues are built one segment at a time, and a synthesised segment routinely
+    runs past the window the scenario gave it. Two segments stretched that way
+    overlap at the seam, and with one word per cue that prints two words on top
+    of each other.
+    """
+    from shorts_factory.spec import CaptionSettings, ScriptSegment
+    from shorts_factory.voice.elevenlabs import WordTiming
+
+    settings = CaptionSettings(enabled=True, style="word")
+    segments = [
+        ScriptSegment(id="s1", text="первый кусок речи", start=0.0, duration=2.0),
+        ScriptSegment(id="s2", text="второй кусок речи", start=2.0, duration=2.0),
+    ]
+    # The first segment's voice ran 1.2s past its window.
+    clips = [
+        VoiceClip(
+            segment_id="s1",
+            path=Path("a.mp3"),
+            start=0.0,
+            duration=3.2,
+            text=segments[0].text,
+            words=[
+                WordTiming("первый", 0.0, 1.0),
+                WordTiming("кусок", 1.0, 2.0),
+                WordTiming("речи", 2.0, 3.2),
+            ],
+        ),
+        VoiceClip(
+            segment_id="s2",
+            path=Path("b.mp3"),
+            start=2.0,
+            duration=2.0,
+            text=segments[1].text,
+            words=[
+                WordTiming("второй", 0.0, 0.7),
+                WordTiming("кусок", 0.7, 1.4),
+                WordTiming("речи", 1.4, 2.0),
+            ],
+        ),
+    ]
+
+    cues = build_cues(segments, clips, settings)
+
+    for earlier, later in zip(cues, cues[1:], strict=False):
+        assert earlier.end <= later.start + 1e-6, (
+            f"'{earlier.text}' is still up when '{later.text}' arrives "
+            f"({earlier.start:.2f}-{earlier.end:.2f} vs {later.start:.2f})"
+        )
+
+
+# --------------------------------------------------------------------------- #
+# Narration that comes with the avatar
+# --------------------------------------------------------------------------- #
+
+
+def test_segments_snap_to_the_pauses_in_the_recording():
+    """Where a sentence is spoken, not where the author guessed.
+
+    With the narration coming from the avatar clip there is no word alignment
+    to read, and spreading words over the scenario's own timings puts one-word
+    captions wherever the author imagined the sentence fell. The recording says
+    otherwise: a narrator pauses between sentences, and those pauses measure.
+    """
+    from shorts_factory.voice.alignment import split_at_pauses
+
+    if not shutil.which("ffmpeg"):
+        pytest.skip("silence detection needs ffmpeg")
+
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as folder:
+        audio = Path(folder) / "voice.wav"
+        # Speech, a clear pause, speech — with the seam at 4s, far from the
+        # halfway point an even split would choose.
+        subprocess.run(
+            ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+             "-f", "lavfi", "-i", "sine=frequency=220:duration=4",
+             "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono:d=1",
+             "-f", "lavfi", "-i", "sine=frequency=220:duration=3",
+             "-filter_complex", "[0][1][2]concat=n=3:v=0:a=1", str(audio)],
+            check=False, capture_output=True, timeout=120,
+        )  # fmt: skip
+        if not audio.exists():
+            pytest.skip("could not build the fixture")
+
+        spans = split_at_pauses(audio, [1.0, 1.0], 8.0)
+
+    assert len(spans) == 2
+    seam = spans[0][1]
+    assert 4.0 <= seam <= 5.0, f"the seam landed at {seam:.2f}s instead of in the pause"
+    assert spans[0][0] == 0.0
+    assert spans[1][0] + spans[1][1] == pytest.approx(8.0, abs=0.01)
+
+
+def test_an_even_split_is_kept_when_there_is_nothing_to_hear():
+    """Silence detection that finds nothing must not invent boundaries."""
+    from shorts_factory.voice.alignment import split_at_pauses
+
+    spans = split_at_pauses(Path("/nonexistent.wav"), [1.0, 1.0, 2.0], 8.0)
+
+    assert [round(start, 2) for start, _ in spans] == [0.0, 2.0, 4.0]
+    assert sum(length for _, length in spans) == pytest.approx(8.0, abs=0.01)
