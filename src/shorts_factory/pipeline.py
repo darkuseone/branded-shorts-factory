@@ -39,6 +39,7 @@ from .generative.budget import TokenBudget
 from .logging_utils import get_logger, stage
 from .qa.gate import QAReport
 from .render.audio_mix import build_mix
+from .render.backfill import backfill_empty_slots
 from .render.composition import CompositionWriter
 from .render.host_presence import HostPlan, plan_host
 from .render.hyperframes import HyperFramesRunner, RenderResult
@@ -522,8 +523,12 @@ class Pipeline:
 
     def _resolve_visuals(self, spec: Spec, result: RunResult) -> None:
         result.resolved = self.resolver.resolve_all(spec)
+        # QA is recorded before the backfill so the report says what the gates
+        # actually decided; the reuse is reported separately, as the editorial
+        # choice it is rather than as a slot that passed.
         for item in result.resolved:
             result.qa.add(item.qa)
+        result.warnings.extend(backfill_empty_slots(result.resolved))
         for item in result.resolved:
             if item.qa.outcome == "rejected":
                 result.warnings.append(
