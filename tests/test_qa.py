@@ -537,3 +537,33 @@ def test_an_unreadable_file_is_left_to_the_download_gate(tmp_path):
 
     refused, share = looks_keyed(broken)
     assert not refused and share == 0.0
+
+
+def test_a_ban_the_words_cannot_settle_is_sent_to_the_frame():
+    """ "No text overlay" is never answerable from a stock title.
+
+    A library describes a clip's subject, never its production furniture, so
+    matching "text overlay" against metadata passes every time and the ban
+    reads as satisfied without a single check. A NASA product with its own
+    title card burned into the top third shipped exactly that way.
+    """
+    visual = make_visual(query="red warning screen", must_avoid=["text overlay", "watermark"])
+    plan = build_query_plan(visual, None)
+    asset = asset_for(title="Astrophysics Multiwavelength Vertical Video", tags=["warning", "screen"])
+
+    verdict = check_native(asset, visual, plan, "red warning screen")
+
+    assert verdict.passed, "the ban is not a rejection on its own; it is a reason to look"
+    assert verdict.needs_vision, "a ban only the frame can settle must reach the gate that sees"
+
+
+def test_a_ban_the_words_can_settle_still_rejects_outright():
+    """A banned subject that *is* written down needs no second opinion."""
+    visual = make_visual(query="server room", must_avoid=["juice"])
+    plan = build_query_plan(visual, None)
+    asset = asset_for(title="orange juice in a server room", tags=["juice"])
+
+    verdict = check_native(asset, visual, plan, "server room")
+
+    assert not verdict.passed
+    assert any("banned" in issue for issue in verdict.issues)

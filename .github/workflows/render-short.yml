@@ -68,6 +68,13 @@ jobs:
       # time to still finish, well inside the step cap below.
       RUN_WALLCLOCK_MINUTES: ${{ vars.RUN_WALLCLOCK_MINUTES || '55' }}
       HYPERFRAMES_DOCKER: ${{ github.event_name == 'workflow_dispatch' && inputs.docker == false && '0' || '1' }}
+      # HyperFrames auto-detects HDR sources and switches the whole encode to
+      # HEVC when it finds one. That makes the delivered codec depend on which
+      # stock clip happened to win a slot: the same scenario rendered H.264 one
+      # run and HEVC the next, purely because a NASA clip came back HDR. A
+      # Short is an SDR deliverable either way, so the encode is pinned rather
+      # than left to the footage.
+      HYPERFRAMES_RENDER_ARGS: --sdr
       PYTHONPATH: src
 
     steps:

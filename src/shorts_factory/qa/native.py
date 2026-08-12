@@ -378,6 +378,31 @@ HARD_VETO_DOMAINS = frozenset({"lifestyle_domestic", "food", "sport"})
 #: actually see them. Level 1 filters, level 2 judges.
 PASS_THRESHOLD = 0.30
 
+#: Things a scenario bans that no stock library ever admits to in words. A
+#: clip's title describes its subject, never its production furniture, so
+#: these bans can only be settled by looking at the frame — matching them
+#: against metadata is how a ban gets marked satisfied without a single check
+#: being made.
+_UNSEEABLE_BANS = (
+    "text",
+    "caption",
+    "subtitle",
+    "title card",
+    "watermark",
+    "logo",
+    "overlay",
+    "smiling",
+    "smile",
+    "looking at camera",
+)
+
+
+def _only_the_frame_can_tell(term: str) -> bool:
+    """Whether a `must_avoid` term is invisible to a metadata check."""
+    lowered = term.casefold()
+    return any(ban in lowered for ban in _UNSEEABLE_BANS)
+
+
 #: Fraction of the primary query an asset should echo before its subject
 #: coverage counts as complete, and the floor in absolute words.
 PRIMARY_COVERAGE = 0.5
@@ -549,10 +574,20 @@ def check_native(
         if term.lower() not in metadata:
             issues.append(f"missing required subject '{term}'")
             score *= 0.5
+    unseeable_avoid = False
     for term in visual.must_avoid:
         if term.lower() in metadata:
             issues.append(f"contains banned subject '{term}'")
             score = 0.0
+        elif _only_the_frame_can_tell(term):
+            # "text overlay", "watermark", "stock model smiling" — none of
+            # these are ever written down. A stock title says "Astrophysics
+            # Multiwavelength Vertical Video", not "has our name burned into
+            # the top third", so checking the metadata for them passes every
+            # time and the ban reads as satisfied when nothing was checked.
+            # A NASA product with its own title card shipped that way. The
+            # ban is real, so the candidate has to be looked at.
+            unseeable_avoid = True
 
     # --- technical --------------------------------------------------------
     if asset.height and asset.height < 720:
@@ -569,10 +604,12 @@ def check_native(
     passed = score >= threshold and not blocking
     if passed and thin_coverage:
         notes.append("thin subject coverage; needs a look at the frame")
+    if passed and unseeable_avoid:
+        notes.append("carries a must_avoid only the frame can settle")
     return NativeVerdict(
         passed=passed,
         score=score,
         issues=issues,
         notes=notes,
-        needs_vision=passed and thin_coverage,
+        needs_vision=passed and (thin_coverage or unseeable_avoid),
     )
