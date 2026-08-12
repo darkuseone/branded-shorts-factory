@@ -14,7 +14,7 @@ import pytest
 from shorts_factory.cli import main
 from shorts_factory.generative.budget import TokenBudget
 from shorts_factory.media.download import Downloader, LocalAsset
-from shorts_factory.pipeline import Pipeline
+from shorts_factory.pipeline import Pipeline, RunResult
 from shorts_factory.qa.gate import VisualQA
 from shorts_factory.qa.vision import VisionVerdict
 from shorts_factory.render.hyperframes import HyperFramesRunner, RenderResult, StepResult
@@ -513,6 +513,60 @@ def test_escalation_is_skipped_when_the_clock_is_spent(settings, minimal_spec):
         minimal_spec, minimal_spec.visuals[0], _empty_outcome(minimal_spec.visuals[0]), ""
     )
     assert not tried, "escalation is a slow step and the run has to finish"
+
+
+def test_avatar_voice_extends_a_duration_target_that_is_too_short(tmp_path, minimal_spec):
+    """duration_target is the author's pre-avatar guess; the clip is the truth.
+
+    Nothing else in the pipeline knows to check the avatar's real length
+    against the scenario's duration_target. Left alone, segments near the end
+    of a narration that runs longer than the guess get positioned past where
+    the composition actually ends — HyperFrames then refuses to ship a video
+    with a shot that captured zero frames, because it never had a chance to
+    render (issue seen on openai-huggingface-hack: a 47.66s avatar clip vs. a
+    46s duration_target left the last segment's b-roll scheduled at 47.5s).
+    """
+    import shutil
+    import subprocess
+
+    from shorts_factory.config import Budgets, Paths, Settings
+
+    if not shutil.which("ffmpeg"):
+        pytest.skip("needs ffmpeg to build the fixture clip")
+
+    minimal_spec.duration_target = 20.0
+    job_dir = tmp_path / "jobs" / minimal_spec.id
+    job_dir.mkdir(parents=True)
+    voice_path = job_dir / "voice_from_avatar.mp3"
+    # Longer than duration_target on purpose — the scenario's guess, made
+    # before the avatar existed, undershoots what the clip actually plays.
+    subprocess.run(
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+         "-f", "lavfi", "-i", "sine=frequency=220:duration=25",
+         str(voice_path)],
+        check=False, capture_output=True, timeout=120,
+    )  # fmt: skip
+    if not voice_path.exists():
+        pytest.skip("could not build the fixture")
+
+    settings = Settings(
+        paths=Paths(root=tmp_path, workdir=tmp_path / "build").ensure(),
+        budgets=Budgets(),
+        offline=True,
+        dry_run=True,
+    )
+    pipeline = Pipeline(settings)
+    result = RunResult(spec_id=minimal_spec.id)
+
+    pipeline._synthesize_voice(minimal_spec, result)
+
+    assert minimal_spec.duration_target >= 24.9, (
+        f"duration_target must grow to cover the real avatar audio, got {minimal_spec.duration_target}"
+    )
+    assert (
+        minimal_spec.script[-1].start + minimal_spec.script[-1].duration
+        <= minimal_spec.duration_target + 0.01
+    )
 
 
 def _empty_outcome(visual):

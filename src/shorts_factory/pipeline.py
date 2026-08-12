@@ -440,6 +440,17 @@ class Pipeline:
             spec.spoken_duration or spec.duration_target
         )
 
+        # The scenario's duration_target is the author's guess, made before
+        # the avatar clip existed. The avatar audio is what actually plays,
+        # and every downstream stage — rhythm, the composition length, the
+        # CTA placement — reads duration_target as gospel. Leaving it short
+        # schedules segments (and their visuals) on the real, longer timeline
+        # while the composition itself still ends at the old guess, so shots
+        # attached to the tail of the narration land past the end of the
+        # video and never get a single frame rendered.
+        if duration > spec.duration_target:
+            spec.duration_target = duration
+
         # The narration is one continuous recording, so it goes into the mix as
         # one clip — a clip per segment would place the whole file once per
         # segment and stack the voice on top of itself.
