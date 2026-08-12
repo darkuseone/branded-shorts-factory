@@ -135,7 +135,8 @@ class HttpClient:
             except http.client.IncompleteRead as exc:
                 got = len(exc.partial)
                 expected = got + exc.expected if exc.expected else None
-                last_error = f"connection closed early ({got}B read" + (f" of {expected}B)" if expected else ")")
+                suffix = f" of {expected}B)" if expected else ")"
+                last_error = f"connection closed early ({got}B read{suffix}"
                 if attempt == self.retries:
                     raise ProviderError(self.provider, last_error) from exc
                 delay = self._delay(attempt)
