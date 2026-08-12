@@ -5,7 +5,6 @@
   "rubric": "космос",
   "language": "ru",
   "duration_target": 42,
-
   "hook": {
     "id": "hook",
     "text": "Венера убивает зонд за две минуты. Вот почему.",
@@ -15,7 +14,6 @@
     "mode": "full_host",
     "on_camera": true
   },
-
   "script": [
     {
       "id": "s1",
@@ -64,7 +62,6 @@
       "on_camera": true
     }
   ],
-
   "voice_settings": {
     "provider": "elevenlabs",
     "model": "eleven_v3",
@@ -75,7 +72,6 @@
     "speed": 1.04,
     "language": "ru"
   },
-
   "avatar": {
     "enabled": true,
     "provider": "heygen",
@@ -86,39 +82,53 @@
     "background": "transparent",
     "segments": []
   },
-
   "visuals": [
     {
       "id": "v1a",
       "type": "footage",
       "query": "venus planet",
-      "keywords": ["planet venus space", "solar system planet"],
+      "keywords": [
+        "planet venus space",
+        "solar system planet"
+      ],
       "start": 0,
       "duration": 1.6,
       "position": "auto",
       "motion": "zoom_in",
       "priority": "critical",
       "segment_ref": "hook",
-      "must_avoid": ["cartoon", "logo"]
+      "must_avoid": [
+        "cartoon",
+        "logo"
+      ]
     },
     {
       "id": "v1b",
       "type": "footage",
       "query": "venus surface hellish",
-      "keywords": ["venus surface lava", "scorched planet surface"],
+      "keywords": [
+        "venus surface lava",
+        "scorched planet surface"
+      ],
       "start": 1.6,
       "duration": 1.6,
       "position": "auto",
       "motion": "kenburns",
       "priority": "critical",
       "segment_ref": "hook",
-      "must_avoid": ["cartoon", "logo"]
+      "must_avoid": [
+        "cartoon",
+        "logo"
+      ]
     },
     {
       "id": "v2a",
       "type": "footage",
       "query": "thick clouds from orbit",
-      "keywords": ["planet clouds atmosphere", "cloud layer from space"],
+      "keywords": [
+        "planet clouds atmosphere",
+        "cloud layer from space"
+      ],
       "start": 3.2,
       "duration": 1.7,
       "position": "auto",
@@ -129,7 +139,10 @@
       "id": "v2b",
       "type": "footage",
       "query": "swirling cloud layer soft light",
-      "keywords": ["swirling clouds", "soft cloud glow orbit"],
+      "keywords": [
+        "swirling clouds",
+        "soft cloud glow orbit"
+      ],
       "start": 4.9,
       "duration": 1.7,
       "position": "auto",
@@ -140,7 +153,10 @@
       "id": "v2c",
       "type": "footage",
       "query": "dense atmosphere haze planet",
-      "keywords": ["atmospheric haze", "opaque cloud deck"],
+      "keywords": [
+        "atmospheric haze",
+        "opaque cloud deck"
+      ],
       "start": 6.6,
       "duration": 1.6,
       "position": "auto",
@@ -151,7 +167,10 @@
       "id": "v3a",
       "type": "motion_graphics",
       "query": "sulfuric acid cloud layers cross section",
-      "keywords": ["atmosphere layers animation", "chemical cloud diagram"],
+      "keywords": [
+        "atmosphere layers animation",
+        "chemical cloud diagram"
+      ],
       "start": 8.2,
       "duration": 1.9,
       "position": "auto",
@@ -163,7 +182,10 @@
       "id": "v3b",
       "type": "footage",
       "query": "yellow acid clouds toxic",
-      "keywords": ["sulfuric clouds", "venus acid atmosphere"],
+      "keywords": [
+        "sulfuric clouds",
+        "venus acid atmosphere"
+      ],
       "start": 10.1,
       "duration": 1.9,
       "position": "auto",
@@ -175,7 +197,10 @@
       "id": "v3c",
       "type": "motion_graphics",
       "query": "hellish under cloud reveal",
-      "keywords": ["atmosphere reveal animation", "hidden surface hell"],
+      "keywords": [
+        "atmosphere reveal animation",
+        "hidden surface hell"
+      ],
       "start": 12.0,
       "duration": 1.7,
       "position": "auto",
@@ -187,7 +212,10 @@
       "id": "v4a",
       "type": "footage",
       "query": "deep ocean pressure submarine",
-      "keywords": ["underwater deep sea", "submersible descending"],
+      "keywords": [
+        "underwater deep sea",
+        "submersible descending"
+      ],
       "start": 13.7,
       "duration": 2.0,
       "position": "fullscreen",
@@ -198,7 +226,10 @@
       "id": "v4b",
       "type": "footage",
       "query": "crushing depth dark ocean",
-      "keywords": ["crushing depth", "abyssal trench dark"],
+      "keywords": [
+        "crushing depth",
+        "abyssal trench dark"
+      ],
       "start": 15.7,
       "duration": 2.0,
       "position": "fullscreen",
@@ -209,7 +240,10 @@
       "id": "v4c",
       "type": "footage",
       "query": "submersible hull pressure stress",
-      "keywords": ["deep sea vehicle", "pressure gauge underwater"],
+      "keywords": [
+        "deep sea vehicle",
+        "pressure gauge underwater"
+      ],
       "start": 17.7,
       "duration": 2.0,
       "position": "fullscreen",
@@ -220,20 +254,43 @@
       "id": "v5a",
       "type": "infographic",
       "query": "temperature comparison chart planets",
-      "keywords": ["thermometer data visualization", "heat scale animation"],
+      "keywords": [
+        "thermometer data visualization",
+        "heat scale animation"
+      ],
       "start": 19.7,
       "duration": 2.1,
       "position": "auto",
       "motion": "none",
       "priority": "high",
       "segment_ref": "s4",
-      "must_include": ["temperature"]
+      "must_include": [
+        "temperature"
+      ],
+      "card": {
+        "template": "COMPARISON_AB",
+        "title": "Поверхность",
+        "source": "NASA",
+        "items": [
+          {
+            "label": "Венера",
+            "value": "464 °C"
+          },
+          {
+            "label": "Меркурий днём",
+            "value": "430 °C"
+          }
+        ]
+      }
     },
     {
       "id": "v5b",
       "type": "footage",
       "query": "molten metal pouring liquid",
-      "keywords": ["molten lead flow", "liquid metal pour"],
+      "keywords": [
+        "molten lead flow",
+        "liquid metal pour"
+      ],
       "start": 21.8,
       "duration": 2.1,
       "position": "auto",
@@ -245,7 +302,10 @@
       "id": "v5c",
       "type": "footage",
       "query": "extreme heat haze industrial",
-      "keywords": ["heat shimmer", "scorching furnace glow"],
+      "keywords": [
+        "heat shimmer",
+        "scorching furnace glow"
+      ],
       "start": 23.9,
       "duration": 2.1,
       "position": "auto",
@@ -257,7 +317,10 @@
       "id": "v6a",
       "type": "footage",
       "query": "carbon dioxide greenhouse gas",
-      "keywords": ["industrial smoke atmosphere", "co2 emissions"],
+      "keywords": [
+        "industrial smoke atmosphere",
+        "co2 emissions"
+      ],
       "start": 26.0,
       "duration": 2.0,
       "position": "auto",
@@ -268,7 +331,10 @@
       "id": "v6b",
       "type": "motion_graphics",
       "query": "greenhouse effect heat trap diagram",
-      "keywords": ["heat retention animation", "infrared trapped atmosphere"],
+      "keywords": [
+        "heat retention animation",
+        "infrared trapped atmosphere"
+      ],
       "start": 28.0,
       "duration": 2.0,
       "position": "auto",
@@ -279,7 +345,10 @@
       "id": "v6c",
       "type": "footage",
       "query": "heat haze desert sun",
-      "keywords": ["heat haze", "thermal shimmer air"],
+      "keywords": [
+        "heat haze",
+        "thermal shimmer air"
+      ],
       "start": 30.0,
       "duration": 2.0,
       "position": "auto",
@@ -290,7 +359,10 @@
       "id": "v7a",
       "type": "footage",
       "query": "earth from space",
-      "keywords": ["blue planet earth orbit", "earth horizon sunrise"],
+      "keywords": [
+        "blue planet earth orbit",
+        "earth horizon sunrise"
+      ],
       "start": 32.0,
       "duration": 1.9,
       "position": "auto",
@@ -302,7 +374,10 @@
       "id": "v7b",
       "type": "footage",
       "query": "early earth cloudy ocean world",
-      "keywords": ["young earth oceans", "habitable planet clouds"],
+      "keywords": [
+        "young earth oceans",
+        "habitable planet clouds"
+      ],
       "start": 33.9,
       "duration": 1.9,
       "position": "auto",
@@ -314,7 +389,10 @@
       "id": "v7c",
       "type": "footage",
       "query": "venus and earth comparison space",
-      "keywords": ["twin planets contrast", "venus earth side by side"],
+      "keywords": [
+        "twin planets contrast",
+        "venus earth side by side"
+      ],
       "start": 35.8,
       "duration": 1.7,
       "position": "auto",
@@ -326,7 +404,10 @@
       "id": "v8a",
       "type": "motion_graphics",
       "query": "abstract particles loop dark void",
-      "keywords": ["minimal motion background", "particle field loop"],
+      "keywords": [
+        "minimal motion background",
+        "particle field loop"
+      ],
       "start": 37.5,
       "duration": 2.2,
       "position": "auto",
@@ -337,7 +418,10 @@
       "id": "v8b",
       "type": "motion_graphics",
       "query": "crimson pulse particles dark",
-      "keywords": ["subtle red particle drift", "void background motion"],
+      "keywords": [
+        "subtle red particle drift",
+        "void background motion"
+      ],
       "start": 39.7,
       "duration": 2.3,
       "position": "auto",
@@ -345,7 +429,6 @@
       "allow_magnific": false
     }
   ],
-
   "music": {
     "track": "tension_01",
     "volume": 0.16,
@@ -354,15 +437,38 @@
     "fade_in": 0.6,
     "fade_out": 1.2
   },
-
   "audio_fx": [
-    { "type": "impact", "at": 0.1, "intensity": 0.75, "duration": 1.0 },
-    { "type": "whoosh", "at": 8.1, "intensity": 0.55, "duration": 0.7 },
-    { "type": "riser", "at": 18.9, "intensity": 0.6, "duration": 0.9 },
-    { "type": "sub_drop", "at": 19.7, "intensity": 0.7, "duration": 0.8 },
-    { "type": "pop", "at": 37.5, "intensity": 0.5, "duration": 0.6 }
+    {
+      "type": "impact",
+      "at": 0.1,
+      "intensity": 0.75,
+      "duration": 1.0
+    },
+    {
+      "type": "whoosh",
+      "at": 8.1,
+      "intensity": 0.55,
+      "duration": 0.7
+    },
+    {
+      "type": "riser",
+      "at": 18.9,
+      "intensity": 0.6,
+      "duration": 0.9
+    },
+    {
+      "type": "sub_drop",
+      "at": 19.7,
+      "intensity": 0.7,
+      "duration": 0.8
+    },
+    {
+      "type": "pop",
+      "at": 37.5,
+      "intensity": 0.5,
+      "duration": 0.6
+    }
   ],
-
   "captions": {
     "enabled": true,
     "style": "karaoke",
@@ -375,7 +481,6 @@
     "stroke": true,
     "uppercase": false
   },
-
   "brand_elements": {
     "logo": "brand/logo.png",
     "logo_position": "top_left",
@@ -388,21 +493,18 @@
     "safe_area": true,
     "watermark_opacity": 0.8
   },
-
   "cta": {
     "text": "Подпишись — дальше про Марс",
     "start": 37.5,
     "duration": 4.0,
     "style": "badge"
   },
-
   "memes": {
     "enabled": false,
     "tags": [],
     "max_count": 1,
     "max_duration": 1.2
   },
-
   "constraints": {
     "magnific_token_budget": 12,
     "allow_generative": true,

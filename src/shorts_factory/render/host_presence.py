@@ -101,6 +101,31 @@ def split_upper_layout() -> dict[str, object]:
     }
 
 
+#: Where the face sits in a 9:16 talking-head render. The band shows the top
+#: of the frame, not its middle: `cover` centred on a 1080x1920 source crops
+#: to the vertical middle, which on a head-and-shoulders render is the chin
+#: and chest — or, on an already-close crop, forehead and half a face.
+#:
+#: The number is measured, not guessed. On the reference avatar the hair
+#: starts at row 320 of 1920 and the chin lands at 870, so `cover` shows 768
+#: of those rows at 1:1 and the only choice is *which* 768. At 18% the window
+#: was rows 207-975: 113px of empty air above the head and 105px below the
+#: chin, which reads as a face pushed up against the lens with the shoulders
+#: cut off. At 25% it is rows 288-1056 — the head sits higher in the band and
+#: the neckline and shoulder line are inside the frame, which is what gives a
+#: talking head its sense of distance.
+#:
+#: Head *size* is not adjustable here: a 550px head in a 768px band is 72% of
+#: it whatever the offset, because `cover` pins the scale at 1:1. Reading the
+#: presenter as further away would mean a taller band (HOST_LOWER_RATIO), and
+#: that is a change to the whole layout rather than to the framing.
+HOST_FOCUS = "50% 25%"
+
+#: The presenter is never blown up to fill a box. At most this much, and only
+#: as a deliberate push on an emphasised line.
+HOST_EMPHASIS_ZOOM = 1.12
+
+
 def host_lower_layout() -> dict[str, object]:
     return {
         "top": HOST_LOWER_TOP,
@@ -108,6 +133,7 @@ def host_lower_layout() -> dict[str, object]:
         "width": VIDEO_WIDTH,
         "height": HOST_LOWER_HEIGHT,
         "fit": "cover",
+        "focus": HOST_FOCUS,
         "mode": "split",
     }
 
@@ -119,6 +145,7 @@ def host_fullscreen_layout() -> dict[str, object]:
         "width": VIDEO_WIDTH,
         "height": VIDEO_HEIGHT,
         "fit": "cover",
+        "focus": HOST_FOCUS,
         "mode": "full_host",
     }
 

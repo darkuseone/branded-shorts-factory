@@ -643,6 +643,25 @@
       "note": ""
     },
     {
+      "file": "dai-prisunut.mp4",
+      "title": "Дай присунуть",
+      "tags": [
+        "жадность",
+        "требование",
+        "хочу"
+      ],
+      "humor": "demand",
+      "beats": [
+        "hook_punch"
+      ],
+      "intensity": "hard",
+      "safe_for_science": false,
+      "duration": 2.117,
+      "trim_start": 0.0,
+      "max_use": 1.2,
+      "note": ""
+    },
+    {
       "file": "davai-po-novoi.mp4",
       "title": "Давай по новой",
       "tags": [
@@ -681,6 +700,27 @@
       "trim_start": 0.0,
       "max_use": 1.2,
       "note": "сухо принять невозможное — фирменный научпоп-приём"
+    },
+    {
+      "file": "eto-chto-takoe-a.mp4",
+      "title": "Это что такое, а?",
+      "tags": [
+        "вопрос",
+        "непонятно",
+        "разбор",
+        "что-это"
+      ],
+      "humor": "misconception",
+      "beats": [
+        "misconception",
+        "hook_punch"
+      ],
+      "intensity": "mid",
+      "safe_for_science": true,
+      "duration": 2.36,
+      "trim_start": 0.0,
+      "max_use": 1.4,
+      "note": "перед разбором странного объекта/графика"
     },
     {
       "file": "eto-dukhovnaua-skrepa.mp4",
@@ -761,6 +801,26 @@
       "note": "саркастическая похвала после «очевидного» вывода"
     },
     {
+      "file": "kakuyu-psikhushku.mp4",
+      "title": "Какую психушку",
+      "tags": [
+        "безумие",
+        "перебор",
+        "психушка"
+      ],
+      "humor": "absurd_scale",
+      "beats": [
+        "absurd_scale",
+        "doubt"
+      ],
+      "intensity": "mid",
+      "safe_for_science": true,
+      "duration": 3.083,
+      "trim_start": 0.0,
+      "max_use": 1.4,
+      "note": "когда цифра или идея звучит клинически безумно"
+    },
+    {
       "file": "lyudi-stali-kretiny.mp4",
       "title": "Люди стали кретины",
       "tags": [
@@ -837,6 +897,27 @@
       "note": ""
     },
     {
+      "file": "ne-posporish-goblin-puchkov.mp4",
+      "title": "Не поспоришь",
+      "tags": [
+        "deadpan",
+        "не-поспоришь",
+        "согласие",
+        "факт"
+      ],
+      "humor": "deadpan_accept",
+      "beats": [
+        "deadpan_accept",
+        "praise_irony"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 1.317,
+      "trim_start": 0.0,
+      "max_use": 1.3,
+      "note": "после неоспоримого факта или тавтологии"
+    },
+    {
       "file": "net.mp4",
       "title": "Нет",
       "tags": [
@@ -857,6 +938,27 @@
       "trim_start": 0.0,
       "max_use": 1.2,
       "note": "тихое «нет» на миф или тупой вопрос"
+    },
+    {
+      "file": "nichego-strashnogo.mp4",
+      "title": "Ничего страшного",
+      "tags": [
+        "deadpan",
+        "катастрофа",
+        "преуменьшение",
+        "спокойствие"
+      ],
+      "humor": "deadpan_accept",
+      "beats": [
+        "absurd_scale",
+        "deadpan_accept"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 6.0,
+      "trim_start": 0.0,
+      "max_use": 1.4,
+      "note": "лучший ответ на катастрофическое число — сделать вид, что всё ок"
     },
     {
       "file": "nihuya-tinkov.mp4",
@@ -895,6 +997,86 @@
       "duration": 3.604,
       "trim_start": 1.5,
       "max_use": 1.3,
+      "note": ""
+    },
+    {
+      "file": "nuzhno-prinyat-uspokoitelnoe.mp4",
+      "title": "Нужно принять успокоительное",
+      "tags": [
+        "нервы",
+        "перегруз",
+        "успокоительное"
+      ],
+      "humor": "despair",
+      "beats": [
+        "absurd_scale",
+        "reveal_twist"
+      ],
+      "intensity": "mid",
+      "safe_for_science": true,
+      "duration": 4.883,
+      "trim_start": 0.0,
+      "max_use": 1.5,
+      "note": "когда масштаб уже не укладывается в голову"
+    },
+    {
+      "file": "o-privet.mp4",
+      "title": "О, привет",
+      "tags": [
+        "внезапно",
+        "новый-игрок",
+        "появление",
+        "привет"
+      ],
+      "humor": "reveal_twist",
+      "beats": [
+        "reveal_twist",
+        "hook_punch"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 2.402,
+      "trim_start": 0.0,
+      "max_use": 1.2,
+      "note": "в кадр входит новая сущность — компания, зонд, модель"
+    },
+    {
+      "file": "oh-my-god-wowww.mp4",
+      "title": "Oh my God wow",
+      "tags": [
+        "вау",
+        "восторг",
+        "шок"
+      ],
+      "humor": "shock",
+      "beats": [
+        "reveal_twist",
+        "absurd_scale"
+      ],
+      "intensity": "mid",
+      "safe_for_science": true,
+      "duration": 4.117,
+      "trim_start": 0.0,
+      "max_use": 1.3,
+      "note": ""
+    },
+    {
+      "file": "pizdui-otsyuda.mp4",
+      "title": "Иди отсюда",
+      "tags": [
+        "выгнать",
+        "отказ",
+        "прочь"
+      ],
+      "humor": "reject",
+      "beats": [
+        "misconception"
+      ],
+      "intensity": "hard",
+      "safe_for_science": false,
+      "duration": 2.083,
+      "trim_start": 0.0,
+      "max_use": 1.2,
       "note": ""
     },
     {
@@ -1014,6 +1196,25 @@
       "note": "после жуткой цифры — температура, давление, tidал"
     },
     {
+      "file": "tebya-ne-sprashivayut.mp4",
+      "title": "Тебя не спрашивают",
+      "tags": [
+        "мимо",
+        "не-спрашивают",
+        "отмахнуться"
+      ],
+      "humor": "dismiss",
+      "beats": [
+        "misconception"
+      ],
+      "intensity": "mid",
+      "safe_for_science": true,
+      "duration": 1.967,
+      "trim_start": 0.0,
+      "max_use": 1.3,
+      "note": "закрыть популярный миф одной репликой"
+    },
+    {
       "file": "this-is-russia-zhirinovskij.mp4",
       "title": "This is Russia",
       "tags": [
@@ -1051,6 +1252,26 @@
       "trim_start": 0.0,
       "max_use": 1.5,
       "note": "идеально под парадокс / противоречие в объяснении"
+    },
+    {
+      "file": "ty-chto-s-uma-soshel.mp4",
+      "title": "Ты что, с ума сошёл",
+      "tags": [
+        "безумие",
+        "серьёзно",
+        "сомнение"
+      ],
+      "humor": "doubt",
+      "beats": [
+        "doubt",
+        "absurd_scale"
+      ],
+      "intensity": "mid",
+      "safe_for_science": true,
+      "duration": 2.5,
+      "trim_start": 0.0,
+      "max_use": 1.4,
+      "note": ""
     },
     {
       "file": "ty-po-moemu-pereputal.mp4",
@@ -1092,6 +1313,25 @@
       "note": ""
     },
     {
+      "file": "vsego-horoshego.mp4",
+      "title": "Всего хорошего",
+      "tags": [
+        "выход",
+        "конец",
+        "прощание"
+      ],
+      "humor": "outro_joke",
+      "beats": [
+        "context_end"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 3.117,
+      "trim_start": 0.0,
+      "max_use": 1.3,
+      "note": "мягкий выход из отступления, не в самый закрывающий кадр"
+    },
+    {
       "file": "vy-kto-takie.mp4",
       "title": "Вы кто такие",
       "tags": [
@@ -1107,6 +1347,47 @@
       "safe_for_science": true,
       "duration": 5.04,
       "trim_start": 2.5,
+      "max_use": 1.4,
+      "note": ""
+    },
+    {
+      "file": "ya-hochu-kupit-computer.mp4",
+      "title": "Я хочу купить компьютер",
+      "tags": [
+        "gpu",
+        "железо",
+        "компьютер",
+        "техника"
+      ],
+      "humor": "meta",
+      "beats": [
+        "context_end",
+        "core1_to_core2"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 1.683,
+      "trim_start": 0.0,
+      "max_use": 1.3,
+      "note": "к темам про железо, вычисления, датацентры"
+    },
+    {
+      "file": "ya-zh-adekvatnyi.mp4",
+      "title": "Я ж адекватный",
+      "tags": [
+        "адекватность",
+        "самооправдание",
+        "спокойно"
+      ],
+      "humor": "forced_composure",
+      "beats": [
+        "deadpan_accept",
+        "doubt"
+      ],
+      "intensity": "soft",
+      "safe_for_science": true,
+      "duration": 2.117,
+      "trim_start": 0.0,
       "max_use": 1.4,
       "note": ""
     },
@@ -1148,6 +1429,26 @@
       "trim_start": 0.0,
       "max_use": 1.3,
       "note": ""
+    },
+    {
+      "file": "БЕГИ СУКА БЕГИ.mp4",
+      "title": "Беги",
+      "tags": [
+        "беги",
+        "опасность",
+        "паника"
+      ],
+      "humor": "fear",
+      "beats": [
+        "absurd_scale",
+        "reveal_twist"
+      ],
+      "intensity": "hard",
+      "safe_for_science": true,
+      "duration": 2.795,
+      "trim_start": 0.0,
+      "max_use": 1.3,
+      "note": "только на реальной угрозе в сюжете, не на статистике"
     },
     {
       "file": "Вот это поворот!.mp4",
@@ -1245,6 +1546,26 @@
       "note": ""
     },
     {
+      "file": "МЫ В ДЕРЬМЕ.mp4",
+      "title": "Мы в дерьме",
+      "tags": [
+        "плохо",
+        "приплыли",
+        "провал"
+      ],
+      "humor": "despair",
+      "beats": [
+        "absurd_scale",
+        "reveal_twist"
+      ],
+      "intensity": "hard",
+      "safe_for_science": true,
+      "duration": 1.323,
+      "trim_start": 0.0,
+      "max_use": 1.3,
+      "note": ""
+    },
+    {
       "file": "Оу, май!.mp4",
       "title": "Оу май",
       "tags": [
@@ -1284,6 +1605,26 @@
       "trim_start": 0.0,
       "max_use": 1.5,
       "note": "попытка → катастрофа (зонд, экспедиция)"
+    },
+    {
+      "file": "ПРОСТО ОХУЕННО.mp4",
+      "title": "Просто отлично",
+      "tags": [
+        "браво",
+        "восторг",
+        "ирония"
+      ],
+      "humor": "praise_irony",
+      "beats": [
+        "praise_irony",
+        "deadpan_accept"
+      ],
+      "intensity": "hard",
+      "safe_for_science": true,
+      "duration": 2.517,
+      "trim_start": 0.0,
+      "max_use": 1.3,
+      "note": ""
     },
     {
       "file": "СИЛЬНОЕ ЗАЯВЛЕНИЕ.mp4",

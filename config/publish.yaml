@@ -1,0 +1,28 @@
+# Публикация и аппрув. Источник — ТЗ §18.
+
+telegram:
+  enabled: true
+  # Файл больше этого уходит ссылкой на артефакт, а не вложением.
+  max_upload_mb: 50
+  buttons: [publish, reject, refill_and_rerender]
+  report_includes:
+    - qc_warnings
+    - degradation_level
+    - needs_human_review
+    - cost_summary
+
+youtube:
+  enabled: false # включается вручную после ШАГ 6 миграции
+  privacy_on_upload: private
+  title_max_chars: 55
+  description_sentences: 2
+  hashtags: { min: 3, max: 5 }
+  first_hashtag: "#REDSHIFT"
+  # Обложка — кадр с максимальной оценкой wow от критика (§18.2).
+  thumbnail_from: critic_max_wow
+  pinned_comment: sources_plus_question
+
+schedule:
+  # Публикация только вручную, пока QC-гейт не отработает на 10 роликах.
+  auto_publish: false
+  preferred_hours_utc: [15, 18]

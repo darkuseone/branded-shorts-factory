@@ -211,6 +211,24 @@ def _doctor(settings: Settings) -> int:
     log.info("%s ffmpeg", "✓" if is_available(settings.ffmpeg_cmd) else "✗")
     log.info("%s ffprobe", "✓" if is_available(settings.ffprobe_cmd) else "✗")
 
+    # A card slot that cannot render degrades to stock search, which is the
+    # one fallback that puts a wrong number on screen — the scenario's own
+    # figures replaced by whatever matched the query text. The degradation is
+    # deliberate (a missing card must not kill a run) and therefore silent, so
+    # it belongs in the environment check where a missing dependency is cheap
+    # to see and cheap to fix.
+    try:
+        from redshift.core.schemas import InfographicSpec  # noqa: F401
+        from redshift.render.infographics import render_card  # noqa: F401
+    except ImportError as exc:
+        log.warning(
+            "✗ infographic cards (%s) — install the package dependencies "
+            "(`pip install -e .`); card slots will fall through to stock search",
+            exc.name or exc,
+        )
+    else:
+        log.info("✓ infographic cards")
+
     runner = HyperFramesRunner(settings)
     if runner.is_available():
         log.info("✓ hyperframes runner (%s)", " ".join(runner.command))
@@ -231,10 +249,30 @@ def _doctor(settings: Settings) -> int:
 # --------------------------------------------------------------------------- #
 
 
+#: Below this much real footage the Short is not worth shipping — the brand
+#: backdrop is filling more of the screen than the material is.
+MIN_BROLL_COVERAGE = 0.70
+
+
 def _succeeded(result: RunResult, command: str) -> bool:
+    """Whether the run produced something worth shipping.
+
+    The degradation ladder (§4.6) says the video always ships: an unfilled
+    slot falls back to the brand backdrop rather than stopping the run. So a
+    render that produced a Short with most of its footage in place is a
+    success with warnings, not a failure — treating every unfilled slot as
+    fatal marked a finished, usable video red and hid the difference between
+    "five abstract shots went to the backdrop" and "nothing rendered".
+
+    Below the coverage floor it is a failure, because at that point the
+    backdrop is the video.
+    """
     if command in {"plan", "prepare"}:
+        # Nothing is rendered here, so unfilled slots are the whole signal.
         return not result.qa.rejected
-    return result.rendered and not result.qa.rejected
+    if not result.rendered:
+        return False
+    return result.broll_coverage >= MIN_BROLL_COVERAGE
 
 
 def _print_summary(result: RunResult, command: str) -> None:

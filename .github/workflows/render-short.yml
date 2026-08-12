@@ -13,9 +13,13 @@ on:
   workflow_dispatch:
     inputs:
       spec:
-        description: "Path to the scenario JSON"
-        required: true
-        default: "examples/venus-hell.json"
+        # Optional on purpose. Dispatching with nothing filled in used to send
+        # an example scenario that has no committed avatar, so the run died at
+        # its first step; empty means "let the picker apply its rules", which
+        # is what a dispatch from a branch with one renderable scenario wants.
+        description: "Path to the scenario JSON (blank = pick it automatically)"
+        required: false
+        default: ""
       dry_run:
         description: "Stop before rendering"
         type: boolean
@@ -32,21 +36,45 @@ concurrency:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    # A 25-shot Short with live search genuinely needs about an hour: the last
+    # measured run spent ~48 min filling slots and 11 min in HyperFrames. At 90
+    # the job was killed mid-render — and a killed job runs no cleanup, so
+    # there was no artifact, no report and no diagnosis, only a log that stops.
+    timeout-minutes: 150
 
     env:
       # HeyGen is intentionally omitted — avatar comes from jobs/<id>/avatar.*
-      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY || secrets.ELEVEN_API_KEY }}
       MAGNIFIC_API_KEY: ${{ secrets.MAGNIFIC_API_KEY }}
-      GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
+      # xAI publishes this key as XAI_API_KEY, and the code accepts either
+      # spelling. The workflow forwarded only one, so a key stored under the
+      # other name reached the process empty and the vision gate silently
+      # never ran.
+      GROK_API_KEY: ${{ secrets.GROK_API_KEY || secrets.XAI_API_KEY }}
       PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
       PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
       POND5_API_KEY: ${{ secrets.POND5_API_KEY }}
       MAGNIFIC_TOKEN_BUDGET: ${{ vars.MAGNIFIC_TOKEN_BUDGET || '40' }}
       MAGNIFIC_TOKEN_RESERVE: ${{ vars.MAGNIFIC_TOKEN_RESERVE || '10' }}
       # Push events have empty inputs — always Docker-render unless explicitly disabled.
-      HYPERFRAMES_SKIP_CHECK: "1"
+      # `check` runs lint plus runtime, layout, motion and contrast gates. It
+      # is worth the ninety seconds: its contrast pass counts how many text
+      # elements it can actually see, which went from "0/0 text checks" to
+      # "6/6 pass" when the invisible-caption bug was fixed. That number is the
+      # cheapest possible alarm for text vanishing again. Browser/GPU failures
+      # on a runner are treated as soft by the adapter and do not block.
+      HYPERFRAMES_SKIP_CHECK: "0"
+      # The pipeline's own budget stops it reaching for slow optional tiers in
+      # time to still finish, well inside the step cap below.
+      RUN_WALLCLOCK_MINUTES: ${{ vars.RUN_WALLCLOCK_MINUTES || '55' }}
       HYPERFRAMES_DOCKER: ${{ github.event_name == 'workflow_dispatch' && inputs.docker == false && '0' || '1' }}
+      # HyperFrames auto-detects HDR sources and switches the whole encode to
+      # HEVC when it finds one. That makes the delivered codec depend on which
+      # stock clip happened to win a slot: the same scenario rendered H.264 one
+      # run and HEVC the next, purely because a NASA clip came back HDR. A
+      # Short is an SDR deliverable either way, so the encode is pinned rather
+      # than left to the footage.
+      HYPERFRAMES_RENDER_ARGS: --sdr
       PYTHONPATH: src
 
     steps:
@@ -58,60 +86,11 @@ jobs:
       - name: Pick the scenario
         id: pick
         run: |
-          if [ -n "${{ inputs.spec }}" ]; then
-            SPEC="${{ inputs.spec }}"
-          else
-            BEFORE="${{ github.event.before }}"
-            SHA="${{ github.sha }}"
-            AVATAR=""
-            JOBJSON=""
-            if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] \
-               && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
-              AVATAR=$(git diff --name-only --diff-filter=d "$BEFORE" "$SHA" \
-                       -- 'jobs/**/avatar.mp4' 'jobs/**/avatar.webm' | tail -n 1)
-              JOBJSON=$(git diff --name-only --diff-filter=d "$BEFORE" "$SHA" \
-                        -- 'jobs/*.json' 'jobs/**/broll/**' | grep -E 'jobs/[^/]+\.json$' | tail -n 1)
-              if [ -z "$JOBJSON" ]; then
-                BROLL=$(git diff --name-only --diff-filter=d "$BEFORE" "$SHA" -- 'jobs/**/broll/**' | head -n 1)
-                if [ -n "$BROLL" ]; then
-                  ID=$(echo "$BROLL" | awk -F/ '{print $2}')
-                  JOBJSON="jobs/${ID}.json"
-                fi
-              fi
-            fi
-            if [ -z "$AVATAR" ]; then
-              AVATAR=$(git show --name-only --pretty='' "$SHA" \
-                       -- 'jobs/**/avatar.mp4' 'jobs/**/avatar.webm' | tail -n 1)
-            fi
-            if [ -z "$JOBJSON" ]; then
-              JOBJSON=$(git show --name-only --pretty='' "$SHA" -- 'jobs/*.json' | tail -n 1)
-            fi
-            if [ -z "$JOBJSON" ]; then
-              BROLL=$(git show --name-only --pretty='' "$SHA" -- 'jobs/**/broll/**' | head -n 1)
-              if [ -n "$BROLL" ]; then
-                ID=$(echo "$BROLL" | awk -F/ '{print $2}')
-                JOBJSON="jobs/${ID}.json"
-              fi
-            fi
-            if [ -n "$AVATAR" ]; then
-              ID=$(basename "$(dirname "$AVATAR")")
-              SPEC="jobs/${ID}.json"
-            elif [ -n "$JOBJSON" ]; then
-              SPEC="$JOBJSON"
-            fi
-          fi
-          if [ -z "$SPEC" ] || [ ! -f "$SPEC" ]; then
-            echo "::error::No scenario JSON found (looked for '$SPEC')"
-            exit 1
-          fi
-          ID=$(python3 -c "import json;print(json.load(open('$SPEC'))['id'])")
-          if [ ! -f "jobs/${ID}/avatar.mp4" ] && [ ! -f "jobs/${ID}/avatar.webm" ]; then
-            echo "::error::Missing jobs/${ID}/avatar.mp4 (or .webm) — run prepare + HeyGen first"
-            exit 1
-          fi
-          echo "spec=$SPEC" >> "$GITHUB_OUTPUT"
-          echo "id=$ID" >> "$GITHUB_OUTPUT"
-          echo "Rendering $SPEC with external avatar"
+          python3 scripts/pick_scenario.py \
+            --spec "${{ inputs.spec }}" \
+            --before "${{ github.event.before }}" \
+            --sha "${{ github.sha }}" \
+            --require-avatar
 
       - uses: actions/setup-python@v5
         with:
@@ -125,6 +104,26 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends ffmpeg
+
+      # Infographic cards are HTML screenshotted by Playwright. Without this
+      # the card silently fails to render and the slot falls through to stock
+      # search — which is how two of them ended up hunting Pexels for a chart.
+      #
+      # `pip install -e .` is what puts pydantic and PyYAML on the runner.
+      # `shorts_factory` imports neither, so the pipeline runs happily without
+      # them — but `redshift.core.schemas` needs pydantic and
+      # `redshift.core.config` needs PyYAML, and the card bridge catches the
+      # ImportError and falls through to search. The result was three slots
+      # that carry the video's own numbers ("~900 задач", the 5-day timeline)
+      # silently replaced by whatever stock matched their query text: a
+      # stranger's portrait, a tape measure, somebody's video-editing
+      # timeline. Installing the declared dependencies rather than a
+      # hand-listed subset keeps this from drifting again.
+      - name: Install Python dependencies and Chromium
+        run: |
+          python -m pip install --upgrade pip playwright
+          python -m pip install -e .
+          python -m playwright install --with-deps chromium
 
       - name: Install HyperFrames skills
         run: npx --yes skills add heygen-com/hyperframes
@@ -146,12 +145,20 @@ jobs:
       - name: Validate
         run: python -m shorts_factory validate "${{ steps.pick.outputs.spec }}"
 
+      # Capped below the job so a slow render fails this step instead of
+      # killing the job. The difference matters: a failed step still runs the
+      # summary, the artifact uploads and the explainer, so a timeout comes
+      # with a diagnosis and whatever was produced. A killed job leaves
+      # nothing at all.
       - name: Render (external avatar)
         id: build
+        timeout-minutes: 115
         run: |
+          set -o pipefail
+          mkdir -p build
           ARGS=""
           if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="--dry-run"; fi
-          python -m shorts_factory $ARGS render "${{ steps.pick.outputs.spec }}"
+          python -m shorts_factory $ARGS render "${{ steps.pick.outputs.spec }}" 2>&1 | tee build/render.log
 
       - name: Verify output (catch dead b-roll / missing host modes)
         if: success() && inputs.dry_run != true
@@ -202,3 +209,10 @@ jobs:
           path: build/composition/**
           if-no-files-found: ignore
           retention-days: 7
+
+      # Last on purpose. Two upload steps emit ~80 lines of boilerplate each,
+      # so a failure explained before them is invisible to anything reading
+      # the tail — which is every log reader there is.
+      - name: Why it failed
+        if: failure()
+        run: python3 scripts/explain_failure.py "${{ steps.pick.outputs.id }}"

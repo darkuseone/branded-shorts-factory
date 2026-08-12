@@ -9,9 +9,13 @@ on:
   workflow_dispatch:
     inputs:
       spec:
-        description: "Path to the scenario JSON"
-        required: true
-        default: "examples/venus-hell.json"
+        # Optional on purpose. Dispatching with nothing filled in used to send
+        # an example scenario that has no committed avatar, so the run died at
+        # its first step; empty means "let the picker apply its rules", which
+        # is what a dispatch from a branch with one renderable scenario wants.
+        description: "Path to the scenario JSON (blank = pick it automatically)"
+        required: false
+        default: ""
       dry_run:
         description: "Stop before rendering (search + QA + composition only)"
         type: boolean
@@ -32,9 +36,13 @@ jobs:
 
     env:
       HEYGEN_API_KEY: ${{ secrets.HEYGEN_API_KEY }}
-      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY || secrets.ELEVEN_API_KEY }}
       MAGNIFIC_API_KEY: ${{ secrets.MAGNIFIC_API_KEY }}
-      GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
+      # xAI publishes this key as XAI_API_KEY, and the code accepts either
+      # spelling. The workflow forwarded only one, so a key stored under the
+      # other name reached the process empty and the vision gate silently
+      # never ran.
+      GROK_API_KEY: ${{ secrets.GROK_API_KEY || secrets.XAI_API_KEY }}
       PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
       PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
       POND5_API_KEY: ${{ secrets.POND5_API_KEY }}

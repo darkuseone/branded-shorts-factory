@@ -14,7 +14,8 @@ import pytest
 from shorts_factory.cli import main
 from shorts_factory.generative.budget import TokenBudget
 from shorts_factory.media.download import Downloader, LocalAsset
-from shorts_factory.pipeline import Pipeline
+from shorts_factory.pipeline import Pipeline, RunResult
+from shorts_factory.qa.gate import VisualQA
 from shorts_factory.qa.vision import VisionVerdict
 from shorts_factory.render.hyperframes import HyperFramesRunner, RenderResult, StepResult
 from shorts_factory.resolver import VisualResolver
@@ -23,6 +24,46 @@ from shorts_factory.search.candidates import Candidate
 
 from .conftest import EXAMPLE
 from .test_search import FakeProvider, make_candidate
+
+
+@pytest.fixture(autouse=True)
+def fast_cards(monkeypatch, tmp_path):
+    """Render infographic cards without starting a browser.
+
+    These tests are about orchestration. Driving real Chromium for every card
+    in the example scenario added ~20s per test and tested the card engine
+    twice — tests/test_infographic_bridge.py already renders one for real.
+    The stub keeps the routing honest: a card slot still bypasses search.
+    """
+    import shorts_factory.render.infographic_bridge as bridge
+
+    def stub(visual, spec, destination):
+        card = bridge.card_spec_for(visual, spec)
+        if card is None:
+            return None
+        destination.mkdir(parents=True, exist_ok=True)
+        path = destination / f"{visual.id}.png"
+        path.write_bytes(_PNG)
+        return path, Candidate(
+            source="redshift_card",
+            external_id=f"card:{visual.id}",
+            media_type="image",
+            download_url="",
+            title=card.title,
+            width=1080,
+            height=1920,
+            license=bridge.LICENCE,
+            cost_tokens=0,
+        )
+
+    monkeypatch.setattr(bridge, "render_card_asset", stub)
+
+
+_PNG = bytes.fromhex(
+    "89504e470d0a1a0a0000000d4948445200000001000000010806000000"
+    "1f15c4890000000d4944415478da63fcffff3f0300050001a5f645b400"
+    "00000049454e44ae426082"
+)
 
 
 class FakeDownloader(Downloader):
@@ -219,7 +260,10 @@ def test_run_report_records_budget_and_search_trail(settings, example_spec):
     result = pipeline.run(example_spec)
     payload = result.to_dict()
     assert payload["budget"]["spent"] == 0
-    assert set(payload["search"]) == {visual.id for visual in example_spec.visuals}
+    # Cards are rendered, not searched, so they carry no search trail (§13).
+    searched = {visual.id for visual in example_spec.visuals if not visual.card}
+    assert set(payload["search"]) == searched
+    assert all(visual.id not in payload["search"] for visual in example_spec.visuals if visual.card)
     first_id = example_spec.visuals[0].id
     assert payload["search"][first_id]["queries"], "the query fan is part of the audit trail"
 
@@ -308,3 +352,229 @@ def test_cli_help_lists_every_command(command, capsys):
     with pytest.raises(SystemExit) as excinfo:
         main([command, "--help"])
     assert excinfo.value.code == 0
+
+
+# --------------------------------------------------------------------------- #
+# What counts as a successful run
+# --------------------------------------------------------------------------- #
+
+
+def _result_with(coverage: float, *, rendered: bool = True, tmp_path=None):
+    """A RunResult whose b-roll coverage is exactly `coverage`."""
+    from unittest.mock import PropertyMock, patch
+
+    from shorts_factory.pipeline import RunResult
+
+    result = RunResult(spec_id="x")
+    if rendered:
+        output = tmp_path / "out.mp4"
+        output.write_bytes(b"\x00" * 32)
+        result.output = output
+    return result, patch.object(RunResult, "broll_coverage", new_callable=PropertyMock, return_value=coverage)
+
+
+def test_a_video_with_most_of_its_footage_is_a_success(tmp_path):
+    """§4.6: the video always ships. A few slots on the brand backdrop is a
+    warning, not a failure — marking a finished, usable Short red hides the
+    difference between that and nothing rendering at all."""
+    from shorts_factory.cli import _succeeded
+
+    result, coverage = _result_with(0.77, tmp_path=tmp_path)
+    with coverage:
+        for slot in ("v07", "v13", "v17", "v23", "v25"):
+            result.qa.add(VisualQA(visual_id=slot, outcome="rejected"))
+        assert _succeeded(result, "render")
+
+
+def test_a_video_that_is_mostly_backdrop_is_a_failure(tmp_path):
+    from shorts_factory.cli import _succeeded
+
+    result, coverage = _result_with(0.26, tmp_path=tmp_path)
+    with coverage:
+        assert not _succeeded(result, "render")
+
+
+def test_no_video_is_always_a_failure(tmp_path):
+    from shorts_factory.cli import _succeeded
+
+    result, coverage = _result_with(1.0, rendered=False, tmp_path=tmp_path)
+    with coverage:
+        assert not _succeeded(result, "render")
+
+
+def test_plan_still_fails_on_any_unfilled_slot(tmp_path):
+    """Nothing renders in a plan, so unfilled slots are the whole signal."""
+    from shorts_factory.cli import _succeeded
+
+    result, coverage = _result_with(1.0, rendered=False, tmp_path=tmp_path)
+    with coverage:
+        result.qa.add(VisualQA(visual_id="v07", outcome="rejected"))
+        assert not _succeeded(result, "plan")
+        result.qa.results.clear()
+        assert _succeeded(result, "plan")
+
+
+def test_coverage_is_measured_against_the_timeline(minimal_spec, tmp_path):
+    from shorts_factory.pipeline import RunResult
+    from shorts_factory.render.timeline import build_timeline
+
+    from .test_render import resolved_for
+
+    clip = tmp_path / "clip.mp4"
+    clip.write_bytes(b"\x00" * 4096)
+
+    result = RunResult(spec_id=minimal_spec.id)
+    assert result.broll_coverage == 0.0, "no timeline means nothing is covered"
+    result.timeline = build_timeline(minimal_spec, resolved_for(minimal_spec, clip))
+    assert 0.0 < result.broll_coverage <= 1.0
+
+
+# --------------------------------------------------------------------------- #
+# Escalating when QA empties a slot
+# --------------------------------------------------------------------------- #
+
+
+def test_a_slot_qa_emptied_escalates_instead_of_staying_empty(settings, minimal_spec):
+    """The worst of both worlds is neither using free stock nor paying.
+
+    The policy reads the ranker's score, decides free stock is good enough and
+    never escalates; then QA throws out every one of those candidates. Five
+    slots ended a real run empty exactly that way.
+    """
+
+    class NoneShallPass:
+        """Rejects the free tier, accepts anything from Magnific."""
+
+        def __init__(self):
+            self.saw_premium = False
+
+        def __call__(self, asset, visual, plan, context, **kwargs):
+            from shorts_factory.qa.native import NativeVerdict
+
+            if asset.candidate.source == "magnific_library":
+                self.saw_premium = True
+                return NativeVerdict(passed=True, score=0.9, issues=[], notes=[])
+            return NativeVerdict(passed=False, score=0.1, issues=[], notes=[])
+
+    gate = NoneShallPass()
+    resolver = build_resolver(settings, minimal_spec)
+    resolver.magnific = _MagnificWithLibrary()
+
+    import shorts_factory.resolver as resolver_module
+
+    original = resolver_module.check_native
+    resolver_module.check_native = gate
+    try:
+        resolved = resolver.resolve(minimal_spec, minimal_spec.visuals[0])
+    finally:
+        resolver_module.check_native = original
+
+    assert gate.saw_premium, "the paid tier was never tried"
+    assert resolved.qa.outcome == "accepted"
+    assert resolved.escalated
+    assert any("escalated after QA" in note for note in resolved.qa.notes)
+
+
+class _MagnificWithLibrary:
+    """A Magnific stand-in whose library always has something."""
+
+    is_available = True
+
+    def search_library(self, query, media_type, limit=8):
+        return [
+            make_candidate(
+                external_id="premium-1",
+                source="magnific_library",
+                license="Magnific subscription library",
+            )
+        ]
+
+    def generate(self, request, budget, *, hero=False):
+        return None
+
+
+def test_escalation_is_skipped_when_the_slot_forbids_magnific(settings, minimal_spec):
+    resolver = build_resolver(settings, minimal_spec)
+    resolver.magnific = _MagnificWithLibrary()
+    visual = minimal_spec.visuals[0]
+    visual.allow_magnific = False
+
+    qa, tried = resolver._escalate_after_qa(minimal_spec, visual, _empty_outcome(visual), "")
+    assert not tried, "a slot that forbids the paid tier must not reach for it"
+
+
+def test_escalation_is_skipped_when_the_clock_is_spent(settings, minimal_spec):
+    resolver = build_resolver(settings, minimal_spec)
+    resolver.magnific = _MagnificWithLibrary()
+    resolver.deadline.limit_s = 60.0
+    resolver.deadline.started -= 59
+
+    qa, tried = resolver._escalate_after_qa(
+        minimal_spec, minimal_spec.visuals[0], _empty_outcome(minimal_spec.visuals[0]), ""
+    )
+    assert not tried, "escalation is a slow step and the run has to finish"
+
+
+def test_avatar_voice_extends_a_duration_target_that_is_too_short(tmp_path, minimal_spec):
+    """duration_target is the author's pre-avatar guess; the clip is the truth.
+
+    Nothing else in the pipeline knows to check the avatar's real length
+    against the scenario's duration_target. Left alone, segments near the end
+    of a narration that runs longer than the guess get positioned past where
+    the composition actually ends — HyperFrames then refuses to ship a video
+    with a shot that captured zero frames, because it never had a chance to
+    render (issue seen on openai-huggingface-hack: a 47.66s avatar clip vs. a
+    46s duration_target left the last segment's b-roll scheduled at 47.5s).
+    """
+    import shutil
+    import subprocess
+
+    from shorts_factory.config import Budgets, Paths, Settings
+
+    if not shutil.which("ffmpeg"):
+        pytest.skip("needs ffmpeg to build the fixture clip")
+
+    minimal_spec.duration_target = 20.0
+    job_dir = tmp_path / "jobs" / minimal_spec.id
+    job_dir.mkdir(parents=True)
+    voice_path = job_dir / "voice_from_avatar.mp3"
+    # Longer than duration_target on purpose — the scenario's guess, made
+    # before the avatar existed, undershoots what the clip actually plays.
+    subprocess.run(
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+         "-f", "lavfi", "-i", "sine=frequency=220:duration=25",
+         str(voice_path)],
+        check=False, capture_output=True, timeout=120,
+    )  # fmt: skip
+    if not voice_path.exists():
+        pytest.skip("could not build the fixture")
+
+    settings = Settings(
+        paths=Paths(root=tmp_path, workdir=tmp_path / "build").ensure(),
+        budgets=Budgets(),
+        offline=True,
+        dry_run=True,
+    )
+    pipeline = Pipeline(settings)
+    result = RunResult(spec_id=minimal_spec.id)
+
+    pipeline._synthesize_voice(minimal_spec, result)
+
+    assert minimal_spec.duration_target >= 24.9, (
+        f"duration_target must grow to cover the real avatar audio, got {minimal_spec.duration_target}"
+    )
+    assert (
+        minimal_spec.script[-1].start + minimal_spec.script[-1].duration
+        <= minimal_spec.duration_target + 0.01
+    )
+
+
+def _empty_outcome(visual):
+    from shorts_factory.search.aggregator import SearchOutcome
+    from shorts_factory.search.keywords import QueryPlan
+
+    return SearchOutcome(
+        visual_id=visual.id,
+        plan=QueryPlan(visual_id=visual.id, primary=visual.query, queries=[visual.query]),
+        ranked=[],
+    )

@@ -1,0 +1,41 @@
+# Мем — знак препинания, а не контент. Источник — ТЗ §12 и §26.
+# Правило по умолчанию: НЕ ставить. Лучше ноль мемов, чем один натянутый.
+
+per_video_max: 2
+fit_threshold: 8
+fit_threshold_closer: 7
+duration_s: [0.45, 0.90]
+cooldown_videos: 15
+share_of_videos_max: 0.40
+
+# В HOOK и SETUP мемы запрещены — там строится доверие (§12.2 C3).
+forbidden_sections: [HOOK, SETUP]
+
+allowed_emotions:
+  [irony, shock, skepticism, smugness, disappointment, panic]
+allowed_pillars: [ai, it_news, tech, science]
+
+# Жёсткие запреты без исключений (§12.3).
+banned_topics:
+  - death
+  - disease
+  - patients
+  - disaster
+  - war
+  - medicine
+  - religion
+  - politics
+  - children
+  - space_tragedy
+
+insertion:
+  flash_frames: 2
+  flash_color: "#E11D48"
+  flash_opacity: 0.45
+  sfx: impact_soft
+  layout_default: FULL
+  # Выход из мема всегда жёсткой склейкой: плавный выход убивает панч (§12.5).
+  exit_transition: cut
+  hide_subtitles: true
+  # После мема — возврат к спокойной интонации бренда.
+  next_shot_min_s: 1.4

@@ -5,7 +5,6 @@
   "rubric": "космос",
   "language": "ru",
   "duration_target": 52,
-
   "hook": {
     "id": "hook",
     "text": "Можно ли выжить внутри чёрной дыры?",
@@ -15,7 +14,6 @@
     "mode": "full_host",
     "on_camera": true
   },
-
   "script": [
     {
       "id": "s1",
@@ -71,44 +69,52 @@
       "mode": "full_footage"
     }
   ],
-
   "voice_settings": {
     "provider": "elevenlabs",
     "model": "eleven_v3",
     "voice_id": "REPLACE_WITH_YOUR_VOICE_ID",
     "language": "ru"
   },
-
   "avatar": {
     "enabled": true,
     "provider": "heygen",
     "avatar_id": "REPLACE_WITH_YOUR_AVATAR_ID",
     "version": "avatar_5",
     "position": "bottom_right",
-    "scale": 0.30,
+    "scale": 0.3,
     "background": "transparent",
     "segments": []
   },
-
   "visuals": [
     {
       "id": "v1",
       "type": "footage",
       "query": "black hole accretion disk cinematic",
-      "keywords": ["event horizon glow", "accretion disk space", "schwarzschild black hole"],
+      "keywords": [
+        "event horizon glow",
+        "accretion disk space",
+        "schwarzschild black hole"
+      ],
       "start": 0,
       "duration": 2.6,
       "position": "auto",
       "motion": "zoom_in",
       "priority": "critical",
       "segment_ref": "hook",
-      "must_avoid": ["cartoon", "logo", "text"]
+      "must_avoid": [
+        "cartoon",
+        "logo",
+        "text"
+      ]
     },
     {
       "id": "v2a",
       "type": "footage",
       "query": "spacetime curvature grid warp",
-      "keywords": ["gravity well animation", "warped space grid"],
+      "keywords": [
+        "gravity well animation",
+        "warped space grid"
+      ],
       "start": 2.6,
       "duration": 2.0,
       "position": "auto",
@@ -119,7 +125,10 @@
       "id": "v2b",
       "type": "footage",
       "query": "event horizon dark wall myth",
-      "keywords": ["event horizon edge", "dark threshold space"],
+      "keywords": [
+        "event horizon edge",
+        "dark threshold space"
+      ],
       "start": 4.6,
       "duration": 2.0,
       "position": "auto",
@@ -130,7 +139,10 @@
       "id": "v2c",
       "type": "motion_graphics",
       "query": "general relativity spacetime fold",
-      "keywords": ["general relativity visual", "folded spacetime"],
+      "keywords": [
+        "general relativity visual",
+        "folded spacetime"
+      ],
       "start": 6.6,
       "duration": 1.8,
       "position": "auto",
@@ -141,20 +153,43 @@
       "id": "v3a",
       "type": "infographic",
       "query": "tidal forces spaghettification diagram minimal",
-      "keywords": ["tidal stretch diagram", "gravity gradient"],
+      "keywords": [
+        "tidal stretch diagram",
+        "gravity gradient"
+      ],
       "start": 8.4,
       "duration": 2.1,
       "position": "auto",
       "motion": "none",
       "priority": "high",
       "segment_ref": "s2",
-      "must_include": ["tidal"]
+      "must_include": [
+        "tidal"
+      ],
+      "card": {
+        "template": "COMPARISON_AB",
+        "title": "Приливные силы",
+        "source": "NASA",
+        "items": [
+          {
+            "label": "у ног",
+            "value": "сильнее"
+          },
+          {
+            "label": "у головы",
+            "value": "слабее"
+          }
+        ]
+      }
     },
     {
       "id": "v3b",
       "type": "footage",
       "query": "astronaut stretch science concept",
-      "keywords": ["astronaut stretch science", "tidal pull visual"],
+      "keywords": [
+        "astronaut stretch science",
+        "tidal pull visual"
+      ],
       "start": 10.5,
       "duration": 2.1,
       "position": "auto",
@@ -166,7 +201,10 @@
       "id": "v3c",
       "type": "motion_graphics",
       "query": "spaghettification thread pull abstract",
-      "keywords": ["body stretched thread", "tidal filament abstract"],
+      "keywords": [
+        "body stretched thread",
+        "tidal filament abstract"
+      ],
       "start": 12.6,
       "duration": 2.0,
       "position": "auto",
@@ -178,7 +216,10 @@
       "id": "v4a",
       "type": "footage",
       "query": "supermassive black hole galaxy center",
-      "keywords": ["milky way black hole", "galactic core"],
+      "keywords": [
+        "milky way black hole",
+        "galactic core"
+      ],
       "start": 14.6,
       "duration": 2.0,
       "position": "fullscreen",
@@ -189,7 +230,10 @@
       "id": "v4b",
       "type": "footage",
       "query": "sagittarius a star orbits",
-      "keywords": ["sagittarius a star orbits", "stars orbit black hole"],
+      "keywords": [
+        "sagittarius a star orbits",
+        "stars orbit black hole"
+      ],
       "start": 16.6,
       "duration": 2.0,
       "position": "fullscreen",
@@ -200,7 +244,10 @@
       "id": "v4c",
       "type": "footage",
       "query": "wide event horizon cinematic glow",
-      "keywords": ["wide accretion disk", "supermassive horizon glow"],
+      "keywords": [
+        "wide accretion disk",
+        "supermassive horizon glow"
+      ],
       "start": 18.6,
       "duration": 2.0,
       "position": "fullscreen",
@@ -211,7 +258,10 @@
       "id": "v5a",
       "type": "motion_graphics",
       "query": "singularity density infinity minimal dark",
-      "keywords": ["point singularity abstract", "infinite density visual"],
+      "keywords": [
+        "point singularity abstract",
+        "infinite density visual"
+      ],
       "start": 20.6,
       "duration": 2.2,
       "position": "auto",
@@ -223,7 +273,10 @@
       "id": "v5b",
       "type": "footage",
       "query": "physics breakdown abstract collapse",
-      "keywords": ["physics breakdown", "matter collapse dark"],
+      "keywords": [
+        "physics breakdown",
+        "matter collapse dark"
+      ],
       "start": 22.8,
       "duration": 2.1,
       "position": "auto",
@@ -235,7 +288,10 @@
       "id": "v5c",
       "type": "motion_graphics",
       "query": "infinite density point light void",
-      "keywords": ["singularity point light", "void density spike"],
+      "keywords": [
+        "singularity point light",
+        "void density spike"
+      ],
       "start": 24.9,
       "duration": 2.1,
       "position": "auto",
@@ -247,18 +303,35 @@
       "id": "v6a",
       "type": "infographic",
       "query": "holographic principle horizon information",
-      "keywords": ["event horizon information surface", "black hole entropy diagram"],
+      "keywords": [
+        "event horizon information surface",
+        "black hole entropy diagram"
+      ],
       "start": 27.0,
       "duration": 2.1,
       "position": "auto",
       "motion": "none",
-      "segment_ref": "s5"
+      "segment_ref": "s5",
+      "card": {
+        "template": "BIG_NUMBER",
+        "title": "Горизонт событий",
+        "source": "Bekenstein–Hawking",
+        "items": [
+          {
+            "value": "1 бит",
+            "label": "на 4 планковские площади"
+          }
+        ]
+      }
     },
     {
       "id": "v6b",
       "type": "footage",
       "query": "hawking radiation soft glow",
-      "keywords": ["hawking radiation soft", "horizon faint glow"],
+      "keywords": [
+        "hawking radiation soft",
+        "horizon faint glow"
+      ],
       "start": 29.1,
       "duration": 2.1,
       "position": "auto",
@@ -269,7 +342,10 @@
       "id": "v6c",
       "type": "motion_graphics",
       "query": "information encoded on horizon surface",
-      "keywords": ["horizon data lattice", "entropy surface pattern"],
+      "keywords": [
+        "horizon data lattice",
+        "entropy surface pattern"
+      ],
       "start": 31.2,
       "duration": 2.0,
       "position": "auto",
@@ -280,7 +356,10 @@
       "id": "v7a",
       "type": "footage",
       "query": "astronaut silhouette against nebula dark",
-      "keywords": ["lone astronaut space", "human scale cosmos"],
+      "keywords": [
+        "lone astronaut space",
+        "human scale cosmos"
+      ],
       "start": 33.2,
       "duration": 1.9,
       "position": "auto",
@@ -292,7 +371,10 @@
       "id": "v7b",
       "type": "footage",
       "query": "void silhouette fading into dark",
-      "keywords": ["void silhouette", "figure dissolving darkness"],
+      "keywords": [
+        "void silhouette",
+        "figure dissolving darkness"
+      ],
       "start": 35.1,
       "duration": 1.9,
       "position": "auto",
@@ -304,7 +386,10 @@
       "id": "v7c",
       "type": "footage",
       "query": "empty space after disappearance",
-      "keywords": ["empty cosmic void", "silence of deep space"],
+      "keywords": [
+        "empty cosmic void",
+        "silence of deep space"
+      ],
       "start": 37.0,
       "duration": 1.7,
       "position": "auto",
@@ -316,7 +401,10 @@
       "id": "v8a",
       "type": "footage",
       "query": "deep space stars slow drift",
-      "keywords": ["starfield slow pan", "cosmic void calm"],
+      "keywords": [
+        "starfield slow pan",
+        "cosmic void calm"
+      ],
       "start": 38.7,
       "duration": 2.0,
       "position": "fullscreen",
@@ -327,7 +415,10 @@
       "id": "v8b",
       "type": "footage",
       "query": "night sky deep starfield",
-      "keywords": ["night sky deep", "milky way quiet drift"],
+      "keywords": [
+        "night sky deep",
+        "milky way quiet drift"
+      ],
       "start": 40.7,
       "duration": 2.0,
       "position": "fullscreen",
@@ -338,7 +429,10 @@
       "id": "v8c",
       "type": "footage",
       "query": "distant galaxies calm pullback",
-      "keywords": ["distant galaxies", "cosmic pullback wide"],
+      "keywords": [
+        "distant galaxies",
+        "cosmic pullback wide"
+      ],
       "start": 42.7,
       "duration": 1.8,
       "position": "fullscreen",
@@ -349,7 +443,10 @@
       "id": "v9a",
       "type": "motion_graphics",
       "query": "minimal particle field dark graphite",
-      "keywords": ["abstract particles loop", "dark tech background"],
+      "keywords": [
+        "abstract particles loop",
+        "dark tech background"
+      ],
       "start": 44.5,
       "duration": 2.4,
       "position": "auto",
@@ -360,7 +457,10 @@
       "id": "v9b",
       "type": "motion_graphics",
       "query": "crimson ember particles void",
-      "keywords": ["subtle red particle drift", "void graphite motion"],
+      "keywords": [
+        "subtle red particle drift",
+        "void graphite motion"
+      ],
       "start": 46.9,
       "duration": 2.4,
       "position": "auto",
@@ -371,7 +471,10 @@
       "id": "v9c",
       "type": "motion_graphics",
       "query": "fade to deep void black",
-      "keywords": ["deep void fade", "black screen particles die"],
+      "keywords": [
+        "deep void fade",
+        "black screen particles die"
+      ],
       "start": 49.3,
       "duration": 2.4,
       "position": "auto",
@@ -379,7 +482,6 @@
       "allow_magnific": false
     }
   ],
-
   "music": {
     "volume": 0.15,
     "ducking": true,
@@ -387,15 +489,38 @@
     "fade_in": 0.5,
     "fade_out": 1.2
   },
-
   "audio_fx": [
-    { "type": "impact", "at": 0.08, "intensity": 0.7, "duration": 0.9 },
-    { "type": "whoosh", "at": 8.3, "intensity": 0.55, "duration": 0.7 },
-    { "type": "riser", "at": 19.8, "intensity": 0.6, "duration": 0.9 },
-    { "type": "sub_drop", "at": 20.6, "intensity": 0.72, "duration": 0.85 },
-    { "type": "pop", "at": 44.5, "intensity": 0.45, "duration": 0.5 }
+    {
+      "type": "impact",
+      "at": 0.08,
+      "intensity": 0.7,
+      "duration": 0.9
+    },
+    {
+      "type": "whoosh",
+      "at": 8.3,
+      "intensity": 0.55,
+      "duration": 0.7
+    },
+    {
+      "type": "riser",
+      "at": 19.8,
+      "intensity": 0.6,
+      "duration": 0.9
+    },
+    {
+      "type": "sub_drop",
+      "at": 20.6,
+      "intensity": 0.72,
+      "duration": 0.85
+    },
+    {
+      "type": "pop",
+      "at": 44.5,
+      "intensity": 0.45,
+      "duration": 0.5
+    }
   ],
-
   "captions": {
     "enabled": true,
     "style": "karaoke",
@@ -406,27 +531,28 @@
     "stroke": true,
     "uppercase": false
   },
-
   "brand_elements": {
     "color_primary": "#E11D48",
     "color_accent": "#F43F5E",
     "color_background": "#050508"
   },
-
   "cta": {
     "text": "Подпишись — сигнал из будущего",
     "start": 44.5,
     "duration": 5.0,
     "style": "badge"
   },
-
   "memes": {
     "enabled": true,
-    "tags": ["вопрос", "шок", "естественно", "миф"],
+    "tags": [
+      "вопрос",
+      "шок",
+      "естественно",
+      "миф"
+    ],
     "max_count": 1,
     "max_duration": 1.3
   },
-
   "constraints": {
     "magnific_token_budget": 10,
     "allow_generative": true,

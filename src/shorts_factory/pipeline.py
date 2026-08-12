@@ -39,12 +39,15 @@ from .generative.budget import TokenBudget
 from .logging_utils import get_logger, stage
 from .qa.gate import QAReport
 from .render.audio_mix import build_mix
+from .render.backfill import backfill_empty_slots
 from .render.composition import CompositionWriter
 from .render.host_presence import HostPlan, plan_host
 from .render.hyperframes import HyperFramesRunner, RenderResult
+from .render.rhythm import RetimeReport, retime_visuals
 from .render.timeline import Timeline, build_timeline, use_mixed_audio
 from .resolver import ResolvedVisual, VisualResolver
 from .spec import Spec, SpecIssue
+from .voice.alignment import split_at_pauses
 from .voice.audio_design import finalize_audio_fx, resolve_from_library, suggest_audio_fx
 from .voice.captions import CaptionCue, build_cues
 from .voice.elevenlabs import ElevenLabsClient, SfxClip, VoiceClip
@@ -76,10 +79,20 @@ class RunResult:
     spec_issues: list[SpecIssue] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     meme_decision: MemeDecision | None = None
+    rhythm: RetimeReport | None = None
 
     @property
     def rendered(self) -> bool:
         return self.output is not None and self.output.exists()
+
+    @property
+    def broll_coverage(self) -> float:
+        """Fraction of the video with real footage behind it, 0.0-1.0."""
+        if self.timeline is None or not self.timeline.duration:
+            return 0.0
+        from .render.timeline import covered_seconds
+
+        return min(1.0, covered_seconds(self.timeline) / self.timeline.duration)
 
     @property
     def needs_review(self) -> bool:
@@ -96,6 +109,7 @@ class RunResult:
             "spec_issues": [str(issue) for issue in self.spec_issues],
             "warnings": self.warnings,
             "qa": self.qa.to_dict(),
+            "rhythm": self.rhythm.to_dict() if self.rhythm else None,
             "budget": self.budget.to_dict() if self.budget else None,
             "search": {item.visual.id: item.search.to_dict() for item in self.resolved if item.search},
             "voice": {
@@ -146,6 +160,10 @@ class Pipeline:
         result = RunResult(spec_id=spec.id, spec_issues=list(issues or []), budget=self.budget)
         self._apply_brand(spec, result)
         self._apply_meme_policy(spec, result)
+        # No voice yet on this path, so the retimer works from the scenario's
+        # own segment timings — still content-driven, just without the word
+        # alignment that lets cuts land between words.
+        result.rhythm = retime_visuals(spec, [])
         self._resolve_visuals(spec, result)
         result.captions = build_cues(spec.all_segments, [], spec.captions)
         result.music = self._resolve_music(spec, result)
@@ -187,6 +205,12 @@ class Pipeline:
             info["clips"] = len(result.voice_clips)
             info["fx"] = len(result.sfx_clips)
 
+        with stage("rhythm", log) as info:
+            result.rhythm = retime_visuals(spec, result.voice_clips)
+            result.warnings.extend(result.rhythm.notes)
+            info["median_s"] = round(result.rhythm.median_s, 2)
+            info["spread_s"] = result.rhythm.spread_s
+
         with stage("visuals", log) as info:
             self._resolve_visuals(spec, result)
             info["qa"] = result.qa.summary()
@@ -223,6 +247,12 @@ class Pipeline:
         with stage("avatar", log) as info:
             self._generate_avatar(spec, result)
             info["ok"] = result.avatar is not None
+
+        with stage("rhythm", log) as info:
+            result.rhythm = retime_visuals(spec, result.voice_clips)
+            result.warnings.extend(result.rhythm.notes)
+            info["median_s"] = round(result.rhythm.median_s, 2)
+            info["spread_s"] = result.rhythm.spread_s
 
         with stage("visuals", log) as info:
             self._resolve_visuals(spec, result)
@@ -262,6 +292,7 @@ class Pipeline:
             try:
                 result.render = self.runner.run_pipeline(composition.directory, output)
                 result.output = result.render.output
+                result.warnings.extend(result.render.warnings)
                 info["output"] = result.output.name if result.output else "none"
             except RenderError as exc:
                 result.warnings.append(str(exc))
@@ -322,6 +353,23 @@ class Pipeline:
             result.warnings.append(f"could not update meme history: {exc}")
 
     def _synthesize_voice(self, spec: Spec, result: RunResult) -> None:
+        if spec.voice.source == "avatar":
+            # The avatar clip already carries the narration it was animated
+            # against. Synthesising a second take and laying it over the same
+            # video is what produced a voice-over that does not match the
+            # mouth — the lips were made for audio we then threw away.
+            clips = self._load_avatar_voice(spec)
+            if clips:
+                result.voice_clips = clips
+                log.info("narration taken from the avatar clip", extra={"stage": "voice"})
+            else:
+                result.warnings.append(
+                    'voice.source is "avatar" but jobs/<id>/avatar.mp4 carries no audio — '
+                    "the Short will have no narration"
+                )
+            self._resolve_sound_design(spec, result)
+            return
+
         if self.voice_client.is_available:
             result.voice_clips = self.voice_client.synthesize_script(spec.all_segments, spec.voice)
             if len(result.voice_clips) < len(spec.all_segments):
@@ -384,17 +432,52 @@ class Pipeline:
             shutil.copy2(voice_path, target)
             voice_path = target
 
-        duration = float(spec.spoken_duration or spec.duration_target)
-        first = spec.all_segments[0] if spec.all_segments else None
-        if first is None:
+        segments = spec.all_segments
+        if not segments:
             return []
+
+        duration = _audio_duration(voice_path, self.settings) or float(
+            spec.spoken_duration or spec.duration_target
+        )
+
+        # The scenario's duration_target is the author's guess, made before
+        # the avatar clip existed. The avatar audio is what actually plays,
+        # and every downstream stage — rhythm, the composition length, the
+        # CTA placement — reads duration_target as gospel. Leaving it short
+        # schedules segments (and their visuals) on the real, longer timeline
+        # while the composition itself still ends at the old guess, so shots
+        # attached to the tail of the narration land past the end of the
+        # video and never get a single frame rendered.
+        if duration > spec.duration_target:
+            spec.duration_target = duration
+
+        # The narration is one continuous recording, so it goes into the mix as
+        # one clip — a clip per segment would place the whole file once per
+        # segment and stack the voice on top of itself.
+        #
+        # What the segments get instead is the truth about *when* each of them
+        # is spoken. The scenario's timings are the author's guesses; the
+        # recording knows, because the narrator pauses between sentences. Every
+        # segment is moved onto the span it really occupies, and captions and
+        # shot lengths — which both read segment timings — land on the voice
+        # instead of near it.
+        spans = split_at_pauses(
+            voice_path,
+            [float(max(len(segment.text), 1)) for segment in segments],
+            duration,
+            ffmpeg=self.settings.ffmpeg_cmd,
+        )
+        for segment, (start, length) in zip(segments, spans, strict=True):
+            segment.start = start
+            segment.duration = length
+
         return [
             VoiceClip(
-                segment_id=first.id,
+                segment_id=segments[0].id,
                 path=voice_path,
                 start=0.0,
                 duration=duration,
-                text=" ".join(segment.text for segment in spec.all_segments),
+                text=" ".join(segment.text for segment in segments),
                 words=[],
             )
         ]
@@ -493,8 +576,12 @@ class Pipeline:
 
     def _resolve_visuals(self, spec: Spec, result: RunResult) -> None:
         result.resolved = self.resolver.resolve_all(spec)
+        # QA is recorded before the backfill so the report says what the gates
+        # actually decided; the reuse is reported separately, as the editorial
+        # choice it is rather than as a slot that passed.
         for item in result.resolved:
             result.qa.add(item.qa)
+        result.warnings.extend(backfill_empty_slots(result.resolved))
         for item in result.resolved:
             if item.qa.outcome == "rejected":
                 result.warnings.append(
@@ -621,3 +708,11 @@ class Pipeline:
 def _host_plan(spec: Spec) -> HostPlan:
     """Build host presentation windows from segment modes."""
     return plan_host(spec)
+
+
+def _audio_duration(path: Path, settings: Settings) -> float:
+    """Length of an audio file in seconds, or 0.0 when it cannot be read."""
+    from .media.ffmpeg import probe
+
+    info = probe(path, settings.ffprobe_cmd)
+    return float(info.duration) if info and info.duration else 0.0

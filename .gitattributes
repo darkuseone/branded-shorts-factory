@@ -1,5 +1,10 @@
-# Keep large stock libraries on LFS if present, but NEVER pointerize
-# committed job avatars / b-roll — GHA HyperFrames needs real MP4 bytes.
-*.mp4 filter=lfs diff=lfs merge=lfs -text
-jobs/**/*.mp4 -filter -diff -merge text=auto
-jobs/**/*.webm -filter -diff -merge text=auto
+# No LFS anywhere. Every clip the render touches — job avatars, staged b-roll,
+# the meme bank, the music and SFX banks — is stored as real bytes, because a
+# GitHub Actions runner clones this repo and reads those files directly. An LFS
+# pointer would arrive as a 130-byte text file and the render would silently
+# come out without the asset.
+*.mp4 -filter -diff -merge -text
+*.webm -filter -diff -merge -text
+*.mov -filter -diff -merge -text
+*.mp3 -filter -diff -merge -text
+*.wav -filter -diff -merge -text

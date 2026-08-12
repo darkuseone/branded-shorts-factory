@@ -104,6 +104,10 @@ class Budgets:
     grok_vision_calls: int = 60
     escalate_below_score: float = 0.62
     accept_above_score: float = 0.80
+    #: Wall clock for one run (§19). Past it the run stops reaching for slow
+    #: optional tiers and finishes with what it has, rather than being killed
+    #: from outside with nothing to show. 0 disables the guard.
+    wallclock_minutes: int = 35
 
 
 @dataclass(frozen=True)
@@ -132,6 +136,11 @@ class Paths:
     @property
     def keyframes(self) -> Path:
         return self.workdir / "keyframes"
+
+    @property
+    def cards(self) -> Path:
+        """Infographics we render ourselves, rather than source (§13)."""
+        return self.workdir / "cards"
 
     @property
     def composition(self) -> Path:
@@ -192,7 +201,7 @@ class Settings:
     ffprobe_cmd: str = "ffprobe"
     http_timeout: float = 30.0
     max_parallel_searches: int = 8
-    grok_vision_model: str = "grok-4-vision"
+    grok_vision_model: str = "grok-4"
 
     @classmethod
     def from_env(
@@ -214,6 +223,7 @@ class Settings:
                 grok_vision_calls=_env_int(env, "GROK_VISION_CALL_BUDGET", 60),
                 escalate_below_score=_env_float(env, "ESCALATE_BELOW_SCORE", 0.62),
                 accept_above_score=_env_float(env, "ACCEPT_ABOVE_SCORE", 0.80),
+                wallclock_minutes=_env_int(env, "RUN_WALLCLOCK_MINUTES", 35),
             ),
             paths=Paths(project_root, work),
             offline=_env_bool(env, "SHORTS_OFFLINE", False),
@@ -223,5 +233,5 @@ class Settings:
             ffprobe_cmd=_env(env, "FFPROBE_BIN") or "ffprobe",
             http_timeout=_env_float(env, "HTTP_TIMEOUT", 30.0),
             max_parallel_searches=_env_int(env, "MAX_PARALLEL_SEARCHES", 8),
-            grok_vision_model=_env(env, "GROK_VISION_MODEL") or "grok-4-vision",
+            grok_vision_model=_env(env, "GROK_VISION_MODEL") or "grok-4",
         )

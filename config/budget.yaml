@@ -1,0 +1,36 @@
+# Бюджет на один ролик. Источник — ТЗ §4.3 и §19.
+# Превышение вызывает деградацию (§4.6), а не падение прогона.
+
+per_video:
+  grok_text_calls_max: 14
+  # Только контактные листы 3x3, не поштучная оценка (§19.E1).
+  grok_vision_calls_max: 8
+  # Только тай-брейки в серой зоне (§10.3).
+  gemini_vision_calls_max: 3
+  magnific_search_calls_max: 25
+  magnific_image_gen_max: 6
+  magnific_video_gen_max: 2
+  # Ровно один рендер аватара на ролик, режимы кадра получаем кропом (§19.E8).
+  heygen_renders_max: 1
+  elevenlabs_chars_max: 1800
+  tokens_in_max: 90000
+  tokens_out_max: 25000
+  wallclock_minutes_max: 35
+
+on_exceed: degrade # degrade | fail | ask
+warn_at_percent: 75
+
+cache:
+  queries_ttl_days: 14
+  llm_ttl_days: 30
+  # cache/objects никогда не чистится автоматически — это главная экономия (§20.4).
+  objects_ttl_days: null
+
+vision:
+  # 4K в модель не отправляем никогда (§19.E3).
+  max_edge_px: 512
+  jpeg_quality: 72
+
+# Порог предупреждения о росте стоимости относительно скользящего среднего.
+cost_alert_growth_percent: 30
+cost_window_videos: 10

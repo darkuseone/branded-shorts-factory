@@ -16,6 +16,7 @@ from dataclasses import dataclass
 
 from .assets.library import MemeLibrary
 from .config import Settings
+from .deadline import Deadline
 from .errors import BudgetExceededError
 from .generative.budget import TokenBudget
 from .generative.grok_imagine import GrokImagineClient
@@ -23,6 +24,7 @@ from .generative.magnific import GenerationRequest, MagnificClient, prompt_for
 from .generative.policy import after_library_miss, decide
 from .logging_utils import get_logger
 from .media.download import Downloader, LocalAsset
+from .qa.chroma import looks_keyed
 from .qa.gate import VisualQA, combine
 from .qa.native import check_native
 from .qa.vision import GrokVisionGate
@@ -77,6 +79,7 @@ class VisualResolver:
         vision: GrokVisionGate | None = None,
         budget: TokenBudget | None = None,
         memes: MemeLibrary | None = None,
+        deadline: Deadline | None = None,
     ):
         self.settings = settings
         self.aggregator = aggregator or SearchAggregator(settings)
@@ -86,6 +89,7 @@ class VisualResolver:
         self.vision = vision or GrokVisionGate(settings)
         self.budget = budget or TokenBudget.from_budgets(settings.budgets)
         self.memes = memes or MemeLibrary(settings.paths.meme_library)
+        self.deadline = deadline or Deadline.from_minutes(settings.budgets.wallclock_minutes)
 
     # -- public API ---------------------------------------------------------
 
@@ -96,7 +100,11 @@ class VisualResolver:
         context = spec.context_for(visual)
 
         if visual.type == "meme":
-            return ResolvedVisual(visual=visual, qa=self._resolve_meme(spec, visual), search=None)
+            return ResolvedVisual(visual=visual, qa=self._resolve_meme(spec, visual, context), search=None)
+
+        card = self._resolve_card(spec, visual)
+        if card is not None:
+            return ResolvedVisual(visual=visual, qa=card, search=None)
 
         local = self._resolve_local_broll(spec, visual)
         if local is not None:
@@ -116,8 +124,45 @@ class VisualResolver:
 
         queue, escalated = self._build_queue(spec, visual, outcome, decision)
         qa = self._try_candidates(spec, visual, queue, outcome.plan, context)
+
+        if qa.outcome == "rejected" and not escalated:
+            # The policy looked at the ranker's score, decided free stock was
+            # good enough, and never escalated — then QA threw out every one of
+            # those candidates. Leaving the slot empty there is the worst of
+            # both worlds: we neither used the free material nor paid for
+            # better. An empty slot is exactly what the paid tiers exist for.
+            retry, retried = self._escalate_after_qa(spec, visual, outcome, context)
+            if retried:
+                escalated = True
+                if retry.outcome != "rejected":
+                    retry.notes.insert(0, "escalated after QA emptied the slot")
+                    return ResolvedVisual(visual=visual, qa=retry, search=outcome, escalated=True)
+                qa.notes.append("escalation after QA also found nothing")
+
         qa.notes.insert(0, f"policy: {decision.action} ({decision.reason})")
         return ResolvedVisual(visual=visual, qa=qa, search=outcome, escalated=escalated)
+
+    def _escalate_after_qa(
+        self, spec: Spec, visual: Visual, outcome: SearchOutcome, context: str
+    ) -> tuple[VisualQA, bool]:
+        """Try the paid tiers for a slot QA emptied. Returns (result, tried)."""
+        if not visual.allow_magnific or not self.magnific.is_available:
+            return VisualQA(visual_id=visual.id, outcome="rejected"), False
+        if not self.deadline.allows_slow_step():
+            log.info("%s: no time left to escalate after QA", visual.id, extra={"stage": "resolve"})
+            return VisualQA(visual_id=visual.id, outcome="rejected"), False
+
+        log.info("%s: every free candidate failed QA — escalating", visual.id, extra={"stage": "resolve"})
+        premium = self.magnific.search_library(outcome.plan.primary, media_type_for(visual))
+        if not premium and visual.allow_generative and spec.constraints.allow_generative:
+            generated = self._generate_magnific(spec, visual, outcome.plan, hero=False)
+            if generated:
+                premium = [generated]
+        if not premium:
+            return VisualQA(visual_id=visual.id, outcome="rejected"), True
+
+        ranked = rank_candidates(premium, visual, outcome.plan, limit=4)
+        return self._try_candidates(spec, visual, ranked, outcome.plan, context), True
 
     # -- candidate assembly -------------------------------------------------
 
@@ -158,6 +203,16 @@ class VisualResolver:
                 )
                 decision = follow_up
 
+        if decision.action == "magnific_generate" and not self.deadline.allows_slow_step():
+            # A generation polls for minutes. Starting one with the run's clock
+            # nearly gone trades a finished video for a killed job (§4.6).
+            log.warning(
+                "%s: skipping generation, wall clock nearly spent",
+                visual.id,
+                extra={"stage": "resolve"},
+            )
+            decision = type(decision)("accept_free", "wall clock nearly spent", decision.hero)
+
         if decision.action == "magnific_generate":
             escalated = True
             generated = self._generate_magnific(spec, visual, outcome.plan, hero=decision.hero)
@@ -167,6 +222,14 @@ class VisualResolver:
                 decision = type(decision)(
                     "grok_fallback", "magnific generation produced nothing", decision.hero
                 )
+
+        if decision.action == "grok_fallback" and not self.deadline.allows_slow_step():
+            log.warning(
+                "%s: skipping Grok generation, wall clock nearly spent",
+                visual.id,
+                extra={"stage": "resolve"},
+            )
+            decision = type(decision)("accept_free", "wall clock nearly spent", decision.hero)
 
         if decision.action == "grok_fallback":
             escalated = True
@@ -224,6 +287,7 @@ class VisualResolver:
             return result
 
         held_for_review: VisualQA | None = None
+        unseen = 0
 
         for ranked in queue[:MAX_ATTEMPTS]:
             result.attempts += 1
@@ -231,6 +295,32 @@ class VisualResolver:
             asset = self.downloader.fetch(candidate, subdir=visual.id)
             if asset is None:
                 result.rejected.append({"candidate": candidate.key, "stage": "download", "reason": "failed"})
+                continue
+
+            # Before the metadata gate gets a say: a chroma-key asset passes
+            # every metadata test there is — right topic, right tags, right
+            # resolution — and still cannot be shown, because it is a drawing
+            # on a flat green field waiting for an editor to key it out.
+            keyed, share = looks_keyed(
+                asset.path,
+                ffmpeg=self.settings.ffmpeg_cmd,
+                duration=asset.info.duration if asset.info else 0.0,
+            )
+            if keyed:
+                log.info(
+                    "%s: rejected %s — %.0f%% of the frame is chroma-key background",
+                    visual.id,
+                    candidate.key,
+                    share * 100,
+                    extra={"stage": "qa"},
+                )
+                result.rejected.append(
+                    {
+                        "candidate": candidate.key,
+                        "stage": "chroma",
+                        "reason": f"chroma-key asset ({share:.0%} of the frame is key colour)",
+                    }
+                )
                 continue
 
             native = check_native(asset, visual, plan, context)
@@ -253,7 +343,13 @@ class VisualResolver:
                 )
                 continue
 
-            vision = self.vision.check(asset, visual, context) if spec.constraints.require_vision_qa else None
+            # Vision is not only for scenarios that demand it wholesale. When
+            # level 1 says the words do not settle it, looking at the frame is
+            # the only thing that can — and it is exactly those slots that came
+            # back as a hair salon. Cost is bounded: it runs for the thin cases,
+            # not for every candidate.
+            look = spec.constraints.require_vision_qa or native.needs_vision
+            vision = self.vision.check(asset, visual, context) if look else None
             outcome = combine(
                 native,
                 vision,
@@ -280,6 +376,14 @@ class VisualResolver:
                 )
                 continue
 
+            if native.needs_vision and (vision is None or vision.skipped):
+                # Not the model's judgement — the model never saw it. Level 1
+                # could not settle this asset from its words, so it was left
+                # out rather than shipped unseen. Say which it was, because an
+                # empty slot for want of a working vision gate looks exactly
+                # like an empty slot for want of good footage, and only one of
+                # those is fixed by searching harder.
+                unseen += 1
             result.rejected.append(
                 {
                     "candidate": candidate.key,
@@ -288,6 +392,12 @@ class VisualResolver:
                     "reason": vision.reason if vision else "",
                     "distractors": vision.distractors if vision else [],
                 }
+            )
+
+        if unseen:
+            result.notes.append(
+                f"{unseen} candidate(s) needed a look at the frame and the vision gate "
+                f"was unavailable ({self.vision.unavailable_reason() or 'it abstained'})"
             )
 
         if held_for_review is not None:
@@ -299,6 +409,45 @@ class VisualResolver:
         return result
 
     # -- local overrides ----------------------------------------------------
+
+    def _resolve_card(self, spec: Spec, visual: Visual) -> VisualQA | None:
+        """Render an infographic slot ourselves rather than searching for one.
+
+        Stock "data visualization" shows somebody else's numbers and a
+        generated chart invents them; either way the figure on screen
+        contradicts the voiceover. A card that carries its own content is
+        rendered here, costs nothing, and skips QA — there is no third party
+        whose licence, watermark or framing needs checking.
+        """
+        from .render.infographic_bridge import render_card_asset
+
+        if visual.type != "infographic" or not visual.card:
+            return None
+        destination = self.settings.paths.cards
+        try:
+            rendered = render_card_asset(visual, spec, destination)
+        except Exception as exc:  # a card must never take the run down
+            log.warning("%s: card render failed (%s)", visual.id, exc, extra={"stage": "resolve"})
+            return None
+        if rendered is None:
+            log.warning(
+                "%s: card could not be rendered; falling through to search",
+                visual.id,
+                extra={"stage": "resolve"},
+            )
+            return None
+
+        path, candidate = rendered
+        from .media.ffmpeg import probe
+
+        info = probe(path, self.settings.ffprobe_cmd)
+        asset = LocalAsset(candidate=candidate, path=path, info=info)
+        return VisualQA(
+            visual_id=visual.id,
+            outcome="accepted",
+            asset=asset,
+            notes=[f"infographic rendered locally: {path.name}", "no search, no tokens"],
+        )
 
     def _resolve_local_broll(self, spec: Spec, visual: Visual) -> VisualQA | None:
         """Accept ``jobs/<id>/broll/<visual_id>.*`` when an agent pre-staged stock.
@@ -364,7 +513,7 @@ class VisualResolver:
 
     # -- memes --------------------------------------------------------------
 
-    def _resolve_meme(self, spec: Spec, visual: Visual) -> VisualQA:
+    def _resolve_meme(self, spec: Spec, visual: Visual, context: str = "") -> VisualQA:
         """Memes come only from the user's bank, matched by irony beat + tags."""
         result = VisualQA(visual_id=visual.id, outcome="rejected", attempts=1)
         if not spec.memes.enabled:
@@ -416,8 +565,35 @@ class VisualResolver:
             tags=item.tags,
             license="user-supplied",
         )
+        asset = LocalAsset(candidate=candidate, path=item.path)
+
+        # A meme is footage like any other, and until now it was the one kind
+        # that reached the cut without anyone looking at it. Tags decided
+        # everything, and half the bank is tagged "reaction / still / лицо",
+        # which matches any beat at all — which is how a woman having her hair
+        # done and a stranger's orange face ended up in a news story about a
+        # model breaking into a code host. The gates were not fooled; they were
+        # never asked.
+        vision = self.vision.check(asset, visual, context)
+        if vision.verdict == "replace" or (vision.skipped and spec.constraints.require_vision_qa):
+            log.info(
+                "%s: meme '%s' rejected by vision — %s",
+                visual.id,
+                item.name,
+                vision.reason or "no reason given",
+                extra={"stage": "qa"},
+            )
+            result.outcome = "rejected"
+            result.vision = vision
+            result.notes.append(
+                f"meme '{item.name}' does not belong in this video: "
+                f"{vision.reason or 'the frame does not fit the story'}"
+            )
+            return result
+
         result.outcome = "accepted"
-        result.asset = LocalAsset(candidate=candidate, path=item.path)
+        result.asset = asset
+        result.vision = vision
         result.notes.append(
             f"meme '{item.name}' humor={item.humor or '?'} beat={beat or item.beats[:1]} "
             f"trim={item.trim_start:g}s use={usable:g}s"

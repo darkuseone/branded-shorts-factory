@@ -253,3 +253,64 @@ def test_candidate_filename_matches_media_type(media_type):
     candidate = make_candidate(media_type=media_type, download_url="https://example.com/asset")
     suffix = ".mp4" if media_type == "video" else ".jpg"
     assert candidate.suggested_filename.endswith(suffix)
+
+
+# --------------------------------------------------------------------------- #
+# Which rendition we actually download
+# --------------------------------------------------------------------------- #
+
+
+def test_nothing_above_the_1080p_class_is_downloaded():
+    """The output is 1080x1920. A 4K or 8K master is hundreds of megabytes
+    fetched, decoded per frame and then discarded in the downscale."""
+    from shorts_factory.search.providers.base import pick_best_fit
+
+    variants = [
+        {"width": 1280, "height": 720},
+        {"width": 1920, "height": 1080},
+        {"width": 3840, "height": 2160},
+        {"width": 7680, "height": 4320},
+    ]
+    best = pick_best_fit(variants)
+    assert (best["width"], best["height"]) == (1920, 1080)
+
+
+def test_the_cap_is_on_the_short_edge_so_both_orientations_work():
+    """ "1080p" means 1920x1080 landscape and 1080x1920 vertical alike."""
+    from shorts_factory.search.providers.base import MAX_SHORT_EDGE, short_edge
+
+    assert short_edge({"width": 1920, "height": 1080}) == MAX_SHORT_EDGE
+    assert short_edge({"width": 1080, "height": 1920}) == MAX_SHORT_EDGE
+    assert short_edge({"width": 3840, "height": 2160}) > MAX_SHORT_EDGE
+
+
+def test_a_vertical_source_wins_over_a_bigger_landscape_one():
+    from shorts_factory.search.providers.base import pick_best_fit
+
+    variants = [{"width": 1920, "height": 1080}, {"width": 1080, "height": 1920}]
+    best = pick_best_fit(variants)
+    assert (best["width"], best["height"]) == (1080, 1920), "a 9:16 source needs no crop at all"
+
+
+def test_something_is_still_returned_when_every_variant_breaks_the_cap():
+    from shorts_factory.search.providers.base import pick_best_fit
+
+    variants = [{"width": 3840, "height": 2160}, {"width": 7680, "height": 4320}]
+    assert pick_best_fit(variants)["height"] == 2160, "take the smallest of a bad lot"
+
+
+def test_a_landscape_crop_is_flagged_for_upscaling():
+    """1920x1080 cropped to 9:16 is 607 wide against a 1080-wide frame."""
+    from shorts_factory.search.providers.base import needs_upscale
+
+    assert needs_upscale(1920, 1080)
+    assert not needs_upscale(1080, 1920), "a portrait source already fills the frame"
+    assert needs_upscale(640, 360)
+    assert not needs_upscale(0, 0), "unknown dimensions are not a decision"
+
+
+def test_no_variants_is_not_a_crash():
+    from shorts_factory.search.providers.base import pick_best_fit
+
+    assert pick_best_fit([]) is None
+    assert pick_best_fit([{"link": "x"}]) is None

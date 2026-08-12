@@ -132,6 +132,14 @@ class HttpClient:
                 if exc.code not in RETRY_STATUSES or attempt == self.retries:
                     raise ProviderError(self.provider, last_error, status=exc.code) from exc
                 delay = _retry_after(exc.headers) or self._delay(attempt)
+            except http.client.IncompleteRead as exc:
+                got = len(exc.partial)
+                expected = got + exc.expected if exc.expected else None
+                suffix = f" of {expected}B)" if expected else ")"
+                last_error = f"connection closed early ({got}B read{suffix}"
+                if attempt == self.retries:
+                    raise ProviderError(self.provider, last_error) from exc
+                delay = self._delay(attempt)
             except (urllib.error.URLError, http.client.InvalidURL, ValueError) as exc:
                 last_error = f"network error: {getattr(exc, 'reason', exc)}"
                 if attempt == self.retries:

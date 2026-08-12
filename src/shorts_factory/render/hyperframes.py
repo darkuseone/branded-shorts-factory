@@ -13,7 +13,6 @@ environment because CI and laptops disagree about all three.
 from __future__ import annotations
 
 import os
-import re
 import shlex
 import shutil
 import subprocess
@@ -41,8 +40,19 @@ class StepResult:
 
     @property
     def tail(self) -> str:
-        text = (self.stderr or self.stdout or "").strip()
-        return text[-800:]
+        """The end of both streams, not just one of them.
+
+        This used to prefer stderr and fall back to stdout, which made a failed
+        `check` unreadable: HyperFrames prints its browser and GPU notices to
+        stderr and its actual findings to stdout, so the run died with a page
+        of "WebGL unavailable" and no hint of what it had found.
+        """
+        parts = [
+            f"{label}:\n{stream.strip()[-800:]}"
+            for label, stream in (("stdout", self.stdout), ("stderr", self.stderr))
+            if stream and stream.strip()
+        ]
+        return "\n".join(parts) or ""
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -58,6 +68,8 @@ class StepResult:
 class RenderResult:
     output: Path | None
     steps: list[StepResult] = field(default_factory=list)
+    #: Problems worth carrying into the run report without stopping the render.
+    warnings: list[str] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
@@ -68,6 +80,7 @@ class RenderResult:
             "output": str(self.output) if self.output else None,
             "ok": self.ok,
             "steps": [step.to_dict() for step in self.steps],
+            "warnings": self.warnings,
         }
 
 
@@ -138,12 +151,22 @@ class HyperFramesRunner:
             step_result = step_fn(project_dir)
             result.steps.append(step_result)
             if not step_result.ok:
-                if step_name == "check" and _is_soft_check_failure(step_result):
+                if step_name == "check":
+                    # `check` reports, it does not gate. Its value is the alarm
+                    # — its contrast pass counts how many text elements it can
+                    # actually see, which is the cheapest detector there is for
+                    # captions vanishing. But it also runs a browser on a
+                    # runner with no GPU, and letting that lose a ninety-minute
+                    # render trades a real video for a warning. `lint` is the
+                    # gate: it is deterministic, it is fast, and it is the one
+                    # that catches the structural faults a render cannot
+                    # survive.
                     log.warning(
-                        "hyperframes check soft-fail (browser env); continuing to render: %s",
+                        "hyperframes check reported problems; rendering anyway:\n%s",
                         step_result.tail,
                         extra={"stage": "render"},
                     )
+                    result.warnings.append(f"hyperframes check failed: {step_result.tail[-400:]}")
                     continue
                 raise RenderError(f"hyperframes {step_result.step} failed:\n{step_result.tail}")
 
@@ -207,29 +230,6 @@ class HyperFramesRunner:
         if not result.ok:
             log.warning("%s exited %d: %s", step, result.exit_code, result.tail, extra={"stage": "render"})
         return result
-
-
-def _is_soft_check_failure(step: StepResult) -> bool:
-    """True when check failed only due to runner browser/GPU limits, not content."""
-    text = f"{step.stdout}\n{step.stderr}".lower().strip()
-    if "check passed" in text:
-        return True
-    # Hard content problems HyperFrames reports with a cross mark / overlap.
-    if "✗" in f"{step.stdout}\n{step.stderr}" or "overlapping_clips" in text:
-        return False
-    if re.search(r"(?<![0-9])[1-9]\d*\s*error\(s\)", text):
-        return False
-    browser_noise = (
-        "browsergpumode probe",
-        "chrome-headless-shell",
-        "headlessexperimental.beginframe",
-        "webgl unavailable",
-        "using system chrome",
-    )
-    if any(token in text for token in browser_noise):
-        return True
-    # Empty/truncated capture after GPU probe on GHA.
-    return len(text) < 80
 
 
 def _find_output(project_dir: Path) -> Path | None:

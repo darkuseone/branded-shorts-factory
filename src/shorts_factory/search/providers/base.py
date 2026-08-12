@@ -71,28 +71,77 @@ class StockProvider(ABC):
         return f"<{type(self).__name__} {self.name}>"
 
 
-def pick_largest(
+#: The output is 1080x1920. Nothing above the 1080p class is ever worth
+#: fetching: a 4K or 8K master is hundreds of megabytes downloaded, probed,
+#: decoded per frame and then thrown away in the downscale. The cap is on the
+#: SHORT edge, which is the honest way to say "1080p" for both orientations —
+#: it admits 1920x1080 landscape and 1080x1920 vertical, and excludes 2160
+#: and 4320 in either.
+MAX_SHORT_EDGE = 1080
+
+#: What a 9:16 frame needs. A landscape source cropped to 9:16 comes out
+#: narrower than this and has to be lifted; see `needs_upscale`.
+OUTPUT_WIDTH = 1080
+OUTPUT_HEIGHT = 1920
+
+
+def short_edge(variant: dict, *, width_key: str = "width", height_key: str = "height") -> int:
+    width = int(variant.get(width_key) or 0)
+    height = int(variant.get(height_key) or 0)
+    if not width or not height:
+        return max(width, height)
+    return min(width, height)
+
+
+def needs_upscale(width: int, height: int) -> bool:
+    """Whether a 9:16 crop of this source lands below the output resolution.
+
+    A 1920x1080 clip cropped to 9:16 is 607x1080 — sharp, but too small, so it
+    gets blown up in the composition. Lifting it deliberately with an upscaler
+    beats letting the browser stretch it.
+    """
+    if not width or not height:
+        return False
+    if height <= 0:
+        return False
+    # Crop to 9:16 keeps the full height and takes 9/16 of it in width.
+    cropped_width = min(width, height * OUTPUT_WIDTH / OUTPUT_HEIGHT)
+    return cropped_width < OUTPUT_WIDTH - 1
+
+
+def pick_best_fit(
     variants: Sequence[dict],
     *,
     width_key: str = "width",
     height_key: str = "height",
     prefer_vertical: bool = True,
-    max_height: int = 4320,
+    max_short_edge: int = MAX_SHORT_EDGE,
 ) -> dict | None:
-    """Choose the best file variant a provider offers for one asset.
+    """Choose the best variant at or below the 1080p class.
 
-    Vertical variants win outright (they need no crop); otherwise the tallest
-    file below `max_height` wins, because 9:16 crops are height-bound.
+    Vertical wins outright — a portrait source needs no crop, so all 1080 of
+    its width survive. Otherwise take the largest variant that still respects
+    the cap; only if every variant breaks the cap does the smallest of those
+    win, since something has to be returned.
     """
     usable = [v for v in variants if isinstance(v, dict) and v.get(height_key)]
     if not usable:
         return None
 
-    def sort_key(variant: dict) -> tuple[int, int]:
+    def is_vertical(variant: dict) -> bool:
         width = int(variant.get(width_key) or 0)
         height = int(variant.get(height_key) or 0)
-        vertical = 1 if (prefer_vertical and height and width and height > width) else 0
-        penalty = 0 if height <= max_height else -1
-        return (vertical + penalty, height)
+        return bool(prefer_vertical and height and width and height > width)
 
-    return max(usable, key=sort_key)
+    def rank(variant: dict) -> tuple[int, int, int]:
+        edge = short_edge(variant, width_key=width_key, height_key=height_key)
+        within = 1 if edge <= max_short_edge else 0
+        # Inside the cap take the biggest; outside it take the smallest.
+        size_key = edge if within else -edge
+        return (int(is_vertical(variant)) if within else 0, within, size_key)
+
+    return max(usable, key=rank)
+
+
+#: Kept so existing callers and tests keep working.
+pick_largest = pick_best_fit

@@ -32,6 +32,9 @@ TRACK_AVATAR = 3
 TRACK_CAPTIONS = 4
 TRACK_BRAND = 5
 TRACK_CTA = 6
+
+#: A subscribe badge below this is on screen too briefly to act on.
+MIN_CTA_S = 1.2
 TRACK_MEME = 7
 TRACK_DATA_CHIP = 8
 TRACK_AUDIO_VOICE = 10
@@ -192,13 +195,10 @@ def build_timeline(
     add_data_chips(timeline, spec)
     _add_brand(timeline, spec)
     _add_cta(timeline, spec)
+    _resolve_cta_outro_clash(timeline)
     _add_audio(timeline, spec, voice_clips or [], sfx_clips or [], music_path)
 
-    covered = sum(
-        element.duration
-        for element in timeline.elements
-        if element.track in {TRACK_BACKGROUND, TRACK_BROLL} and element.kind in {"video", "image"}
-    )
+    covered = covered_seconds(timeline)
     if covered < spec.duration_target * 0.9:
         timeline.warnings.append(
             f"only {covered:.1f}s of {spec.duration_target:.1f}s has b-roll; "
@@ -444,6 +444,50 @@ def _add_cta(timeline: Timeline, spec: Spec) -> None:
             },
         )
     )
+
+
+def covered_seconds(timeline: Timeline) -> float:
+    """Seconds of the video with real footage behind them.
+
+    Anything not covered falls back to the brand backdrop — a legitimate rung
+    on the degradation ladder, but the run has to be able to say how far down
+    it went.
+    """
+    return sum(
+        element.duration
+        for element in timeline.elements
+        if element.track in {TRACK_BACKGROUND, TRACK_BROLL} and element.kind in {"video", "image"}
+    )
+
+
+def _resolve_cta_outro_clash(timeline: Timeline) -> None:
+    """Stop the CTA badge and the outro card sharing the last seconds.
+
+    Both live on TRACK_CTA, the outro is pinned to the tail of the video, and
+    a CTA that stops before the end is pointless — so whenever a scenario has
+    both, they overlap. Two elements on one track at the same instant is what
+    the renderer rejects, and editorially it is clutter: the badge and the
+    closing card fighting for the same corner.
+
+    The badge runs, then the card takes over. If that would leave the badge
+    too short to read, the card goes instead — the CTA is the one with a job
+    to do.
+    """
+    cta = next((e for e in timeline.elements if e.id == "cta"), None)
+    outro = next((e for e in timeline.elements if e.id == "outro"), None)
+    if cta is None or outro is None or cta.track != outro.track:
+        return
+    if cta.start >= outro.end or outro.start >= cta.end:
+        return
+
+    trimmed = round(outro.start - cta.start, 3)
+    if trimmed >= MIN_CTA_S:
+        cta.duration = trimmed
+        timeline.warnings.append(f"CTA trimmed to {trimmed:.2f}s so the outro card can close the video")
+        return
+
+    timeline.elements.remove(outro)
+    timeline.warnings.append("outro card dropped: it would have left the CTA too short to read")
 
 
 def _add_audio(

@@ -38,7 +38,18 @@ POSITIONS = frozenset(
 )
 MOTIONS = frozenset({"none", "kenburns", "parallax", "zoom_in", "zoom_out", "pan_left", "pan_right"})
 PRIORITIES = frozenset({"low", "normal", "high", "critical"})
-CAPTION_STYLES = frozenset({"karaoke", "word_pop", "line", "none"})
+CAPTION_STYLES = frozenset({"word", "karaoke", "word_pop", "line", "none"})
+CARD_TEMPLATES = frozenset(
+    {
+        "BIG_NUMBER",
+        "BAR_RANK",
+        "COMPARISON_AB",
+        "TIMELINE",
+        "ICON_FACT_LIST",
+        "PROCESS_ARROW",
+        "SCREEN_CARD",
+    }
+)
 HOST_MODES = frozenset({"split", "full_host", "full_footage"})
 AUDIO_FX_TYPES = frozenset(
     {
@@ -304,6 +315,12 @@ class ScriptSegment:
 
 @dataclass
 class VoiceSettings:
+    #: Where the narration comes from. "avatar" means the HeyGen clip already
+    #: carries it — the voice the lips were animated against — so nothing is
+    #: synthesised separately and lipsync is correct by construction. Anything
+    #: else and the two are made independently, which is how a video ends up
+    #: with a voice-over that does not match the mouth.
+    source: str = "elevenlabs"
     provider: str = "elevenlabs"
     model: str = "eleven_v3"
     voice_id: str = ""
@@ -350,6 +367,9 @@ class Visual:
     must_avoid: list[str] = field(default_factory=list)
     source_hint: str | None = None
     notes: str = ""
+    #: Infographic content, when this slot is a card we render ourselves.
+    #: Populated only for `type: infographic`; see render/infographic_bridge.py.
+    card: dict[str, Any] | None = None
 
     @property
     def end(self) -> float:
@@ -696,7 +716,47 @@ def _parse_visual(data: dict[str, Any], path: str, col: _Collector, index: int) 
         must_avoid=_string_list(data, "must_avoid", path, col),
         source_hint=_string(data, "source_hint", path, col) or None,
         notes=_string(data, "notes", path, col),
+        card=_card(data, path, col, visual_type),
     )
+
+
+def _card(data: dict[str, Any], path: str, col: _Collector, visual_type: str) -> dict[str, Any] | None:
+    """The content of an infographic slot.
+
+    Cards are rendered by us and never sourced: a stock "data visualization"
+    shows numbers that have nothing to do with the story, and a generated one
+    invents them. So an infographic slot carries its own figures.
+    """
+    raw = data.get("card")
+    if raw is None:
+        if visual_type == "infographic":
+            col.warn(f"{path}.card", "no card content; this slot will fall back to stock search")
+        return None
+    if not isinstance(raw, dict):
+        col.error(f"{path}.card", "must be an object")
+        return None
+    if visual_type != "infographic":
+        col.warn(f"{path}.card", f"ignored on type {visual_type!r}")
+        return None
+
+    items = raw.get("items")
+    if not isinstance(items, list) or not items:
+        col.error(f"{path}.card.items", "at least one item is required")
+        return None
+    if len(items) > 5:
+        # §13.3: more than five units cannot be read at Shorts pace.
+        col.error(f"{path}.card.items", f"{len(items)} items; a card holds at most 5")
+        return None
+    for position, item in enumerate(items):
+        if not isinstance(item, dict):
+            col.error(f"{path}.card.items[{position}]", "must be an object")
+            return None
+
+    template = str(raw.get("template") or "").strip().upper()
+    if template and template not in CARD_TEMPLATES:
+        col.error(f"{path}.card.template", f"{template!r} is not one of {sorted(CARD_TEMPLATES)}")
+        return None
+    return dict(raw)
 
 
 def _parse_voice(data: dict[str, Any], col: _Collector, language: str) -> VoiceSettings:
@@ -712,6 +772,7 @@ def _parse_voice(data: dict[str, Any], col: _Collector, language: str) -> VoiceS
             "recommended for Shorts delivery",
         )
     return VoiceSettings(
+        source=_enum(data, "source", path, col, {"elevenlabs", "avatar"}, "elevenlabs"),
         provider=_string(data, "provider", path, col, default="elevenlabs") or "elevenlabs",
         model=_string(data, "model", path, col, default="eleven_v3") or "eleven_v3",
         voice_id=_string(data, "voice_id", path, col),
@@ -1004,7 +1065,10 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
             "brand_elements",
             col,
             {"top_left", "top_right", "bottom_left", "bottom_right", "none"},
-            "top_left",
+            # Off unless a scenario asks for it. The parser used to default to
+            # top_left while the dataclass said "none", so the two disagreed
+            # and a watermark could appear in a corner nobody put it in.
+            "none",
         ),
         lower_third=_bool(brand_data, "lower_third", "brand_elements", col, False),
         color_primary=_string(brand_data, "color_primary", "brand_elements", col, default=DEFAULT_PRIMARY)
@@ -1038,7 +1102,9 @@ def parse_spec(document: Any, *, source: str | None = None) -> tuple[Spec, list[
                 or max(0.0, target - 4.0)
             ),
             duration=float(_number(cta_data, "duration", "cta", col, default=3.0, minimum=0.5) or 3.0),
-            style=_enum(cta_data, "style", "cta", col, {"badge", "banner", "card", "text", "arrow"}, "badge"),
+            style=_enum(
+                cta_data, "style", "cta", col, {"glass", "badge", "banner", "card", "text", "arrow"}, "badge"
+            ),
             url=_string(cta_data, "url", "cta", col),
         )
     elif isinstance(cta_data, str) and cta_data.strip():

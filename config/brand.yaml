@@ -1,0 +1,63 @@
+# Брендбук REDSHIFT. Источник — ТЗ §13.1 и §2.
+# Палитра и типографика — не предмет вкуса агента (§23.1).
+
+colors:
+  bg_primary: "#050508"
+  bg_secondary: "#0A0A0F"
+  accent: "#E11D48"
+  accent_hot: "#F43F5E"
+  text: "#F1F5F9"
+  muted: "#94A3B8"
+  # Золото только на «открытие/breakthrough», не чаще одного раза за ролик (Q17).
+  gold: "#FBBF24"
+  chroma_left: "#E11D48"
+  chroma_right: "#22D3EE"
+
+fonts:
+  head: "Space Grotesk"
+  head_weights: [700, 900]
+  body: "Inter"
+  body_weight: 500
+  num: "JetBrains Mono"
+
+effects:
+  glow_text: "0 0 22px rgba(225,29,72,.55)"
+  glow_soft: "0 0 60px rgba(225,29,72,.22)"
+  radius_px: 18
+  grid_unit_px: 24
+  chroma_ab_px: 1.5
+  chroma_ab_opacity: 0.30
+  # Брендбук запрещает белые толстые обводки субтитров (§2.1 MODE_B).
+  subtitle_stroke: false
+  text_shadow: "0 6px 18px rgba(0,0,0,.85)"
+
+avatar:
+  rim_light: { color: "#F1F5F9", opacity: 0.22, blur_px: 18 }
+  # Crimson fill всегда с одной и той же стороны во всех роликах — это
+  # консистентность бренда, а не параметр ролика (§14.3).
+  crimson_fill: { color: "#E11D48", opacity: 0.14, side: left }
+  orbital_arcs: { count: 3, width_px: 1.5, color: "#E11D48", opacity: 0.35 }
+  particles: { count: [40, 70], speed_px_s: [6, 14], opacity: [0.10, 0.25] }
+
+split_mode:
+  content_bottom: 0.52
+  presenter_top: 0.48
+  seam_line: { width_px: 2, color: "#E11D48", opacity: 0.35, glow: 0.40 }
+  feather_px: 24
+
+hero_mode:
+  overlay_shelf: { top: 0.06, bottom: 0.38 }
+  window: { radius_px: 18, tilt_deg: 3, shadow: "0 24px 60px rgba(0,0,0,.6)" }
+  fly_in: { duration_s: 0.28, easing: ease-out-back, overshoot: 0.12 }
+
+broll_mode:
+  # Горизонтальный исходник → размытая копия сверху и снизу, никаких чёрных
+  # полос (приём из референса V2).
+  blurred_fill: { sigma: 28, scale: 1.25, brightness: -0.18 }
+
+closer:
+  subscribe_anim_s: 0.45
+  subscribe_easing: ease-out
+  cta_y: [0.80, 0.88]
+  sfx: "subscribe_pop.wav"
+  sfx_gain_db: -12.0
