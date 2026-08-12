@@ -24,6 +24,7 @@ from .generative.magnific import GenerationRequest, MagnificClient, prompt_for
 from .generative.policy import after_library_miss, decide
 from .logging_utils import get_logger
 from .media.download import Downloader, LocalAsset
+from .qa.chroma import looks_keyed
 from .qa.gate import VisualQA, combine
 from .qa.native import check_native
 from .qa.vision import GrokVisionGate
@@ -294,6 +295,32 @@ class VisualResolver:
             asset = self.downloader.fetch(candidate, subdir=visual.id)
             if asset is None:
                 result.rejected.append({"candidate": candidate.key, "stage": "download", "reason": "failed"})
+                continue
+
+            # Before the metadata gate gets a say: a chroma-key asset passes
+            # every metadata test there is — right topic, right tags, right
+            # resolution — and still cannot be shown, because it is a drawing
+            # on a flat green field waiting for an editor to key it out.
+            keyed, share = looks_keyed(
+                asset.path,
+                ffmpeg=self.settings.ffmpeg_cmd,
+                duration=asset.info.duration if asset.info else 0.0,
+            )
+            if keyed:
+                log.info(
+                    "%s: rejected %s — %.0f%% of the frame is chroma-key background",
+                    visual.id,
+                    candidate.key,
+                    share * 100,
+                    extra={"stage": "qa"},
+                )
+                result.rejected.append(
+                    {
+                        "candidate": candidate.key,
+                        "stage": "chroma",
+                        "reason": f"chroma-key asset ({share:.0%} of the frame is key colour)",
+                    }
+                )
                 continue
 
             native = check_native(asset, visual, plan, context)

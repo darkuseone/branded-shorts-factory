@@ -101,9 +101,21 @@ jobs:
       # Infographic cards are HTML screenshotted by Playwright. Without this
       # the card silently fails to render and the slot falls through to stock
       # search — which is how two of them ended up hunting Pexels for a chart.
-      - name: Install Playwright and Chromium
+      #
+      # `pip install -e .` is what puts pydantic and PyYAML on the runner.
+      # `shorts_factory` imports neither, so the pipeline runs happily without
+      # them — but `redshift.core.schemas` needs pydantic and
+      # `redshift.core.config` needs PyYAML, and the card bridge catches the
+      # ImportError and falls through to search. The result was three slots
+      # that carry the video's own numbers ("~900 задач", the 5-day timeline)
+      # silently replaced by whatever stock matched their query text: a
+      # stranger's portrait, a tape measure, somebody's video-editing
+      # timeline. Installing the declared dependencies rather than a
+      # hand-listed subset keeps this from drifting again.
+      - name: Install Python dependencies and Chromium
         run: |
           python -m pip install --upgrade pip playwright
+          python -m pip install -e .
           python -m playwright install --with-deps chromium
 
       - name: Install HyperFrames skills

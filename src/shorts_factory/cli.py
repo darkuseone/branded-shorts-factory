@@ -211,6 +211,24 @@ def _doctor(settings: Settings) -> int:
     log.info("%s ffmpeg", "✓" if is_available(settings.ffmpeg_cmd) else "✗")
     log.info("%s ffprobe", "✓" if is_available(settings.ffprobe_cmd) else "✗")
 
+    # A card slot that cannot render degrades to stock search, which is the
+    # one fallback that puts a wrong number on screen — the scenario's own
+    # figures replaced by whatever matched the query text. The degradation is
+    # deliberate (a missing card must not kill a run) and therefore silent, so
+    # it belongs in the environment check where a missing dependency is cheap
+    # to see and cheap to fix.
+    try:
+        from redshift.core.schemas import InfographicSpec  # noqa: F401
+        from redshift.render.infographics import render_card  # noqa: F401
+    except ImportError as exc:
+        log.warning(
+            "✗ infographic cards (%s) — install the package dependencies "
+            "(`pip install -e .`); card slots will fall through to stock search",
+            exc.name or exc,
+        )
+    else:
+        log.info("✓ infographic cards")
+
     runner = HyperFramesRunner(settings)
     if runner.is_available():
         log.info("✓ hyperframes runner (%s)", " ".join(runner.command))

@@ -472,3 +472,68 @@ def test_an_ordinary_failure_still_raises():
     with pytest.raises(ProviderError):
         gate._post([{"type": "text", "text": "hello"}])
     assert len(calls) == 1, "a 401 must not walk the whole ladder"
+
+
+# --------------------------------------------------------------------------- #
+# Chroma-key assets
+# --------------------------------------------------------------------------- #
+
+
+def _solid(colour: str, target: Path) -> bool:
+    """One flat-colour still, written with ffmpeg. False when it cannot be."""
+    import shutil
+    import subprocess
+
+    if not shutil.which("ffmpeg"):
+        return False
+    subprocess.run(
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+         "-f", "lavfi", "-i", f"color=c={colour}:s=320x568", "-frames:v", "1", str(target)],
+        check=False, capture_output=True, timeout=60,
+    )  # fmt: skip
+    return target.exists()
+
+
+def test_a_chroma_key_asset_is_refused(tmp_path):
+    """A drawing on flat key green is not footage; it is unfinished material.
+
+    Nothing in the metadata gives this away — the title is on topic, the tags
+    match, the resolution is fine — so level 1 passes it and a slab of green
+    fills half the screen. Only the frame tells the truth.
+    """
+    from shorts_factory.qa.chroma import looks_keyed
+
+    frame = tmp_path / "keyed.png"
+    if not _solid("0x00b140", frame):
+        pytest.skip("needs ffmpeg to build the fixture")
+
+    refused, share = looks_keyed(frame)
+    assert refused, f"a full chroma-green frame passed the gate (share {share:.2f})"
+    assert share > 0.9
+
+
+def test_ordinary_footage_is_not_mistaken_for_a_key(tmp_path):
+    """The test has to be strict enough that real colour survives it.
+
+    Foliage, a green-lit room and a dark studio are all 'greenish' in the
+    loose sense. A gate that refused them would empty the video to protect it.
+    """
+    from shorts_factory.qa.chroma import looks_keyed
+
+    for colour in ("0x2f4f2f", "0x1a1a2e", "0x8fbc8f", "gray"):
+        frame = tmp_path / f"{colour}.png"
+        if not _solid(colour, frame):
+            pytest.skip("needs ffmpeg to build the fixture")
+        refused, share = looks_keyed(frame)
+        assert not refused, f"{colour} was read as a chroma key (share {share:.2f})"
+
+
+def test_an_unreadable_file_is_left_to_the_download_gate(tmp_path):
+    """A frame that cannot be decoded is somebody else's failure to report."""
+    from shorts_factory.qa.chroma import looks_keyed
+
+    broken = tmp_path / "broken.mp4"
+    broken.write_bytes(b"not a video")
+
+    refused, share = looks_keyed(broken)
+    assert not refused and share == 0.0
