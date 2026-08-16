@@ -1,0 +1,120 @@
+name: Clean Old Artifacts and Caches
+
+# Both artifacts and Actions caches count against the same account storage
+# quota, and neither expires on its own inside the window that matters:
+# artifact retention-days only fires up to 90 days out, and caches are only
+# evicted once the *whole* cache store hits 10GB. A render's ~40MB video
+# artifact, once a day, filled the quota well before either of those kicked
+# in — the upload step for a finished render started failing with "Artifact
+# storage quota has been hit" after a successful hour-long render, with the
+# video sitting on the runner and no way to fetch it.
+#
+# This keeps a rolling seven-day window by deleting anything older, once a
+# day, so the steady-state usage stays well under the ceiling instead of
+# climbing until a render's own upload trips over it.
+
+on:
+  schedule:
+    # GitHub's scheduler queues cron jobs with a delay under load and does not
+    # promise the minute, only that it fires close to it — an off-the-hour
+    # minute avoids piling on with everyone else's "0 3 * * *".
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "List what would be deleted without deleting it"
+        type: boolean
+        default: false
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      DRY_RUN: ${{ inputs.dry_run == true }}
+
+    steps:
+      - name: Delete artifacts older than 7 days
+        run: |
+          set -euo pipefail
+          cutoff="$(date -u -d '7 days ago' +%s)"
+          echo "cutoff: keeping artifacts created after $(date -u -d "@$cutoff")"
+
+          kept=0
+          deleted=0
+          deleted_bytes=0
+
+          # --paginate walks every page; the --jq filter runs once per page and
+          # each match lands on its own output line, so the loop below never
+          # has to handle pagination itself.
+          while IFS=$'\t' read -r id created_at size_bytes name; do
+            [ -z "$id" ] && continue
+            created_ts="$(date -u -d "$created_at" +%s)"
+            if [ "$created_ts" -lt "$cutoff" ]; then
+              deleted=$((deleted + 1))
+              deleted_bytes=$((deleted_bytes + size_bytes))
+              if [ "$DRY_RUN" = "true" ]; then
+                echo "would delete artifact $id ($name, $((size_bytes / 1048576))MB, created $created_at)"
+              else
+                echo "deleting artifact $id ($name, $((size_bytes / 1048576))MB, created $created_at)"
+                gh api -X DELETE "repos/$REPO/actions/artifacts/$id" \
+                  || echo "  ::warning::could not delete artifact $id, continuing"
+              fi
+            else
+              kept=$((kept + 1))
+            fi
+          done < <(
+            gh api --paginate "repos/$REPO/actions/artifacts?per_page=100" \
+              --jq '.artifacts[] | [.id, .created_at, .size_in_bytes, .name] | @tsv'
+          )
+
+          echo "artifacts: kept $kept, $([ "$DRY_RUN" = "true" ] && echo "would delete" || echo "deleted") $deleted ($((deleted_bytes / 1048576))MB)"
+
+      - name: Delete Actions caches older than 7 days
+        run: |
+          set -euo pipefail
+          cutoff="$(date -u -d '7 days ago' +%s)"
+          echo "cutoff: keeping caches created after $(date -u -d "@$cutoff")"
+
+          kept=0
+          deleted=0
+          deleted_bytes=0
+
+          while IFS=$'\t' read -r id created_at size_bytes cache_key; do
+            [ -z "$id" ] && continue
+            created_ts="$(date -u -d "$created_at" +%s)"
+            if [ "$created_ts" -lt "$cutoff" ]; then
+              deleted=$((deleted + 1))
+              deleted_bytes=$((deleted_bytes + size_bytes))
+              if [ "$DRY_RUN" = "true" ]; then
+                echo "would delete cache $id ($cache_key, $((size_bytes / 1048576))MB, created $created_at)"
+              else
+                echo "deleting cache $id ($cache_key, $((size_bytes / 1048576))MB, created $created_at)"
+                # By ID, not by key: a key-based delete removes every cache
+                # sharing that key across every ref, which is more than "this
+                # one entry is old."
+                gh api -X DELETE "repos/$REPO/actions/caches/$id" \
+                  || echo "  ::warning::could not delete cache $id, continuing"
+              fi
+            else
+              kept=$((kept + 1))
+            fi
+          done < <(
+            gh api --paginate "repos/$REPO/actions/caches?per_page=100" \
+              --jq '.actions_caches[] | [.id, .created_at, .size_in_bytes, .key] | @tsv'
+          )
+
+          echo "caches: kept $kept, $([ "$DRY_RUN" = "true" ] && echo "would delete" || echo "deleted") $deleted ($((deleted_bytes / 1048576))MB)"
+
+      - name: Remaining storage
+        if: always()
+        run: |
+          gh api "repos/$REPO/actions/cache/usage" \
+            --jq '"cache: \(.active_caches_size_in_bytes / 1048576 | floor)MB across \(.active_caches_count) entries"' \
+            || echo "could not read cache usage"
