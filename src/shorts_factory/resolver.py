@@ -348,7 +348,7 @@ class VisualResolver:
             # the only thing that can — and it is exactly those slots that came
             # back as a hair salon. Cost is bounded: it runs for the thin cases,
             # not for every candidate.
-            look = spec.constraints.require_vision_qa or native.needs_vision
+            look = spec.constraints.require_vision_qa or native.needs_vision or native.worth_a_look
             vision = self.vision.check(asset, visual, context) if look else None
             outcome = combine(
                 native,

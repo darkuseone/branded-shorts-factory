@@ -635,9 +635,9 @@ class CompositionWriter:
                     name,
                     [
                         (0.0, f"opacity:0;transform:{enter};"),
-                        (p0, f"opacity:0;transform:{enter};"),
+                        (p0, _timed(f"opacity:0;transform:{enter};", EASE_IN_FRAME)),
                         (p1, "opacity:1;transform:none;"),
-                        (p2, "opacity:1;transform:none;"),
+                        (p2, _timed("opacity:1;transform:none;", EASE_OUT_OF_FRAME)),
                         (p3, f"opacity:0;transform:{exit_};"),
                         (100.0, "opacity:0;"),
                     ],
@@ -866,6 +866,33 @@ def _keyframes(name: str, stops: list[tuple[float, str]]) -> str:
     return f"@keyframes {name}{{{''.join(parts)}}}"
 
 
+#: How things move. Every animation here used to run `linear`, which is the
+#: one curve nothing in the physical world follows: a card slid in at a
+#: constant speed and stopped dead, and a word popped open at a constant rate.
+#: Read side by side with the reference Shorts, that is the whole difference
+#: between "animated" and "motion" — the timings were already right.
+#:
+#: These are written into the keyframes rather than onto the animation,
+#: because one animation carries a clip's entire life (wait, enter, hold,
+#: leave) and each segment wants its own curve. A declaration inside a
+#: keyframe block sets the curve for the interval that *starts* there.
+#:
+#: Arriving decelerates: fast off the mark, then a long settle, so the eye
+#: catches the movement and the element lands softly instead of stopping.
+EASE_IN_FRAME = "cubic-bezier(.16,1,.3,1)"
+#: Leaving accelerates away — the reverse shape. Something exiting should not
+#: linger politely; it should be gone.
+EASE_OUT_OF_FRAME = "cubic-bezier(.55,0,1,.45)"
+#: The word pop is 70ms, far too short for a spring without reading as a
+#: wobble. A hard decelerate over that distance is what makes it land.
+EASE_WORD_POP = "cubic-bezier(.22,1,.36,1)"
+
+
+def _timed(body: str, curve: str) -> str:
+    """A keyframe body that also sets the curve for the segment it starts."""
+    return f"{body}animation-timing-function:{curve};"
+
+
 #: How long the word takes to settle out of its pop. Short enough that a
 #: 0.22s cue still lands on its resting size before it is replaced.
 WORD_POP_S = 0.07
@@ -888,7 +915,7 @@ def _word_cut_stops(element: Element, pct: Callable[[float], float]) -> list[tup
         stops.append((0.0, "opacity:0;transform:scale(.84);"))
         stops.append((max(on - 0.0001, 0.0), "opacity:0;transform:scale(.84);"))
     stops += [
-        (on, "opacity:1;transform:scale(1.10);"),
+        (on, _timed("opacity:1;transform:scale(1.10);", EASE_WORD_POP)),
         (pct(settle), "opacity:1;transform:scale(1);"),
         # Listed before the hold so that on a cue too short to separate them,
         # de-duplication keeps the stop that takes the word off screen.
