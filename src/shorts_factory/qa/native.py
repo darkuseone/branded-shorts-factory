@@ -403,6 +403,29 @@ def _only_the_frame_can_tell(term: str) -> bool:
     return any(ban in lowered for ban in _UNSEEABLE_BANS)
 
 
+#: What this format cannot use, whatever a slot happens to say about itself.
+#: The Short lays its own word-by-word captions, data chips and cards over the
+#: picture, so footage carrying somebody else's burned-in title fights them for
+#: the same pixels — a NASA product with "M82 CIGAR GALAXY" across the top
+#: third went to air that way. Leaving this to each slot's `must_avoid` means
+#: relying on the author writing it out twenty-five times; two of twenty-five
+#: had it, and the twenty-third was the one that shipped the title card.
+HOUSE_BANS = (
+    "burned-in titles, captions or lower thirds",
+    "watermarks or channel logos",
+)
+
+#: Slot kinds the house rules apply to. A card is drawn from the scenario's own
+#: content and a meme is chosen from a curated bank, so neither is found
+#: footage and neither needs looking at for somebody else's text.
+_FOUND_FOOTAGE_TYPES = frozenset({"footage", "photo", "image", "b_roll", "motion_graphics"})
+
+
+def house_bans_for(visual: Visual) -> tuple[str, ...]:
+    """The house rules that apply to this slot, if any."""
+    return HOUSE_BANS if visual.type in _FOUND_FOOTAGE_TYPES else ()
+
+
 #: Fraction of the primary query an asset should echo before its subject
 #: coverage counts as complete, and the floor in absolute words.
 PRIMARY_COVERAGE = 0.5
@@ -426,6 +449,15 @@ class NativeVerdict:
     #: first cut opened with a hair salon precisely because "defer to vision"
     #: was decided in a run where vision never ran.
     needs_vision: bool = False
+    #: Softer than `needs_vision`: worth a look, but shipping without one is
+    #: not a failure. The house rules live here — every piece of found footage
+    #: is checked for burned-in titles and watermarks, because this format
+    #: lays its own captions and cards over the picture and a clip carrying
+    #: somebody else's text collides with them. That is a real defect and a
+    #: weak reason to empty the slot, so with no vision gate available the
+    #: asset still ships. `needs_vision` keeps its harder meaning: the words
+    #: did not settle it at all, so an unseen asset is a gamble, not a risk.
+    worth_a_look: bool = False
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -434,6 +466,7 @@ class NativeVerdict:
             "issues": self.issues,
             "notes": self.notes,
             "needs_vision": self.needs_vision,
+            "worth_a_look": self.worth_a_look,
         }
 
 
@@ -612,4 +645,5 @@ def check_native(
         issues=issues,
         notes=notes,
         needs_vision=passed and (thin_coverage or unseeable_avoid),
+        worth_a_look=passed and bool(house_bans_for(visual)),
     )

@@ -37,7 +37,20 @@ from .spec import Spec, Visual
 log = get_logger("resolver")
 
 #: How many candidates one visual may burn before we give up on it.
-MAX_ATTEMPTS = 4
+#:
+#: Four was tuned for a run where level 2 was reached by the thin cases only,
+#: so most finalists shipped on their metadata and the first or second
+#: candidate was almost always the one. Now that every piece of found footage
+#: is offered to the gate that can see it, level 2 correctly turns down
+#: candidates level 1 was happy with — "empty institutional hallway, not a
+#: data center corridor" — and four tries runs out before the shortlist does.
+#: Coverage fell from seventeen filled slots to twelve that way: not worse
+#: judgement, just a shortlist too short to survive it.
+#:
+#: The cost is bounded by the vision budget (60 calls a run, of which that
+#: run spent 9) and by the wall clock, which stops the search reaching for
+#: slow tiers well before this matters.
+MAX_ATTEMPTS = 7
 
 _STYLE_HINTS = {
     "motion_graphics": "premium motion graphics, smooth animation, brand-clean",
@@ -348,7 +361,7 @@ class VisualResolver:
             # the only thing that can — and it is exactly those slots that came
             # back as a hair salon. Cost is bounded: it runs for the thin cases,
             # not for every candidate.
-            look = spec.constraints.require_vision_qa or native.needs_vision
+            look = spec.constraints.require_vision_qa or native.needs_vision or native.worth_a_look
             vision = self.vision.check(asset, visual, context) if look else None
             outcome = combine(
                 native,

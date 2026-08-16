@@ -567,3 +567,46 @@ def test_a_ban_the_words_can_settle_still_rejects_outright():
 
     assert not verdict.passed
     assert any("banned" in issue for issue in verdict.issues)
+
+
+def test_found_footage_is_always_worth_a_look_for_burned_in_text():
+    """The ban on somebody else's titles is a house rule, not a slot's whim.
+
+    Two of the twenty-five slots in the scenario that shipped a NASA title
+    card declared `must_avoid`. Relying on an author writing the same line out
+    twenty-five times is how the twenty-third slot went to air with "M82 CIGAR
+    GALAXY" across the top third, fighting this format's own captions.
+    """
+    visual = make_visual(query="red warning screen")
+    plan = build_query_plan(visual, None)
+    asset = asset_for(title="critical alert dashboard", tags=["warning", "screen", "alert"])
+
+    verdict = check_native(asset, visual, plan, "red warning screen")
+
+    assert verdict.passed
+    assert verdict.worth_a_look, "found footage must be offered to the gate that can see it"
+
+
+def test_a_house_rule_alone_never_empties_a_slot():
+    """Soft means soft: no vision gate is a reason to ship, not to blank out.
+
+    `needs_vision` rejects an unseen asset because the words settled nothing.
+    A house rule is the opposite case — the words were fine and we would
+    merely *like* a second look — so a keyless run must still fill the slot
+    rather than fall back to the brand backdrop twenty-five times.
+    """
+    from shorts_factory.qa.native import NativeVerdict
+
+    verdict = NativeVerdict(passed=True, score=0.8, needs_vision=False, worth_a_look=True)
+
+    outcome = combine(verdict, None, require_vision=False, manual_review_ok=True)
+
+    assert outcome == "accepted"
+
+
+def test_a_rendered_card_is_not_searched_for_somebody_elses_text():
+    """A card is drawn from the scenario; there is no third party to check."""
+    from shorts_factory.qa.native import house_bans_for
+
+    assert house_bans_for(make_visual(query="x", type="infographic")) == ()
+    assert house_bans_for(make_visual(query="x", type="footage"))

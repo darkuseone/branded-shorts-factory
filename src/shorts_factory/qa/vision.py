@@ -190,11 +190,16 @@ class GrokVisionGate:
         return verdict
 
     def _ask(self, frames: Sequence[Path], visual: Visual, context: str) -> str:
+        from .native import house_bans_for
+
         constraints = []
         if visual.must_include:
             constraints.append("Must show: " + ", ".join(visual.must_include))
-        if visual.must_avoid:
-            constraints.append("Must not show: " + ", ".join(visual.must_avoid))
+        # The house rules go in the same sentence as the slot's own bans, and
+        # come last so a slot can be more specific without losing them.
+        banned = [*visual.must_avoid, *house_bans_for(visual)]
+        if banned:
+            constraints.append("Must not show: " + ", ".join(banned))
 
         content: list[dict[str, object]] = [
             {

@@ -199,7 +199,13 @@ jobs:
             build/output/*.mp4
             build/reports/*.json
           if-no-files-found: warn
-          retention-days: 30
+          # A finished Short is ~40MB and every run of this workflow uploads
+          # one. At thirty days the account's artifact quota filled up and the
+          # upload step started failing *after* a successful hour-long render —
+          # the video existed on the runner and could not be fetched. Two weeks
+          # is longer than anyone waits to collect a cut, and it keeps the
+          # steady-state well under the ceiling.
+          retention-days: 14
 
       - name: Upload the composition for debugging
         if: failure() || inputs.dry_run == true
@@ -208,7 +214,10 @@ jobs:
           name: composition-${{ steps.pick.outputs.id }}
           path: build/composition/**
           if-no-files-found: ignore
-          retention-days: 7
+          # Debug material for the run you are looking at right now. It is the
+          # bulkiest thing here (every downloaded clip, uncompressed) and stops
+          # being interesting once the failure is understood.
+          retention-days: 3
 
       # Last on purpose. Two upload steps emit ~80 lines of boilerplate each,
       # so a failure explained before them is invisible to anything reading
